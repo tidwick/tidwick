@@ -1,0 +1,44 @@
+---
+import { actions } from 'astro:actions';
+import Heading from '../components/auth/heading.astro';
+import { LINK, PRIMARY } from '../components/auth/classes';
+import Status from '../components/auth/status.astro';
+import Auth from '../layouts/auth.astro';
+
+const signedOut = Astro.getActionResult(actions.auth.logout);
+const session = Astro.locals.session;
+if (session && !signedOut) return Astro.redirect(session.mustEnrol ? '/account' : '/week');
+---
+
+<Auth title="Sign in">
+  <section>
+    <Heading text="Sign in">
+      Use the passkey you set up on this device or your phone. There is nothing to type.
+    </Heading>
+    <button
+      type="button"
+      data-passkey="login"
+      data-csrf={Astro.locals.csrf}
+      class:list={[PRIMARY, 'mt-6']}
+    >
+      Sign in with a passkey
+    </button>
+    <Status />
+    <noscript>
+      <p role="alert" class="mt-4 text-sm font-medium text-danger">
+        Signing in with a passkey needs JavaScript. Turn it on for this site, or use a recovery
+        code.
+      </p>
+    </noscript>
+  </section>
+  <p class="-mt-2 text-sm">
+    <a class={LINK} href="/recover">
+      Lost your passkey? Use a recovery code
+    </a>
+  </p>
+</Auth>
+
+<script>
+  import { wireLogin } from '../components/passkey/ceremony';
+  wireLogin();
+</script>

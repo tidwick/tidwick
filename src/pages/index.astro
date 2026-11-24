@@ -1,0 +1,22 @@
+---
+import Heading from '../components/auth/heading.astro';
+import { LINK, PRIMARY } from '../components/auth/classes';
+import Auth from '../layouts/auth.astro';
+
+const session = Astro.locals.session;
+if (session) return Astro.redirect(session.mustEnrol ? '/account' : '/week');
+---
+
+<Auth title="Home">
+  <section>
+    <Heading text="tidwick">A weekly timesheet for professional-services firms.</Heading>
+    <a class:list={[PRIMARY, 'mt-6']} href="/login">
+      Sign in
+    </a>
+  </section>
+  <p class="text-sm">
+    <a class={LINK} href="/recover">
+      Lost your passkey? Use a recovery code
+    </a>
+  </p>
+</Auth>

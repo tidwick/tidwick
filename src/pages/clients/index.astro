@@ -1,0 +1,126 @@
+---
+import { actions } from 'astro:actions';
+import Empty from '../../components/admin/empty.astro';
+import Field from '../../components/admin/field.astro';
+import PostForm from '../../components/admin/post-form.astro';
+import SelectField from '../../components/admin/select-field.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { listClients } from '../../db/clients';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const ctx = await pageContext(Astro);
+const newClient = Astro.getActionResult(actions.clients.create);
+const newProject = Astro.getActionResult(actions.projects.create);
+if (newClient?.data) return Astro.redirect(savedAt(`/clients/${newClient.data.id}`), 303);
+if (newProject?.data) return Astro.redirect(savedAt(`/projects/${newProject.data.id}`), 303);
+if (succeeded([newClient, newProject])) return Astro.redirect(savedAt('/clients'), 303);
+const clients = await listClients(ctx.scope, ctx.db);
+const live = clients.filter((c) => c.archived_at === null);
+const typed = await postedFields(Astro);
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+---
+
+<Shell title="Clients" admin={ctx.admin} problem={problemOf([newClient, newProject])}>
+  <Fragment slot="lead">
+    You see the clients that hold a project you are assigned to, and any you created.
+  </Fragment>
+
+  {clients.length === 0 ? (
+    <Empty title="No clients yet">
+      Add a client below, then add its first project. A client has to exist before time can be
+      booked to it.
+    </Empty>
+  ) : (
+    <Table aria-label="Clients">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Client</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Added</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {clients.map((client) => (
+          <TableRow>
+            <TableRowHead>
+              <a class="underline underline-offset-2" href={`/clients/${client.id}`}>
+                {client.name}
+              </a>
+            </TableRowHead>
+            <TableCell data-label="Status">
+              {client.archived_at === null ? (
+                <Badge variant="outline">Active</Badge>
+              ) : (
+                <Badge variant="secondary">Archived</Badge>
+              )}
+            </TableCell>
+            <TableCell data-label="Added" className="tabular-nums text-muted-foreground">
+              {day(client.created_at)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+
+  <div class="grid gap-6 md:grid-cols-2">
+    <section aria-labelledby="new-client" class="rounded-lg border border-border p-4">
+      <h2 id="new-client" class="text-lg font-semibold">
+        New client
+      </h2>
+      <p class="mb-3 mt-1 text-sm text-muted-foreground">You are assigned to what you add.</p>
+      <PostForm action={actions.clients.create} csrf={ctx.csrf} label="Add client">
+        <Field
+          label="Name"
+          field="name"
+          required
+          value={newClient?.error ? typed.name : ''}
+          errors={fieldErrors([newClient]).name ?? []}
+        />
+      </PostForm>
+    </section>
+
+    {live.length > 0 && (
+      <section aria-labelledby="new-project" class="rounded-lg border border-border p-4">
+        <h2 id="new-project" class="text-lg font-semibold">
+          New project
+        </h2>
+        <p class="mb-3 mt-1 text-sm text-muted-foreground">A project belongs to one client.</p>
+        <PostForm action={actions.projects.create} csrf={ctx.csrf} label="Add project">
+          <SelectField
+            label="Client"
+            field="clientId"
+            required
+            options={live.map((c) => ({ value: c.id, label: c.name }))}
+          />
+          <Field
+            label="Project name"
+            field="name"
+            required
+            value={newProject?.error ? typed.name : ''}
+            errors={fieldErrors([newProject]).name ?? []}
+          />
+          <Field
+            label="Project number"
+            field="number"
+            hint="Optional. Two-digit year, a dash, four digits: 26-0001"
+            placeholder="26-0001"
+            maxlength={7}
+            value={newProject?.error ? typed.number : ''}
+            errors={fieldErrors([newProject]).number ?? []}
+          />
+        </PostForm>
+      </section>
+    )}
+  </div>
+</Shell>

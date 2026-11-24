@@ -1,0 +1,19 @@
+---
+// The line a ceremony writes into: progress in the normal colour, a refusal in the danger colour (`data-tone`).
+// An error the server rendered passes `problem` and is announced at once. The live region is in the page from the
+// first render and takes no room until it holds text.
+interface Props {
+  problem?: string;
+}
+const { problem = '' } = Astro.props;
+---
+
+<p
+  data-passkey-status
+  data-tone={problem ? 'error' : 'progress'}
+  role="status"
+  aria-live="polite"
+  class="text-sm [&:not(:empty)]:mt-4 text-muted-foreground data-[tone=error]:font-medium data-[tone=error]:text-danger"
+>
+  {problem}
+</p>

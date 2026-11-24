@@ -1,0 +1,180 @@
+---
+import { actions } from 'astro:actions';
+import Empty from '../../components/admin/empty.astro';
+import Field from '../../components/admin/field.astro';
+import PostForm from '../../components/admin/post-form.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { clientById } from '../../db/clients';
+import { listProjects } from '../../db/projects';
+import { errorPage } from '../../lib/errors';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const ctx = await pageContext(Astro);
+const id = Astro.params.id ?? '';
+const rename = Astro.getActionResult(actions.clients.update);
+const archive = Astro.getActionResult(actions.clients.archive);
+const newProject = Astro.getActionResult(actions.projects.create);
+const projectArchive = Astro.getActionResult(actions.projects.archive);
+if (newProject?.data) return Astro.redirect(savedAt(`/projects/${newProject.data.id}`), 303);
+if (succeeded([rename, archive, projectArchive]))
+  return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const client = await clientById(ctx.scope, ctx.db, id);
+if (!client) return errorPage('not_found');
+const projects = await listProjects(ctx.scope, ctx.db, id);
+const typed = await postedFields(Astro);
+const archived = client.archived_at !== null;
+const posted = [rename, archive, newProject, projectArchive];
+---
+
+<Shell title={client.name} admin={ctx.admin} problem={problemOf(posted)}>
+  <Fragment slot="lead">
+    <a class="underline underline-offset-2" href="/clients">
+      All clients
+    </a>
+    {archived && (
+      <Badge variant="secondary" className="ml-2 align-middle">
+        Archived
+      </Badge>
+    )}
+  </Fragment>
+
+  <section aria-labelledby="projects-h" class="grid gap-3">
+    <h2 id="projects-h" class="text-lg font-semibold">
+      Projects
+    </h2>
+    {projects.length === 0 ? (
+      <Empty title="No projects you can see">
+        {archived
+          ? 'This client is archived, so it takes no new project. Restore it below to add one.'
+          : 'Add the first project below. Time is booked to a project and one of its allowed tasks.'}
+      </Empty>
+    ) : (
+      <Table aria-label={`Projects of ${client.name}`}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Project</TableHead>
+            <TableHead>Number</TableHead>
+            <TableHead>Status</TableHead>
+            {ctx.admin && (
+              <TableHead>
+                <span class="sr-only">Actions</span>
+              </TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {projects.map((project) => (
+            <TableRow>
+              <TableRowHead>
+                <a class="underline underline-offset-2" href={`/projects/${project.id}`}>
+                  {project.name}
+                </a>
+              </TableRowHead>
+              <TableCell data-label="Number" className="tabular-nums">
+                {project.number ?? <span class="text-muted-foreground">No number</span>}
+              </TableCell>
+              <TableCell data-label="Status">
+                {project.archived_at === null ? (
+                  <Badge variant="outline">Active</Badge>
+                ) : (
+                  <Badge variant="secondary">Archived</Badge>
+                )}
+              </TableCell>
+              {ctx.admin && (
+                <TableCell className="md:text-right">
+                  <PostForm
+                    compact
+                    action={actions.projects.archive}
+                    csrf={ctx.csrf}
+                    label={project.archived_at === null ? 'Archive' : 'Restore'}
+                    named={`${project.archived_at === null ? 'Archive' : 'Restore'} ${project.name}`}
+                    tone="plain"
+                    fields={
+                      project.archived_at === null
+                        ? { id: project.id }
+                        : { id: project.id, restore: '1' }
+                    }
+                  />
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )}
+  </section>
+
+  {!archived && (
+    <section aria-labelledby="new-project" class="max-w-md rounded-lg border border-border p-4">
+      <h2 id="new-project" class="mb-3 text-lg font-semibold">
+        New project
+      </h2>
+      <PostForm
+        action={actions.projects.create}
+        csrf={ctx.csrf}
+        label="Add project"
+        fields={{ clientId: client.id }}
+      >
+        <Field
+          label="Project name"
+          field="name"
+          required
+          value={newProject?.error ? typed.name : ''}
+          errors={fieldErrors([newProject]).name ?? []}
+        />
+        <Field
+          label="Project number"
+          field="number"
+          hint="Optional. Two-digit year, a dash, four digits: 26-0001"
+          placeholder="26-0001"
+          maxlength={7}
+          value={newProject?.error ? typed.number : ''}
+          errors={fieldErrors([newProject]).number ?? []}
+        />
+      </PostForm>
+    </section>
+  )}
+
+  {ctx.admin && (
+    <section
+      aria-labelledby="manage-h"
+      class="grid max-w-md gap-4 rounded-lg border border-border p-4"
+    >
+      <h2 id="manage-h" class="text-lg font-semibold">
+        Manage client
+      </h2>
+      <PostForm
+        action={actions.clients.update}
+        csrf={ctx.csrf}
+        label="Rename"
+        tone="plain"
+        fields={{ id: client.id }}
+      >
+        <Field
+          label="Name"
+          field="name"
+          value={rename?.error ? typed.name : client.name}
+          required
+          errors={fieldErrors([rename]).name ?? []}
+        />
+      </PostForm>
+      <PostForm
+        action={actions.clients.archive}
+        csrf={ctx.csrf}
+        label={archived ? 'Restore client' : 'Archive client'}
+        tone={archived ? 'plain' : 'danger'}
+        fields={archived ? { id: client.id, restore: '1' } : { id: client.id }}
+      />
+    </section>
+  )}
+</Shell>

@@ -1,0 +1,11 @@
+node_modules
+.wrangler
+dist
+.astro
+.dev.vars
+worker-configuration.d.ts
+playwright-report
+test-results
+test/fixtures/backup-key.txt
+test/fixtures/backup-recipient.txt
+test/fixtures/backup.age

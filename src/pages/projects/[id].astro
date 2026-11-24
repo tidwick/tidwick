@@ -1,0 +1,229 @@
+---
+import { actions } from 'astro:actions';
+import Empty from '../../components/admin/empty.astro';
+import Field from '../../components/admin/field.astro';
+import PostForm from '../../components/admin/post-form.astro';
+import SelectField from '../../components/admin/select-field.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { assignedTo } from '../../db/assignments';
+import { clientById } from '../../db/clients';
+import { listPeople } from '../../db/people';
+import { allowedTasks } from '../../db/project-tasks';
+import { projectById } from '../../db/projects';
+import { listTaskCodes } from '../../db/task-codes';
+import { errorPage } from '../../lib/errors';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const ctx = await pageContext(Astro);
+const id = Astro.params.id ?? '';
+const posted = [
+  Astro.getActionResult(actions.projects.update),
+  Astro.getActionResult(actions.projects.archive),
+  Astro.getActionResult(actions.projects.setTasks),
+  Astro.getActionResult(actions.assignments.add),
+  Astro.getActionResult(actions.assignments.remove),
+];
+if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const project = await projectById(ctx.scope, ctx.db, id);
+if (!project) return errorPage('not_found');
+const client = await clientById(ctx.scope, ctx.db, project.client_id);
+const allowed = await allowedTasks(ctx.scope, ctx.db, id);
+const allowedIds = new Set(allowed.map((t) => t.task_code_id));
+const live = ctx.admin ? (await listTaskCodes(ctx.db)).filter((c) => c.archived_at === null) : [];
+const team = ctx.steward ? await assignedTo(ctx.scope, ctx.db, id) : [];
+const assignedIds = new Set(team.map((p) => p.person_id));
+const addable = ctx.steward
+  ? (await listPeople(ctx.db)).filter((p) => p.offboarded_at === null && !assignedIds.has(p.id))
+  : [];
+const typed = await postedFields(Astro);
+const archived = project.archived_at !== null;
+const updated = posted[0];
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+---
+
+<Shell title={project.name} admin={ctx.admin} problem={problemOf(posted)} section="/clients">
+  <Fragment slot="lead">
+    <a class="underline underline-offset-2" href={`/clients/${project.client_id}`}>
+      {client?.name ?? 'Client'}
+    </a>
+    · <span class="tabular-nums">{project.number ?? 'No number'}</span>
+    {archived && (
+      <Badge variant="secondary" className="ml-2 align-middle">
+        Archived
+      </Badge>
+    )}
+  </Fragment>
+
+  <section aria-labelledby="tasks-h" class="grid gap-3">
+    <h2 id="tasks-h" class="text-lg font-semibold">
+      Allowed tasks
+    </h2>
+    {allowed.length === 0 ? (
+      <Empty
+        title={ctx.steward && !archived ? 'Nobody can book time here' : 'No task is allowed yet'}
+      >
+        No task is allowed on this project, so it is missing from everyone's add-row. Time cannot be
+        booked until an admin allows a task{ctx.admin ? ' below' : ''}.
+      </Empty>
+    ) : (
+      <ul class="flex flex-wrap gap-2">
+        {allowed.map((task) => (
+          <li class="rounded-md bg-muted px-2.5 py-1 text-sm">
+            {task.code} · {task.name}
+          </li>
+        ))}
+      </ul>
+    )}
+    {ctx.admin && !archived && (
+      <PostForm
+        action={actions.projects.setTasks}
+        csrf={ctx.csrf}
+        label="Save allowed tasks"
+        fields={{ id: project.id }}
+      >
+        <fieldset class="grid max-w-md gap-1 rounded-lg border border-border p-3">
+          <legend class="px-1 text-sm font-medium">Choose the tasks</legend>
+          {live.length === 0 && (
+            <p class="text-sm text-muted-foreground">
+              There is no task code yet. Add one under Task codes first.
+            </p>
+          )}
+          {live.map((code) => (
+            <label class="flex min-h-11 items-center gap-3 text-sm md:min-h-9">
+              <input
+                type="checkbox"
+                name="taskCodeIds"
+                value={code.id}
+                checked={allowedIds.has(code.id)}
+                class="size-5"
+              />
+              {code.code} · {code.name}
+            </label>
+          ))}
+        </fieldset>
+      </PostForm>
+    )}
+  </section>
+
+  {ctx.steward && (
+    <section aria-labelledby="team-h" class="grid gap-3">
+      <h2 id="team-h" class="text-lg font-semibold">
+        Assigned people
+      </h2>
+      {team.length === 0 ? (
+        <Empty title="Nobody is assigned">
+          {archived
+            ? 'This project is archived. Restore it to assign people.'
+            : 'Assign someone below. A member sees and books time only to projects they are assigned to.'}
+        </Empty>
+      ) : (
+        <Table aria-label={`People assigned to ${project.name}`}>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Person</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Assigned</TableHead>
+              <TableHead>
+                <span class="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {team.map((person) => (
+              <TableRow>
+                <TableRowHead>{person.name}</TableRowHead>
+                <TableCell data-label="Email" className="break-all">
+                  {person.email}
+                </TableCell>
+                <TableCell data-label="Assigned" className="tabular-nums text-muted-foreground">
+                  {day(person.assigned_at)}
+                </TableCell>
+                <TableCell className="md:text-right">
+                  <PostForm
+                    compact
+                    action={actions.assignments.remove}
+                    csrf={ctx.csrf}
+                    label="Remove"
+                    named={`Remove ${person.name} from ${project.name}`}
+                    tone="plain"
+                    fields={{ projectId: project.id, personId: person.person_id }}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {!archived && addable.length > 0 && (
+        <div class="max-w-md rounded-lg border border-border p-4">
+          <PostForm
+            action={actions.assignments.add}
+            csrf={ctx.csrf}
+            label="Assign"
+            fields={{ projectId: project.id }}
+          >
+            <SelectField
+              label="Person"
+              field="personId"
+              required
+              options={addable.map((p) => ({ value: p.id, label: `${p.name} (${p.email})` }))}
+            />
+          </PostForm>
+        </div>
+      )}
+    </section>
+  )}
+
+  {ctx.admin && (
+    <section
+      aria-labelledby="manage-h"
+      class="grid max-w-md gap-4 rounded-lg border border-border p-4"
+    >
+      <h2 id="manage-h" class="text-lg font-semibold">
+        Manage project
+      </h2>
+      {!archived && (
+        <PostForm
+          action={actions.projects.update}
+          csrf={ctx.csrf}
+          label="Save"
+          fields={{ id: project.id }}
+        >
+          <Field
+            label="Name"
+            field="name"
+            value={updated?.error ? typed.name : project.name}
+            required
+            errors={fieldErrors([updated]).name ?? []}
+          />
+          <Field
+            label="Project number"
+            field="number"
+            value={updated?.error ? typed.number : project.number}
+            hint="Optional. Two-digit year, a dash, four digits: 26-0001"
+            placeholder="26-0001"
+            maxlength={7}
+            errors={fieldErrors([updated]).number ?? []}
+          />
+        </PostForm>
+      )}
+      <PostForm
+        action={actions.projects.archive}
+        csrf={ctx.csrf}
+        label={archived ? 'Restore project' : 'Archive project'}
+        tone={archived ? 'plain' : 'danger'}
+        fields={archived ? { id: project.id, restore: '1' } : { id: project.id }}
+      />
+    </section>
+  )}
+</Shell>

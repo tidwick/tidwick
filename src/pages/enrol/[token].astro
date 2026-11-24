@@ -1,0 +1,82 @@
+---
+import Heading from '../../components/auth/heading.astro';
+import { PRIMARY, SECONDARY } from '../../components/auth/classes';
+import Status from '../../components/auth/status.astro';
+import Auth from '../../layouts/auth.astro';
+
+const token = Astro.params.token ?? '';
+---
+
+<Auth title="Set up your passkey">
+  <section data-enrol-start>
+    <Heading text="Set up your passkey">
+      A passkey signs you in with this device's screen lock. This link works once and expires 24
+      hours after it was issued; if it has, ask an admin for a new one.
+    </Heading>
+    <button
+      type="button"
+      data-passkey="enrol"
+      data-token={token}
+      data-csrf={Astro.locals.csrf}
+      class:list={[PRIMARY, 'mt-6']}
+    >
+      Create a passkey
+    </button>
+    <Status />
+    <noscript>
+      <p role="alert" class="mt-4 text-sm font-medium text-danger">
+        Creating a passkey needs JavaScript. Turn it on for this site and reload.
+      </p>
+    </noscript>
+  </section>
+  <section data-enrol-done hidden class="grid gap-4 print:block">
+    <div>
+      <Heading text="Save your recovery codes">
+        Each code works once if you lose your passkey. They are shown only now, so copy or print
+        them and keep them somewhere safe.
+      </Heading>
+    </div>
+    <ol
+      data-codes
+      class="grid grid-cols-1 gap-2 rounded-md border border-border p-4 font-mono text-base sm:grid-cols-2 print:grid-cols-2"
+    ></ol>
+    <div class="grid gap-3 sm:grid-cols-2 print:hidden">
+      <button type="button" data-codes-copy class={SECONDARY}>
+        Copy the codes
+      </button>
+      <button type="button" data-codes-print class={SECONDARY}>
+        Print the codes
+      </button>
+    </div>
+    <p
+      data-codes-note
+      role="status"
+      aria-live="polite"
+      class="min-h-6 text-sm text-muted-foreground print:hidden"
+    ></p>
+    <label class="flex items-start gap-3 text-sm font-medium print:hidden">
+      <input
+        type="checkbox"
+        data-codes-confirm
+        class="mt-1 size-5 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      />
+      I have saved these codes. I understand they will not be shown again.
+    </label>
+    <a
+      href="/week"
+      data-codes-continue
+      aria-disabled="true"
+      class:list={[
+        PRIMARY,
+        'print:hidden aria-disabled:pointer-events-none aria-disabled:opacity-50',
+      ]}
+    >
+      Continue
+    </a>
+  </section>
+</Auth>
+
+<script>
+  import { wireEnrol } from '../../components/passkey/ceremony';
+  wireEnrol();
+</script>

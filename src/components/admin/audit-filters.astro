@@ -1,0 +1,76 @@
+---
+import type { AuditChoices } from '../../db/audit-read';
+import type { AuditFilter } from '../../lib/audit-filter';
+import { Button } from '../ui/button';
+import Field from './field.astro';
+import SelectField from './select-field.astro';
+// The audit page's filter form: a plain GET, so a filtered view is a link that survives a refresh and a
+// bookmark. Each field is blank for no filter.
+interface Props {
+  filter: AuditFilter;
+  choices: AuditChoices;
+  filtered: boolean;
+}
+const { filter, choices, filtered } = Astro.props;
+const people = [
+  { value: 'system', label: 'System (no person)' },
+  ...choices.people.map((p) => ({ value: p.id, label: p.name })),
+];
+const clients = choices.clients.map((c) => ({ value: c.id, label: c.name }));
+---
+
+<form
+  method="GET"
+  action="/audit"
+  aria-labelledby="audit-filter-h"
+  class="grid gap-4 rounded-lg border border-border p-4"
+>
+  <h2 id="audit-filter-h" class="text-lg font-semibold">
+    Filter events
+  </h2>
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <Field label="From" field="from" type="date" value={filter.from} hint="UTC, included" />
+    <Field label="To" field="to" type="date" value={filter.to} hint="UTC, included" />
+    <SelectField
+      label="Who"
+      field="actor"
+      options={people}
+      blank="Anyone"
+      value={filter.actor ?? ''}
+    />
+    <SelectField
+      label="Client"
+      field="client"
+      options={clients}
+      blank="Any client"
+      value={filter.client ?? ''}
+    />
+    <Field
+      label="Action"
+      field="action"
+      value={filter.action}
+      maxlength={100}
+      hint="Starts with, such as settings. or keys.rewrap"
+    />
+    <Field
+      label="Target"
+      field="target"
+      value={filter.target}
+      maxlength={100}
+      hint="Starts with, such as client: or setting:"
+    />
+  </div>
+  <div class="flex flex-wrap items-center gap-3">
+    <Button type="submit" size="lg" className="max-md:h-11">
+      Filter
+    </Button>
+    {filtered && (
+      <a
+        href="/audit"
+        class="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium underline underline-offset-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:h-11"
+      >
+        Clear filters
+      </a>
+    )}
+  </div>
+</form>

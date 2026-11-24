@@ -1,0 +1,67 @@
+---
+import Status from '../auth/status.astro';
+import { clockUtc } from '../../lib/dates';
+import { Button } from '../ui/button';
+// The passkey confirmation prompt for pages whose changes need one from the last 15 minutes. A current one is a
+// single muted line with a link-style "Confirm again"; a missing or expired one is the full panel, since that is
+// when it must be seen. The button runs the same ceremony as the account page, then reloads. Confirming needs
+// script, since a passkey does; every other form on these pages posts without it.
+interface Props {
+  csrf: string;
+  /** When the current confirmation ends, or null when there is none. */
+  until: number | null;
+  /** What the confirmation unlocks, in a phrase. */
+  unlocks: string;
+}
+const { csrf, until, unlocks } = Astro.props;
+const clock = until === null ? '' : clockUtc(until);
+---
+
+{until !== null ? (
+  <section
+    aria-label="Passkey confirmation"
+    data-step-up="current"
+    class="flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground [&_[data-passkey-status]]:mt-0 [&_[data-passkey-status]]:min-h-0"
+  >
+    <p>Passkey confirmed until {clock} UTC.</p>
+    <button
+      type="button"
+      data-passkey="step-up"
+      data-csrf={csrf}
+      class="inline-flex min-h-6 items-center rounded-md text-foreground underline underline-offset-2 hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 max-md:min-h-11 max-md:px-1"
+    >
+      Confirm again
+    </button>
+    <Status />
+  </section>
+) : (
+  <section
+    aria-labelledby="step-up-h"
+    data-step-up="needed"
+    class="rounded-lg border border-control bg-muted/40 p-4"
+  >
+    <h2 id="step-up-h" class="text-sm font-semibold">
+      Confirm with your passkey
+    </h2>
+    <p class="mt-1 text-sm text-muted-foreground">
+      A passkey confirmation from the last 15 minutes is needed for {unlocks}.
+    </p>
+    <div class="mt-3 [&_[data-passkey-status]]:mt-2 [&_[data-passkey-status]]:min-h-0">
+      <Button
+        type="button"
+        data-passkey="step-up"
+        data-csrf={csrf}
+        size="lg"
+        className="border-control max-md:h-11"
+      >
+        Confirm with your passkey
+      </Button>
+      <Status />
+    </div>
+  </section>
+)}
+
+<script>
+  import { wireStepUp } from '../passkey/ceremony';
+  wireStepUp();
+</script>

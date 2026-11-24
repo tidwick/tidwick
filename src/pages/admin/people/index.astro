@@ -1,0 +1,169 @@
+---
+import { actions } from 'astro:actions';
+import AccessBadge from '../../../components/admin/access-badge.astro';
+import Empty from '../../../components/admin/empty.astro';
+import Field from '../../../components/admin/field.astro';
+import PostForm from '../../../components/admin/post-form.astro';
+import SearchForm from '../../../components/admin/search-form.astro';
+import SelectField from '../../../components/admin/select-field.astro';
+import Shell from '../../../components/admin/shell.astro';
+import { Badge } from '../../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../../components/ui/table';
+import { listFirms } from '../../../db/firms';
+import { listPeople } from '../../../db/people';
+import { accessByPerson } from '../../../db/people-access';
+import { searchTerm } from '../../../lib/search';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt } from '../../_context';
+
+const ctx = await pageContext(Astro);
+const created = Astro.getActionResult(actions.people.create);
+if (created?.data) return Astro.redirect(savedAt(`/admin/people/${created.data.id}`), 303);
+const term = searchTerm(Astro.url.searchParams.get('q'));
+const people = await listPeople(ctx.db, term);
+const firms = await listFirms(ctx.db);
+const access = await accessByPerson(ctx.db, Date.now());
+const typed = await postedFields(Astro);
+const errors = fieldErrors([created]);
+const shown = (name: string) => (created?.error ? (typed[name] ?? '') : '');
+const found = people.length === 1 ? '1 person' : `${String(people.length)} people`;
+const status =
+  term === ''
+    ? `${found}.`
+    : `${found} ${people.length === 1 ? 'matches' : 'match'} \u201c${term}\u201d.`;
+const roleNames = (roles: string) =>
+  roles
+    .split(',')
+    .filter(Boolean)
+    .map((r) => r.replaceAll('_', ' '))
+    .map((r) => `${r.slice(0, 1).toUpperCase()}${r.slice(1)}`);
+---
+
+<Shell title="People" admin={ctx.admin} problem={problemOf([created])}>
+  <Fragment slot="lead">
+    Everyone who can sign in, with their firm, extra roles and whether they have a passkey yet. Open
+    a person to issue a link, change roles or see their assignments.
+  </Fragment>
+
+  <details open={created?.error !== undefined} class="rounded-lg border border-border p-4">
+    <summary class="cursor-pointer text-lg font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+      Add a person
+    </summary>
+    <p class="mb-3 mt-1 text-sm text-muted-foreground">
+      They get no access until you issue an enrolment link on their page.
+    </p>
+    <PostForm action={actions.people.create} csrf={ctx.csrf} label="Add person">
+      <div class="grid gap-3 md:grid-cols-2">
+        <Field
+          label="Name"
+          field="name"
+          required
+          value={shown('name')}
+          errors={errors.name ?? []}
+        />
+        <Field
+          label="Email"
+          field="email"
+          type="email"
+          required
+          value={shown('email')}
+          errors={errors.email ?? []}
+        />
+        <Field
+          label="Accounting system code"
+          field="externalCode"
+          hint="Optional"
+          value={shown('externalCode')}
+          errors={errors.externalCode ?? []}
+        />
+        <SelectField
+          label="Firm"
+          field="firmId"
+          blank="New firm, named below"
+          options={firms.map((f) => ({ value: f.id, label: f.name }))}
+        />
+        <Field
+          label="New firm name"
+          field="newFirm"
+          hint="Only when the firm above is left on New firm. A firm is booked as a client."
+          value={shown('newFirm')}
+          errors={errors.newFirm ?? []}
+        />
+      </div>
+    </PostForm>
+  </details>
+
+  <SearchForm
+    action="/admin/people"
+    label="Search people"
+    term={term}
+    hint="Name, email, code or firm"
+    status={status}
+  />
+
+  {people.length === 0 ? (
+    <Empty title="No one matches that search">
+      Try part of a name, an email, an accounting code or a firm, or clear the search to see
+      everyone.
+    </Empty>
+  ) : (
+    <Table aria-label="People">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Person</TableHead>
+          <TableHead>Firm</TableHead>
+          <TableHead>Roles</TableHead>
+          <TableHead>Access</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {people.map((person) => (
+          <TableRow className="max-md:grid-cols-[1fr_auto]">
+            <TableRowHead className="max-md:col-span-2">
+              <a class="underline underline-offset-2" href={`/admin/people/${person.id}`}>
+                {person.name}
+              </a>
+              <span class="block text-xs font-normal text-muted-foreground">{person.email}</span>
+            </TableRowHead>
+            <TableCell
+              data-label="Firm"
+              className="max-md:justify-start max-md:before:content-none"
+            >
+              {person.firm_name}
+            </TableCell>
+            <TableCell
+              data-label="Roles"
+              className={`gap-1 max-md:col-span-2 max-md:justify-start max-md:before:content-none ${person.roles === '' ? 'max-md:hidden' : ''}`}
+            >
+              {roleNames(person.roles).length === 0 ? (
+                <span class="text-muted-foreground">Member</span>
+              ) : (
+                <span class="flex flex-wrap gap-1">
+                  {roleNames(person.roles).map((r) => (
+                    <Badge variant="secondary">{r}</Badge>
+                  ))}
+                </span>
+              )}
+            </TableCell>
+            <TableCell
+              data-label="Access"
+              className="max-md:justify-end max-md:before:content-none"
+            >
+              <AccessBadge
+                access={access.get(person.id) ?? { passkeys: 0, openLinks: 0 }}
+                offboarded={person.offboarded_at !== null}
+              />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+</Shell>

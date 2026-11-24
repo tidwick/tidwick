@@ -1,0 +1,96 @@
+---
+import { actions } from 'astro:actions';
+import Shell from '../../../components/admin/shell.astro';
+import StepUp from '../../../components/admin/step-up.astro';
+import WeekStateBadge from '../../../components/admin/week-state-badge.astro';
+import WeekEdits from '../../../components/admin/week-edits.astro';
+import { WeekGrid } from '../../../components/week-grid/week-grid';
+import { exportNoteLimit } from '../../../db/csv-settings';
+import { personById } from '../../../db/people';
+import { editsOfWeek } from '../../../db/week-edits';
+import { loadWeek } from '../../../db/week-view';
+import { writtenDate } from '../../../lib/dates';
+import { noteKeks } from '../../../lib/env';
+import { formatHours } from '../../../lib/hours';
+import { isWeekStart, weekDates, weekTotal } from '../../../lib/week';
+import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
+
+const ctx = await pageContext(Astro);
+const personId = Astro.params.person ?? '';
+const weekStart = Astro.params.start ?? '';
+const person = isWeekStart(weekStart) ? await personById(ctx.db, personId) : null;
+if (!person) return new Response('Not found', { status: 404 });
+
+const path = Astro.url.pathname;
+const edited = Astro.getActionResult(actions.entriesFor.save);
+const posted = [
+  Astro.getActionResult(actions.submission.approve),
+  Astro.getActionResult(actions.submission.return),
+  edited,
+];
+if (succeeded(posted)) return Astro.redirect(savedAt(edited ? `${path}?edit=1` : path), 303);
+
+const week = await loadWeek(ctx.scope, ctx.db, noteKeks(), personId, weekStart);
+const edits = await editsOfWeek(ctx.scope, ctx.db, personId, weekStart);
+const noteLimit = await exportNoteLimit(ctx.db);
+const days = weekDates(weekStart);
+const editing = Astro.url.searchParams.get('edit') === '1';
+const STATE = {
+  draft: 'not submitted',
+  submitted: 'submitted, waiting for approval',
+  approved: 'approved',
+  returned: 'returned to the person',
+};
+const label = `${person.name}, week of ${writtenDate(weekStart)}`;
+---
+
+<Shell title={label} admin={ctx.admin} accounting={ctx.accounting} problem={problemOf(posted)}>
+  <WeekStateBadge slot="badge" state={week.state} />
+  <Fragment slot="lead">
+    <a class="underline underline-offset-2" href="/approvals">
+      Back to approvals
+    </a>
+  </Fragment>
+
+  <section aria-labelledby="decide-h" class="grid gap-4 rounded-lg border border-border p-4">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <h2 id="decide-h" class="text-lg font-semibold">
+        Decision
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        This week is {STATE[week.state]};{' '}
+        <span class="tabular-nums">{formatHours(weekTotal(week.rows))}</span> hours in all.
+      </p>
+      <a
+        class="ml-auto inline-flex h-9 items-center rounded-lg border border-control px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:h-11"
+        href={editing ? path : `${path}?edit=1`}
+      >
+        {editing ? 'Stop editing' : 'Edit through the lock'}
+      </a>
+    </div>
+    <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="approving, returning and editing" />
+    <p class="text-xs text-muted-foreground">
+      Return unlocks the week for {person.name}. An edit through the lock is recorded below with the
+      hours before and after.
+    </p>
+  </section>
+
+  <WeekGrid
+    client:load
+    mode="for"
+    personId={personId}
+    editing={editing}
+    path={path}
+    csrf={ctx.csrf}
+    weekStart={weekStart}
+    days={days}
+    state={week.state}
+    rows={week.rows}
+    options={[]}
+    addProjectId=""
+    problem={null}
+    noteLimit={noteLimit}
+  />
+
+  <WeekEdits edits={edits} days={days} person={person.name} />
+</Shell>

@@ -1,0 +1,21 @@
+---
+// An empty list says what to do next, not only that it is empty.
+interface Props {
+  title: string;
+  /** Less padding, for an empty list that sits under content already on the page. */
+  compact?: boolean;
+}
+const { title, compact = false } = Astro.props;
+---
+
+<div
+  class:list={[
+    'rounded-lg border border-dashed border-control text-center',
+    compact ? 'p-4' : 'p-6 sm:p-8',
+  ]}
+>
+  <p class="font-medium">{title}</p>
+  <p class="mx-auto mt-1 max-w-prose text-sm text-muted-foreground">
+    <slot />
+  </p>
+</div>

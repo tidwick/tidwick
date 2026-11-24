@@ -1,0 +1,100 @@
+---
+import Base from '../../layouts/base.astro';
+import { ThemeToggle } from '../theme-toggle';
+import { Alert } from '../ui/alert';
+import SavedLine from '../saved-line.astro';
+import SignOutForm from '../sign-out-form.astro';
+
+// The page frame of the signed-in pages: the brand, the navigation for the caller's roles, who is signed in with
+// the theme toggle and sign out, the page's one h1 with an optional badge beside it (the `badge` slot), an optional sentence under it (the `lead` slot), the error
+// line a failed form leaves and the one line a succeeded form leaves (`?saved=1` on the redirect after it).
+interface Props {
+  title: string;
+  admin: boolean;
+  accounting?: boolean;
+  problem?: string | null;
+  wide?: boolean;
+  /** The navigation link this page belongs under when its own path is not one, such as a project under Clients. */
+  section?: string;
+}
+const {
+  title,
+  admin,
+  accounting = false,
+  problem = null,
+  wide = false,
+  section = '',
+} = Astro.props;
+const column = wide ? 'max-w-6xl' : 'max-w-5xl';
+const path = Astro.url.pathname;
+const person = Astro.locals.session?.name ?? '';
+const links = [
+  { href: '/week', label: 'Week', show: true },
+  { href: '/clients', label: 'Clients', show: true },
+  { href: '/approvals', label: 'Approvals', show: accounting },
+  { href: '/export', label: 'Export', show: accounting },
+  { href: '/import', label: 'Import', show: accounting },
+  { href: '/reports', label: 'Reports', show: accounting },
+  { href: '/settings/csv', label: 'CSV settings', show: accounting },
+  { href: '/audit', label: 'Audit', show: accounting || admin },
+  { href: '/admin/people', label: 'People', show: admin },
+  { href: '/admin/task-codes', label: 'Task codes', show: admin },
+  { href: '/admin/settings', label: 'Settings', show: admin },
+  { href: '/account', label: 'Account', show: true },
+].filter((link) => link.show);
+const here = (href: string) =>
+  section === '' ? path === href || path.startsWith(`${href}/`) : href === section;
+---
+
+<Base title={`${title} · tidwick`}>
+  <header class="border-b border-border print:hidden">
+    <div class={`mx-auto flex ${column} flex-wrap items-center gap-x-block gap-y-1 px-gutter py-2`}>
+      <a
+        href="/week"
+        class="rounded-md text-lg font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        tidwick
+      </a>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="max-w-40 truncate text-sm text-muted-foreground sm:max-w-64" data-signed-in-as>
+          <span class="sr-only">Signed in as </span>
+          {person}
+        </span>
+        <ThemeToggle />
+        <SignOutForm />
+      </div>
+      <nav
+        aria-label="Main"
+        class="order-last -ml-2 flex w-full flex-wrap gap-x-1 text-sm font-medium"
+      >
+        {links.map((link) => (
+          <a
+            href={link.href}
+            aria-current={here(link.href) ? 'page' : undefined}
+            class="rounded-md px-2 py-2.5 text-muted-foreground hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
+    </div>
+  </header>
+  <main class={`mx-auto ${column} px-gutter py-block sm:py-section`}>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
+      <slot name="badge" />
+    </div>
+    <p class="mt-2 max-w-prose text-muted-foreground empty:hidden">
+      <slot name="lead" />
+    </p>
+    <SavedLine problem={problem} />
+    {problem && (
+      <Alert variant="danger" className="mt-4 font-medium">
+        {problem}
+      </Alert>
+    )}
+    <div class="mt-block grid gap-section">
+      <slot />
+    </div>
+  </main>
+</Base>

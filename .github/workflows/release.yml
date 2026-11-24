@@ -1,0 +1,45 @@
+# `release` fast-forwards main to next and pushes an annotated tag vX.Y.Z; this workflow checks it and publishes the release.
+name: release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # Full history: the check below asks whether the tagged commit is an ancestor of main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag matches package.json and sits on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          [ "$TAG" = "v$version" ] || { echo "FAIL release: tag $TAG but package.json says $version; fix the version and tag again"; exit 1; }
+          [ "$(git cat-file -t "refs/tags/$TAG")" = tag ] || { echo "FAIL release: $TAG is not an annotated tag; delete it and tag again with -a"; exit 1; }
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD || { echo "FAIL release: $TAG is not on main; run the release steps (fast-forward main to next) before tagging"; exit 1; }
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+        with:
+          version: 2026.9.11
+          cache: false
+      - run: just ci
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"

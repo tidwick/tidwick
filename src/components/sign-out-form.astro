@@ -1,0 +1,11 @@
+---
+import { actions } from 'astro:actions';
+import { Button } from './ui/button';
+---
+
+<form method="POST" action={`/login${actions.auth.logout}`}>
+  <input type="hidden" name="_csrf" value={Astro.locals.csrf} />
+  <Button type="submit" variant="outline" className="border-control max-md:h-11 max-md:px-3">
+    Sign out
+  </Button>
+</form>

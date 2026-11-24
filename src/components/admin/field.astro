@@ -1,0 +1,71 @@
+---
+import { Input } from '../ui/input';
+import { nextId } from './ids';
+// A labelled input. A server-side error sits under it and is tied to it (`aria-invalid`, `aria-describedby`), so
+// the message is read with the field and shows with no script.
+interface Props {
+  label: string;
+  field: string;
+  type?: 'text' | 'email' | 'number' | 'date';
+  value?: string | null | undefined;
+  required?: boolean;
+  hint?: string;
+  placeholder?: string;
+  maxlength?: number;
+  /** The bounds of a number field. */
+  min?: number;
+  max?: number;
+  autocomplete?: string;
+  errors?: readonly string[];
+}
+const {
+  label,
+  field,
+  type = 'text',
+  value = '',
+  required = false,
+  hint,
+  placeholder,
+  maxlength,
+  min,
+  max,
+  autocomplete,
+  errors = [],
+} = Astro.props;
+const id = nextId(`f-${field}`);
+const hintId = `${id}-hint`;
+const errorId = `${id}-err`;
+const described = [hint ? hintId : '', errors.length > 0 ? errorId : ''].filter(Boolean).join(' ');
+---
+
+<div class="grid content-start gap-1.5">
+  <label for={id} class="text-sm font-medium">
+    {label}
+  </label>
+  <Input
+    id={id}
+    name={field}
+    type={type}
+    value={value ?? ''}
+    required={required}
+    placeholder={placeholder}
+    maxLength={maxlength}
+    min={min}
+    max={max}
+    inputMode={type === 'number' ? 'numeric' : undefined}
+    autoComplete={autocomplete ?? 'off'}
+    aria-invalid={errors.length > 0 ? true : undefined}
+    aria-describedby={described === '' ? undefined : described}
+    className="h-11 border-control md:h-9"
+  />
+  {hint && (
+    <p id={hintId} class="text-xs text-muted-foreground">
+      {hint}
+    </p>
+  )}
+  {errors.length > 0 && (
+    <p id={errorId} class="text-sm font-medium text-danger">
+      {errors.join(' ')}
+    </p>
+  )}
+</div>

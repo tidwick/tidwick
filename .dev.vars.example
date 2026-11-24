@@ -1,0 +1,19 @@
+# Copy to .dev.vars for local dev and fill each value; never commit .dev.vars. Names only here, no values.
+# SESSION_SECRET: HMAC key for stored token hashes and CSRF tokens; 32 random bytes, base64url.
+SESSION_SECRET=
+# NOTE_KEK: base64 of 32 random bytes; wraps each client's note key.
+NOTE_KEK=
+# NOTE_KEK_PREVIOUS: the NOTE_KEK a rotation retires, set only until keys.rewrap has moved every key; leave empty.
+NOTE_KEK_PREVIOUS=
+# BACKUP_RECIPIENT: the age public key (age1...) the nightly backup is encrypted to; its identity stays offline.
+# `just gen-test-keys` writes a dummy pair under test/fixtures/ for local use.
+BACKUP_RECIPIENT=
+# The off-account copy (BACKUP_COPY s3 in wrangler.jsonc): the S3 API endpoint (an https:// origin), the bucket
+# in the second account, and an access key scoped to that one bucket. Local dev and tests leave all four empty.
+BACKUP_S3_ENDPOINT=
+BACKUP_S3_BUCKET=
+BACKUP_S3_KEY_ID=
+BACKUP_S3_SECRET=
+# DEMO_BANNER: "on" opens every page with a line saying it is a demo of invented data. Leave it empty (off) for
+# anything but a demo; wrangler.jsonc sets it only in the demo environment.
+DEMO_BANNER=

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 360" role="img" font-family="'IBM Plex Sans', system-ui, sans-serif">
+<style>.bgf{fill:#ffffff}.sff{fill:#f4f4f4}.acf{fill:#4a6741}.bds{stroke:#e0e0e0}.t{fill:#0a0a0a}.t2{fill:#404040}.tm{fill:#707070}.ace{fill:#ffffff}.s2{stroke:#404040}.acs{stroke:#4a6741}.f2{fill:#404040}
+@media (prefers-color-scheme:dark){
+.bgf{fill:#0a0a0a}.sff{fill:#161616}.acf{fill:#6f9a63}.bds{stroke:#2e2e2e}.t{fill:#f4f4f4}.t2{fill:#c4c4c4}.tm{fill:#909090}.ace{fill:#0a0a0a}.s2{stroke:#c4c4c4}.acs{stroke:#6f9a63}.f2{fill:#c4c4c4}
+}
+</style>
+<defs><marker id="trust-m" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker><marker id="trust-f" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="acf"/></marker><marker id="trust-d" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker></defs>
+<g font-family="'IBM Plex Sans', system-ui, sans-serif">
+<rect x="20" y="20" width="620" height="320" rx="6" class="bgf bds" stroke-width="1"/>
+<rect x="32" y="52" width="148" height="272" rx="6" fill="none" class="bds" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="40" y="46" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">UNTRUSTED</text>
+<rect x="204" y="52" width="188" height="272" rx="6" fill="none" class="bds" stroke-width="1"/>
+<text x="212" y="46" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">WORKER CONTROLS</text>
+<rect x="416" y="52" width="212" height="272" rx="6" fill="none" class="bds" stroke-width="1"/>
+<text x="424" y="46" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TRUSTED AND OPEN</text>
+<path d="M172,100 H216" fill="none" class="s2" stroke-width="1.5" marker-end="url(#trust-m)"/>
+<path d="M172,164 H216" fill="none" class="acs" stroke-width="1.5" marker-end="url(#trust-f)"/>
+<path d="M172,228 H216" fill="none" class="s2" stroke-width="1.5" marker-end="url(#trust-m)"/>
+<path d="M172,292 H216" fill="none" class="s2" stroke-width="1.5" marker-end="url(#trust-m)"/>
+<path d="M380,100 H428" fill="none" class="s2" stroke-width="1.5" marker-end="url(#trust-m)"/>
+<path d="M380,164 H428" fill="none" class="s2" stroke-width="1.5" marker-end="url(#trust-m)"/>
+<path d="M380,228 H428" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#trust-d)"/>
+<path d="M380,292 H428" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#trust-d)"/>
+<rect x="40" y="74" width="132" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="106.0" y="88.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">ACTOR</text>
+<text x="106.0" y="103.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">Visitor or site</text>
+<text x="106.0" y="116.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="tm">CSRF, forged ceremony</text>
+<rect x="216" y="74" width="164" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="298.0" y="88.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">CONTROL</text>
+<text x="298.0" y="103.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Origin, CSRF, CSP</text>
+<text x="298.0" y="116.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">no HTML sink</text>
+<rect x="40" y="138" width="132" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="106.0" y="152.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">ACTOR</text>
+<text x="106.0" y="167.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">Member</text>
+<text x="106.0" y="180.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="tm">other client, roles</text>
+<rect x="216" y="138" width="164" height="52" rx="6" class="acf"/>
+<text x="298.0" y="152.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="ace" opacity="0.8">CONTROL</text>
+<text x="298.0" y="167.0" text-anchor="middle" font-size="12" font-weight="600" class="ace">Routes + Scope</text>
+<text x="298.0" y="180.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="ace" opacity="0.85">deny by default</text>
+<rect x="40" y="202" width="132" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="106.0" y="216.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">ACTOR</text>
+<text x="106.0" y="231.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">Guesser</text>
+<text x="106.0" y="244.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="tm">codes, ceremonies</text>
+<rect x="216" y="202" width="164" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="298.0" y="216.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">CONTROL</text>
+<text x="298.0" y="231.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Rate limits</text>
+<text x="298.0" y="244.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">approximate</text>
+<rect x="40" y="266" width="132" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="106.0" y="280.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">ACTOR</text>
+<text x="106.0" y="295.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">Stolen session</text>
+<text x="106.0" y="308.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="tm">valid cookie</text>
+<rect x="216" y="266" width="164" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="298.0" y="280.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">CONTROL</text>
+<text x="298.0" y="295.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Step-up</text>
+<text x="298.0" y="308.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">fresh passkey, 15 min</text>
+<rect x="428" y="76" width="188" height="112" rx="6" class="sff bds" stroke-width="1"/>
+<text x="522.0" y="120.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TRUSTED</text>
+<text x="522.0" y="135.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Cloudflare, WebAuthn</text>
+<text x="522.0" y="148.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">firm admins</text>
+<rect x="428" y="204" width="188" height="112" rx="6" class="sff bds" stroke-width="1"/>
+<text x="522.0" y="248.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">STAYS OPEN</text>
+<text x="522.0" y="263.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">Rate-limit gaps, live session</text>
+<text x="522.0" y="276.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="tm">open until expiry</text>
+</g>
+</svg>

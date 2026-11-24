@@ -1,0 +1,51 @@
+---
+import { Alert } from '../ui/alert';
+import PostForm from './post-form.astro';
+import type { KeyStatus } from '../../db/key-rewrap';
+// Where the client keys sit during a NOTE_KEK rotation, and the one button that moves them (ADR 0005). The button
+// shows only while keys wait under NOTE_KEK_PREVIOUS; it needs a passkey confirmation like the settings form.
+interface Props {
+  csrf: string;
+  status: KeyStatus;
+  /** Whether NOTE_KEK_PREVIOUS is set. */
+  rotating: boolean;
+  /** Keys one press moves. */
+  perRun: number;
+}
+const { csrf, status, rotating, perRun } = Astro.props;
+---
+
+<section aria-labelledby="keys-h" class="grid max-w-2xl gap-3">
+  <h2 id="keys-h" class="text-lg font-semibold">
+    Note keys
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    Each client's notes are sealed under its own key, which is kept wrapped under the{' '}
+    <code>NOTE_KEK</code> secret. The runbook's rotate section replaces that secret.
+  </p>
+  <p class="text-sm">
+    {rotating
+      ? `Client keys: ${String(status.current)} under NOTE_KEK, ${String(status.previous)} still under NOTE_KEK_PREVIOUS.`
+      : `Client keys: ${String(status.current)} under NOTE_KEK.`}
+  </p>
+  {status.other > 0 && (
+    <Alert variant="danger" className="font-medium">
+      {status.other} under a key that is neither NOTE_KEK nor NOTE_KEK_PREVIOUS, so those clients'
+      notes cannot be read or written. Set that key as NOTE_KEK_PREVIOUS and re-wrap.
+    </Alert>
+  )}
+  {rotating && status.previous > 0 && (
+    <PostForm action="?_action=keys.rewrap" csrf={csrf} label="Re-wrap keys under NOTE_KEK">
+      <p class="text-sm text-muted-foreground">
+        Each press moves up to {perRun} keys and records each one in the audit log; press again
+        until none is left. Notes stay readable throughout.
+      </p>
+    </PostForm>
+  )}
+  {rotating && status.previous === 0 && status.other === 0 && (
+    <p class="text-sm">
+      Every client key is under NOTE_KEK. Delete NOTE_KEK_PREVIOUS now with
+      <code>npx wrangler secret delete NOTE_KEK_PREVIOUS</code>.
+    </p>
+  )}
+</section>

@@ -1,0 +1,119 @@
+---
+import Empty from '../../components/admin/empty.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { exportSummary, type ClientExportSummary } from '../../db/export-rows';
+import { timeZone } from '../../db/settings';
+import { lastFullMonth, parseRange } from '../../lib/date-range';
+import { isAppError } from '../../lib/errors';
+import { formatHoursFixed } from '../../lib/hours';
+import { todayIn } from '../../lib/week';
+import { pageContext } from '../_context';
+
+const ctx = await pageContext(Astro);
+const from = Astro.url.searchParams.get('from') ?? '';
+const to = Astro.url.searchParams.get('to') ?? '';
+const asked = from !== '' && to !== '';
+// With no range asked for, the form opens on the last full calendar month.
+const opening = lastFullMonth(todayIn(await timeZone(ctx.db), Date.now()));
+let clients: ClientExportSummary[] | null = null;
+let problem: string | null = null;
+if (asked) {
+  try {
+    clients = await exportSummary(ctx.scope, ctx.db, parseRange(from, to));
+  } catch (error) {
+    if (!isAppError(error)) throw error;
+    problem = error.message;
+  }
+}
+---
+
+<Shell title="Export" admin={ctx.admin} accounting={ctx.accounting} problem={problem}>
+  <Fragment slot="lead">
+    One file per client: the approved time in a date range, one row per entry, with notes. Each
+    export is recorded in the audit log and asks for a recent passkey confirmation.
+  </Fragment>
+  <form method="GET" class="flex flex-wrap items-end gap-gutter">
+    <label class="grid gap-1.5 text-sm font-medium">
+      From
+      <Input
+        type="date"
+        name="from"
+        value={from === '' ? opening.from : from}
+        required
+        className="min-h-11 w-auto md:min-h-8"
+      />
+    </label>
+    <label class="grid gap-1.5 text-sm font-medium">
+      To
+      <Input
+        type="date"
+        name="to"
+        value={to === '' ? opening.to : to}
+        required
+        className="min-h-11 w-auto md:min-h-8"
+      />
+    </label>
+    <Button type="submit" variant="outline" size="lg" className="border-control max-md:h-11">
+      Show clients
+    </Button>
+  </form>
+  {clients && clients.length === 0 && (
+    <Empty title="No client has time in that range">
+      Pick a wider range, or check that the weeks you expect are approved.
+    </Empty>
+  )}
+  {clients && clients.length > 0 && (
+    <Table aria-label="Clients with time in the range">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Client</TableHead>
+          <TableHead className="text-right">Approved hours</TableHead>
+          <TableHead className="text-right">Person-weeks not approved</TableHead>
+          <TableHead>
+            <span class="sr-only">Download</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {clients.map((client) => (
+          <TableRow>
+            <TableRowHead>{client.name}</TableRowHead>
+            <TableCell data-label="Approved hours" className="text-right tabular-nums">
+              {formatHoursFixed(client.approved_hundredths)}
+            </TableCell>
+            <TableCell data-label="Person-weeks not approved" className="text-right tabular-nums">
+              {client.unapproved_weeks}
+            </TableCell>
+            <TableCell className="text-right">
+              <form method="POST" action={`/export/${client.client_id}.csv`} class="contents">
+                <input type="hidden" name="_csrf" value={ctx.csrf} />
+                <input type="hidden" name="from" value={from} />
+                <input type="hidden" name="to" value={to} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Download ${client.name}`}
+                  className="border-control max-md:h-11 max-md:px-4"
+                >
+                  Download
+                </Button>
+              </form>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+</Shell>

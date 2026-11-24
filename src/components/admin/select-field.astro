@@ -1,0 +1,52 @@
+---
+import { NativeSelect, NativeSelectOption } from '../ui/native-select';
+import { nextId } from './ids';
+// A labelled select with the same hint and error wiring as `field.astro`.
+interface Props {
+  label: string;
+  field: string;
+  options: readonly { value: string; label: string }[];
+  blank?: string;
+  /** The option shown as chosen. */
+  value?: string;
+  required?: boolean;
+  hint?: string;
+  errors?: readonly string[];
+}
+const { label, field, options, blank, value, required = false, hint, errors = [] } = Astro.props;
+const id = nextId(`f-${field}`);
+const described = [hint ? `${id}-hint` : '', errors.length > 0 ? `${id}-err` : '']
+  .filter(Boolean)
+  .join(' ');
+---
+
+<div class="grid content-start gap-1.5">
+  <label for={id} class="text-sm font-medium">
+    {label}
+  </label>
+  <NativeSelect
+    id={id}
+    name={field}
+    required={required}
+    aria-invalid={errors.length > 0 ? true : undefined}
+    aria-describedby={described === '' ? undefined : described}
+    className="w-full [&_select]:h-11 [&_select]:text-base md:[&_select]:h-9 md:[&_select]:text-sm"
+  >
+    {blank !== undefined && <NativeSelectOption value="">{blank}</NativeSelectOption>}
+    {options.map((o) => (
+      <NativeSelectOption value={o.value} selected={o.value === value}>
+        {o.label}
+      </NativeSelectOption>
+    ))}
+  </NativeSelect>
+  {hint && (
+    <p id={`${id}-hint`} class="text-xs text-muted-foreground">
+      {hint}
+    </p>
+  )}
+  {errors.length > 0 && (
+    <p id={`${id}-err`} class="text-sm font-medium text-danger">
+      {errors.join(' ')}
+    </p>
+  )}
+</div>

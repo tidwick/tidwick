@@ -1,0 +1,114 @@
+---
+import { Badge } from '../ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../ui/table';
+import type { ImportReport } from '../../db/import-run';
+// What a preview or an apply found, in the order a person reads it: the counts, what needs an admin, then every
+// rejected line with its reason.
+interface Props {
+  report: ImportReport;
+}
+const { report } = Astro.props;
+const stats: [string, number][] = [
+  ['Rows read', report.rowsRead],
+  [report.applied ? 'Entries created' : 'Entries to create', report.entries],
+  ['Already written by this file', report.alreadyApplied],
+  ['Rows with hours rounded', report.roundedRows],
+  ['Rows rejected', report.rejectedCount],
+  ['Weeks approved', report.weeksApproved],
+  ['Weeks left draft (they hold the person’s own hours)', report.weeksLeftDraft],
+  [
+    report.applied ? 'Project assignments added' : 'Project assignments to add',
+    report.assignmentsAdded,
+  ],
+];
+---
+
+<section aria-labelledby="result" class="grid gap-4">
+  <div class="flex items-center gap-3">
+    <h2 id="result" class="text-lg font-semibold">
+      {report.applied ? 'Applied' : 'Preview'}
+    </h2>
+    <Badge variant={report.applied ? 'default' : 'outline'}>
+      {report.applied ? 'Written' : 'Nothing changed yet'}
+    </Badge>
+  </div>
+  <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {stats.map(([name, value]) => (
+      <div
+        class="rounded-lg border border-border p-3"
+        data-rejected={name === 'Rows rejected' && value > 0 ? 'yes' : undefined}
+      >
+        <dt class="text-xs text-muted-foreground">{name}</dt>
+        <dd class="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
+      </div>
+    ))}
+  </dl>
+  {report.mappingChanged && (
+    <p class="rounded-md bg-danger-surface p-3 text-sm font-medium text-danger">
+      This file was applied under a different import mapping on {report.mappingChanged.appliedOn},
+      writing
+      {report.mappingChanged.entries} entries. Apply will refuse it; correct those weeks by editing
+      them, or save that mapping again.
+    </p>
+  )}
+  {report.newClients.length > 0 && (
+    <p class="text-sm">
+      <span class="font-medium">
+        {report.applied ? 'Clients created' : 'Clients that would be created'}:
+      </span>{' '}
+      {report.newClients.join(', ')}
+    </p>
+  )}
+  {report.newProjects.length > 0 && (
+    <p class="text-sm">
+      <span class="font-medium">
+        {report.applied ? 'Projects created' : 'Projects that would be created'}:
+      </span>
+      {report.newProjects.map((p) => `${p.name} (${p.client})`).join(', ')}
+    </p>
+  )}
+  {report.needsAdmin.length > 0 && (
+    <div class="rounded-lg border border-control p-3 text-sm">
+      <p class="font-medium">An admin must add these before the rows that need them can land:</p>
+      <ul class="mt-1 list-disc pl-6">
+        {report.needsAdmin.map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </div>
+  )}
+  {report.rejected.length > 0 && (
+    <div class="grid gap-2">
+      <h3 class="text-sm font-medium">Rejected rows</h3>
+      <Table aria-label="Rejected rows and why">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Line</TableHead>
+            <TableHead>Reason</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {report.rejected.map((r) => (
+            <TableRow>
+              <TableRowHead className="tabular-nums md:w-24">{r.line}</TableRowHead>
+              <TableCell data-label="Reason">{r.reason}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {report.rejectedCount > report.rejected.length && (
+        <p class="text-sm text-muted-foreground">
+          Showing the first {report.rejected.length} of {report.rejectedCount}.
+        </p>
+      )}
+    </div>
+  )}
+</section>

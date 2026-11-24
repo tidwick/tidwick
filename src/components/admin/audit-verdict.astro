@@ -1,0 +1,32 @@
+---
+import type { AuditVerdict } from '../../db/audit-verify';
+import { Alert } from '../ui/alert';
+// What a chain check found, in words that name the next step. `role="status"` so a screen reader hears the result.
+interface Props {
+  verdict: AuditVerdict;
+}
+const { verdict } = Astro.props;
+const events =
+  verdict.state === 'intact'
+    ? `${String(verdict.events)} ${verdict.events === 1 ? 'event' : 'events'}`
+    : '';
+---
+
+{verdict.state === 'intact' && (
+  <Alert role="status" className="font-medium">
+    The chain is intact: {events} checked. Newest hash{' '}
+    <span class="font-mono text-xs" data-head>
+      {verdict.head.slice(0, 16)}
+    </span>
+  </Alert>
+)}
+{verdict.state === 'broken' && (
+  <Alert variant="danger" role="alert" className="font-medium">
+    {`The chain breaks at event ${String(verdict.seq)}: it was changed, removed or inserted after it was written. Treat the log as tampered with. Restore from the last good backup to compare it, as the runbook says.`}
+  </Alert>
+)}
+{verdict.state === 'unfinished' && (
+  <Alert variant="notice" role="status" className="font-medium">
+    {`The log is too long to check in one request. Events before ${String(verdict.from)} were checked and are intact; from ${String(verdict.from)} on were not. Restoring a backup checks the whole log.`}
+  </Alert>
+)}

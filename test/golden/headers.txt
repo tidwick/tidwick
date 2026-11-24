@@ -1,0 +1,81 @@
+# GET / 200
+cache-control: no-store
+content-security-policy: default-src 'none';img-src 'self';font-src 'self';connect-src 'self';form-action 'self';frame-ancestors 'none';base-uri 'none'; script-src 'self' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>'; style-src 'self' 'sha256-<hash>';
+content-type: text/html
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# GET /favicon.svg 200
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: image/svg+xml
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# GET /_astro/<stylesheet>.css 200
+cache-control: public, max-age=31536000, immutable
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: text/css; charset=utf-8
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# POST /_actions/auth.loginOptions 200
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: application/json+devalue
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+set-cookie: __Host-tidwick-challenge=<value>; Path=/; Max-Age=300; HttpOnly; Secure; SameSite=Strict
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# GET /week/2026-01-05 signed out 401
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: text/html; charset=utf-8
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# POST /_actions/people.setRoles signed out 401
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: application/json
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# POST /export/<client>.csv 200
+cache-control: no-store
+content-disposition: attachment; filename="<name>.csv"
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: text/csv; charset=utf-8
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
+# GET /healthz before any backup 503
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+content-type: application/json
+cross-origin-opener-policy: same-origin
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff

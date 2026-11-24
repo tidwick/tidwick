@@ -1,0 +1,244 @@
+---
+import { actions } from 'astro:actions';
+import AccessBadge from '../../../components/admin/access-badge.astro';
+import Empty from '../../../components/admin/empty.astro';
+import PostForm from '../../../components/admin/post-form.astro';
+import Shell from '../../../components/admin/shell.astro';
+import StepUp from '../../../components/admin/step-up.astro';
+import { Badge } from '../../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../../components/ui/table';
+import { accessByPerson, assignmentsOf } from '../../../db/people-access';
+import { GRANTS } from '../../../db/roles';
+import { personDetail } from '../../../db/people';
+import { errorPage } from '../../../lib/errors';
+import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
+
+const ctx = await pageContext(Astro);
+const id = Astro.params.id ?? '';
+const issued = Astro.getActionResult(actions.people.issueEnrolment);
+const reissued = Astro.getActionResult(actions.people.reenrol);
+const unlocked = Astro.getActionResult(actions.people.unlock);
+const roles = Astro.getActionResult(actions.people.setRoles);
+const all = Astro.getActionResult(actions.assignments.addAll);
+const offboarded = Astro.getActionResult(actions.people.offboard);
+if (succeeded([offboarded])) return Astro.redirect(savedAt('/admin/people'), 303);
+if (succeeded([roles, all])) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const person = await personDetail(ctx.db, id);
+if (!person) return errorPage('not_found');
+const held = new Set(person.roles.split(','));
+const link = issued?.data?.link ?? reissued?.data?.link ?? null;
+const active = person.offboarded_at === null;
+const access = (await accessByPerson(ctx.db, Date.now())).get(id) ?? { passkeys: 0, openLinks: 0 };
+const assigned = await assignmentsOf(ctx.scope, ctx.db, id);
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+---
+
+<Shell
+  title={person.name}
+  admin={ctx.admin}
+  problem={problemOf([issued, reissued, unlocked, roles, offboarded, all])}
+>
+  <Fragment slot="lead">
+    <a class="underline underline-offset-2" href="/admin/people">
+      All people
+    </a>
+  </Fragment>
+
+  <dl class="grid gap-x-8 gap-y-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2 lg:grid-cols-[max-content_1fr_1fr_1fr]">
+    <div>
+      <dt class="text-muted-foreground">Email</dt>
+      <dd class="break-words">{person.email}</dd>
+    </div>
+    <div>
+      <dt class="text-muted-foreground">Firm</dt>
+      <dd>{person.firm_name}</dd>
+    </div>
+    <div>
+      <dt class="text-muted-foreground">Accounting code</dt>
+      <dd>{person.external_code ?? 'None'}</dd>
+    </div>
+    <div>
+      <dt class="text-muted-foreground">Access</dt>
+      <dd class="flex flex-wrap gap-1">
+        <AccessBadge access={access} offboarded={!active} />
+        {active && access.openLinks > 0 && access.passkeys > 0 && (
+          <Badge variant="outline">Link waiting</Badge>
+        )}
+      </dd>
+    </div>
+  </dl>
+
+  {link && (
+    <section
+      aria-labelledby="link-h"
+      class="rounded-lg border border-control bg-muted/40 p-4 text-sm"
+    >
+      <h2 id="link-h" class="font-semibold">
+        Enrolment link, shown once
+      </h2>
+      <p class="mt-1 text-muted-foreground">
+        It works for 24 hours and one use. Send it to {person.name} yourself.
+      </p>
+      <p class="mt-2 break-all rounded-md bg-background p-2 font-mono" data-enrolment-link>
+        {link}
+      </p>
+    </section>
+  )}
+  {unlocked?.data && (
+    <p role="status" class="rounded-md bg-muted p-3 text-sm">
+      {unlocked.data.wasLocked ? 'Recovery is unlocked.' : 'There was nothing to unlock.'}
+    </p>
+  )}
+
+  <section aria-labelledby="assign-h" class="grid gap-3">
+    <h2 id="assign-h" class="text-lg font-semibold">
+      Assignments
+    </h2>
+    {assigned.length === 0 ? (
+      <Empty title="Not assigned to any project">
+        Open a project and assign {person.name} there. A member sees only the projects they are
+        assigned to.
+      </Empty>
+    ) : (
+      <Table aria-label={`Projects ${person.name} is assigned to`}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Project</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Assigned</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {assigned.map((a) => (
+            <TableRow>
+              <TableRowHead>
+                <a class="underline underline-offset-2" href={`/projects/${a.project_id}`}>
+                  {a.project}
+                </a>
+                {a.number && (
+                  <span class="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
+                    {a.number}
+                  </span>
+                )}
+                {a.archived === 1 && (
+                  <Badge variant="secondary" className="ml-2">
+                    Archived
+                  </Badge>
+                )}
+              </TableRowHead>
+              <TableCell data-label="Client">{a.client}</TableCell>
+              <TableCell data-label="Assigned" className="tabular-nums text-muted-foreground">
+                {day(a.assigned_at)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )}
+    {active && (
+      <PostForm
+        action={actions.assignments.addAll}
+        csrf={ctx.csrf}
+        label="Assign to all live projects"
+        tone="plain"
+        fields={{ personId: person.id }}
+      />
+    )}
+  </section>
+
+  {active && (
+    <>
+      <StepUp
+        csrf={ctx.csrf}
+        until={ctx.stepUpUntil}
+        unlocks="access changes, roles and offboarding"
+      />
+
+      <section aria-labelledby="access-h" class="grid gap-3">
+        <h2 id="access-h" class="text-lg font-semibold">
+          Access
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          An enrolment link lets the person create their first passkey. Re-enrolling revokes every
+          passkey, recovery code and session first.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <PostForm
+            action={actions.people.issueEnrolment}
+            csrf={ctx.csrf}
+            label="Issue enrolment link"
+            tone="plain"
+            fields={{ id: person.id }}
+          />
+          <PostForm
+            action={actions.people.reenrol}
+            csrf={ctx.csrf}
+            label="Re-enrol (revokes everything)"
+            tone="plain"
+            fields={{ id: person.id }}
+          />
+          <PostForm
+            action={actions.people.unlock}
+            csrf={ctx.csrf}
+            label="Unlock recovery"
+            tone="plain"
+            fields={{ id: person.id }}
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="roles-h" class="grid max-w-md gap-3">
+        <h2 id="roles-h" class="text-lg font-semibold">
+          Roles
+        </h2>
+        <p class="text-sm text-muted-foreground">Everyone is a member. These are extra.</p>
+        <PostForm
+          action={actions.people.setRoles}
+          csrf={ctx.csrf}
+          label="Save roles"
+          fields={{ id: person.id }}
+        >
+          <fieldset class="grid gap-2">
+            <legend class="sr-only">Roles</legend>
+            {GRANTS.map((grant) => (
+              <label class="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  name="grants"
+                  value={grant}
+                  checked={held.has(grant)}
+                  class="size-5"
+                />
+                {grant.replaceAll('_', ' ')}
+              </label>
+            ))}
+          </fieldset>
+        </PostForm>
+      </section>
+
+      <section aria-labelledby="off-h" class="grid max-w-md gap-3">
+        <h2 id="off-h" class="text-lg font-semibold">
+          Offboard
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          Ends every session and passkey and closes every open link. Their time stays.
+        </p>
+        <PostForm
+          action={actions.people.offboard}
+          csrf={ctx.csrf}
+          label="Offboard"
+          tone="danger"
+          fields={{ id: person.id }}
+        />
+      </section>
+    </>
+  )}
+</Shell>

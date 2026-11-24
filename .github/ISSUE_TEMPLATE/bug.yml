@@ -1,0 +1,59 @@
+name: Bug
+description: Something tidwick does wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Questions and ideas go to Discussions. Vulnerabilities go to Security > Report a vulnerability, never here. Use invented data only.
+  - type: input
+    id: version
+    attributes:
+      label: Version (release tag, or the `next` commit)
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where you saw it
+      options:
+        - local `just dev`
+        - your own deployment
+        - demo.tidwick.dev
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened (paste the output, not a summary of it)
+    validations:
+      required: true
+  - type: dropdown
+    id: ai
+    attributes:
+      label: Did an AI tool write or find any of this?
+      options:
+        - 'No'
+        - Yes, and the tool is named in the steps
+    validations:
+      required: true
+  - type: checkboxes
+    id: own
+    attributes:
+      label: Before you send
+      options:
+        - label: I reproduced this myself on the version above.
+          required: true
+        - label: No real names, hours or secrets are in this report.
+          required: true

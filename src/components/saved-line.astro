@@ -1,0 +1,15 @@
+---
+// The one line a succeeded form leaves, read from `?saved=1` on the redirect after it; none beside a refusal.
+import { Alert } from './ui/alert';
+interface Props {
+  problem?: string | null;
+}
+const { problem = null } = Astro.props;
+const saved = Astro.url.searchParams.has('saved') && !problem;
+---
+
+{saved && (
+  <Alert variant="notice" role="status" className="mt-4 font-medium">
+    Saved.
+  </Alert>
+)}

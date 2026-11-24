@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 240" role="img" font-family="'IBM Plex Sans', system-ui, sans-serif">
+<style>.bgf{fill:#ffffff}.sff{fill:#f4f4f4}.acf{fill:#4a6741}.bds{stroke:#e0e0e0}.t{fill:#0a0a0a}.t2{fill:#404040}.tm{fill:#707070}.ace{fill:#ffffff}.s2{stroke:#404040}.acs{stroke:#4a6741}.f2{fill:#404040}
+@media (prefers-color-scheme:dark){
+.bgf{fill:#0a0a0a}.sff{fill:#161616}.acf{fill:#6f9a63}.bds{stroke:#2e2e2e}.t{fill:#f4f4f4}.t2{fill:#c4c4c4}.tm{fill:#909090}.ace{fill:#0a0a0a}.s2{stroke:#c4c4c4}.acs{stroke:#6f9a63}.f2{fill:#c4c4c4}
+}
+</style>
+<defs><marker id="shape-m" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker><marker id="shape-f" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="acf"/></marker><marker id="shape-d" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker></defs>
+<g font-family="'IBM Plex Sans', system-ui, sans-serif">
+<rect x="20" y="20" width="620" height="200" rx="6" class="bgf bds" stroke-width="1"/>
+<path d="M144,70 H268" fill="none" class="acs" stroke-width="1.5" marker-end="url(#shape-f)"/>
+<path d="M408,62 H456" fill="none" class="acs" stroke-width="1.5" marker-end="url(#shape-f)"/>
+<path d="M146,152 V122 Q146,116 152,116 H268" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#shape-d)"/>
+<path d="M338,132 V160" fill="none" class="s2" stroke-width="1.5" marker-end="url(#shape-m)"/>
+<path d="M408,112 H456" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#shape-d)"/>
+<path d="M408,128 H426 Q432,128 432,134 V184 Q432,190 438,190 H456" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#shape-d)"/>
+<rect x="194" y="108" width="27" height="12" class="bgf"/>
+<text x="207" y="116" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">cron</text>
+<rect x="411" y="151" width="42" height="12" class="bgf"/>
+<text x="432" y="159" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">S3 copy</text>
+<rect x="92" y="48" width="108" height="44" rx="6" class="sff bds" stroke-width="1"/>
+<text x="146.0" y="65.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">CLIENT</text>
+<text x="146.0" y="80.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Browser</text>
+<rect x="268" y="48" width="140" height="84" rx="6" class="acf"/>
+<text x="338.0" y="78.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="ace" opacity="0.8">WORKER</text>
+<text x="338.0" y="93.0" text-anchor="middle" font-size="12" font-weight="600" class="ace">Worker</text>
+<text x="338.0" y="106.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="ace" opacity="0.85">Astro, middleware</text>
+<rect x="92" y="152" width="108" height="44" rx="6" class="sff bds" stroke-width="1"/>
+<text x="146.0" y="162.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">SCHEDULE</text>
+<text x="146.0" y="177.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Cron</text>
+<text x="146.0" y="190.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">03:00 and 09:00</text>
+<rect x="268" y="160" width="140" height="40" rx="6" class="sff bds" stroke-width="1"/>
+<text x="338.0" y="175.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">MAIL</text>
+<text x="338.0" y="190.0" text-anchor="middle" font-size="12" font-weight="600" class="t">send-email</text>
+<rect x="456" y="40" width="108" height="44" rx="6" class="sff bds" stroke-width="1"/>
+<text x="510.0" y="57.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">STORE</text>
+<text x="510.0" y="72.0" text-anchor="middle" font-size="12" font-weight="600" class="t">D1</text>
+<rect x="456" y="92" width="108" height="44" rx="6" class="sff bds" stroke-width="1"/>
+<text x="510.0" y="109.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">STORE</text>
+<text x="510.0" y="124.0" text-anchor="middle" font-size="12" font-weight="600" class="t">R2 BACKUPS</text>
+<rect x="456" y="168" width="108" height="44" rx="6" class="sff bds" stroke-width="1"/>
+<text x="510.0" y="185.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">ACCOUNT 2</text>
+<text x="510.0" y="200.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Bucket</text>
+</g>
+</svg>

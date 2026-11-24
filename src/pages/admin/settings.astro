@@ -1,0 +1,181 @@
+---
+import { actions } from 'astro:actions';
+import Field from '../../components/admin/field.astro';
+import NoteKeys from '../../components/admin/note-keys.astro';
+import SelectField from '../../components/admin/select-field.astro';
+import Shell from '../../components/admin/shell.astro';
+import StepUp from '../../components/admin/step-up.astro';
+import { Button } from '../../components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { keyStatus, REWRAP_PAGE, REWRAP_PAGES } from '../../db/key-rewrap';
+import { projectsWithoutNumber } from '../../db/projects';
+import { BACKUP_AGE_CEILING, BACKUP_AGE_DEFAULT, loadSettings } from '../../db/settings';
+import { currentEnv, noteKeks } from '../../lib/env';
+import { timeZoneChoices } from '../../lib/time-zones';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const SHOWN = 100;
+const ctx = await pageContext(Astro);
+const posted = [
+  Astro.getActionResult(actions.settings.save),
+  Astro.getActionResult(actions.keys.rewrap),
+];
+if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const saved = await loadSettings(ctx.db);
+const errors = fieldErrors(posted);
+const refused = posted[0]?.error !== undefined;
+const typed = refused ? await postedFields(Astro) : {};
+const shown = {
+  numberRequired: refused ? typed.projectNumberRequired === 'true' : saved.projectNumberRequired,
+  alertTo: refused ? (typed.alertTo ?? '') : (saved.alertTo ?? ''),
+  timeZone: refused ? (typed.timeZone ?? saved.timeZone) : saved.timeZone,
+  backupMaxAgeHours: refused ? (typed.backupMaxAgeHours ?? '') : String(saved.backupMaxAgeHours),
+};
+const zones = timeZoneChoices(shown.timeZone).map((zone) => ({ value: zone, label: zone }));
+const unnumbered = await projectsWithoutNumber(ctx.scope, ctx.db, SHOWN + 1);
+const keks = noteKeks();
+const keys = await keyStatus(ctx.db, keks);
+---
+
+<Shell title="Settings" admin={ctx.admin} accounting={ctx.accounting} problem={problemOf(posted)}>
+  <Fragment slot="lead">
+    How this instance runs for your firm. Saving and re-wrapping keys need a passkey confirmation,
+    and each change is recorded in the audit log with its value before and after.
+  </Fragment>
+
+  <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="saving settings and re-wrapping keys" />
+
+  <form
+    method="POST"
+    action={`${Astro.url.pathname}?_action=settings.save`}
+    class="grid max-w-2xl gap-8"
+  >
+    <input type="hidden" name="_csrf" value={ctx.csrf} />
+
+    <section aria-labelledby="projects-h" class="grid gap-3">
+      <h2 id="projects-h" class="text-lg font-semibold">
+        Projects
+      </h2>
+      <label class="flex min-h-11 items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="projectNumberRequired"
+          value="true"
+          checked={shown.numberRequired}
+          aria-describedby="number-hint"
+          class="mt-0.5 size-5 shrink-0"
+        />
+        <span>
+          <span class="font-medium">Require a project number</span>
+          <span id="number-hint" class="block text-muted-foreground">
+            New and edited projects must carry a number such as 26-0001. Existing projects keep
+            theirs, or their lack of one, until edited.
+          </span>
+        </span>
+      </label>
+    </section>
+
+    <section aria-labelledby="alerts-h" class="grid gap-4">
+      <h2 id="alerts-h" class="text-lg font-semibold">
+        Backup alerts
+      </h2>
+      <Field
+        label="Alert address"
+        field="alertTo"
+        type="email"
+        value={shown.alertTo}
+        autocomplete="email"
+        maxlength={254}
+        hint={
+          currentEnv().EMAIL === null
+            ? 'Email is off on this deployment, so the 09:00 UTC check sends nothing; its findings go to the Worker log.'
+            : 'The 09:00 UTC check sends one email here when the backup is late or failed, or the audit log does not verify. Leave it blank to send none; findings still go to the Worker log.'
+        }
+        errors={errors.alertTo ?? []}
+      />
+      <Field
+        label="Backup age limit, in hours"
+        field="backupMaxAgeHours"
+        type="number"
+        value={shown.backupMaxAgeHours}
+        min={1}
+        max={BACKUP_AGE_CEILING}
+        required
+        hint={`How old the last good backup may be before /healthz answers 503 and the check alerts. From 1 to ${String(BACKUP_AGE_CEILING)}; the default is ${String(BACKUP_AGE_DEFAULT)}.`}
+        errors={errors.backupMaxAgeHours ?? []}
+      />
+    </section>
+
+    <section aria-labelledby="time-h" class="grid gap-4">
+      <h2 id="time-h" class="text-lg font-semibold">
+        Time
+      </h2>
+      <SelectField
+        label="Time zone"
+        field="timeZone"
+        options={zones}
+        value={shown.timeZone}
+        required
+        hint="The week page opens on the week that contains today in this zone."
+        errors={errors.timeZone ?? []}
+      />
+    </section>
+
+    <Button type="submit" size="lg" className="justify-self-start max-md:h-11">
+      Save settings
+    </Button>
+  </form>
+
+  <NoteKeys
+    csrf={ctx.csrf}
+    status={keys}
+    rotating={keks.previous !== null}
+    perRun={REWRAP_PAGE * REWRAP_PAGES}
+  />
+
+  <section aria-labelledby="unnumbered-h" class="grid gap-3">
+    <h2 id="unnumbered-h" class="text-lg font-semibold">
+      Projects with no number
+    </h2>
+    {unnumbered.length === 0 ? (
+      <p class="text-sm text-muted-foreground">Every open project has a number.</p>
+    ) : (
+      <>
+        <p class="text-sm text-muted-foreground">
+          {saved.projectNumberRequired
+            ? 'With the rule on, each of these open projects needs a number before it can be edited.'
+            : 'Turning the rule on leaves these open projects as they are; each then needs a number before it can be edited.'}
+          {unnumbered.length > SHOWN && ` The first ${String(SHOWN)} are listed.`}
+        </p>
+        <Table aria-label="Projects with no number">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project</TableHead>
+              <TableHead>Client</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {unnumbered.slice(0, SHOWN).map((project) => (
+              <TableRow>
+                <TableRowHead>
+                  <a class="underline underline-offset-2" href={`/projects/${project.id}`}>
+                    {project.name}
+                  </a>
+                </TableRowHead>
+                <TableCell data-label="Client">{project.client_name}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </>
+    )}
+  </section>
+</Shell>

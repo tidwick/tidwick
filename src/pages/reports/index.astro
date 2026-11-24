@@ -1,0 +1,64 @@
+---
+import Shell from '../../components/admin/shell.astro';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { timeZone } from '../../db/settings';
+import { lastFullMonth } from '../../lib/date-range';
+import { todayIn } from '../../lib/week';
+import { pageContext } from '../_context';
+
+const ctx = await pageContext(Astro);
+// The form opens on the last full calendar month.
+const opening = lastFullMonth(todayIn(await timeZone(ctx.db), Date.now()));
+const KINDS = [
+  ['person', 'Hours by person'],
+  ['project', 'Hours by project'],
+  ['week', 'Hours by week'],
+] as const;
+---
+
+<Shell title="Reports" admin={ctx.admin} accounting={ctx.accounting}>
+  <Fragment slot="lead">
+    Hours over a date range as CSV. Every week state is included and labelled, so a total never
+    reads as approved when it is not. Each download is recorded in the audit log and asks for a
+    recent passkey confirmation.
+  </Fragment>
+  <form method="POST" class="grid gap-gutter">
+    <input type="hidden" name="_csrf" value={ctx.csrf} />
+    <div class="flex flex-wrap items-end gap-gutter">
+      <label class="grid gap-1.5 text-sm font-medium">
+        From
+        <Input
+          type="date"
+          name="from"
+          value={opening.from}
+          required
+          className="min-h-11 w-auto md:min-h-8"
+        />
+      </label>
+      <label class="grid gap-1.5 text-sm font-medium">
+        To
+        <Input
+          type="date"
+          name="to"
+          value={opening.to}
+          required
+          className="min-h-11 w-auto md:min-h-8"
+        />
+      </label>
+    </div>
+    <div class="flex flex-wrap gap-field">
+      {KINDS.map(([kind, label]) => (
+        <Button
+          type="submit"
+          variant="outline"
+          size="lg"
+          formAction={`/reports/${kind}.csv`}
+          className="border-control max-md:h-11"
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  </form>
+</Shell>

@@ -1,0 +1,39 @@
+---
+import '../styles/global.css';
+import { currentEnv } from '../lib/env';
+// The document every page shares. The theme script (src/theme/theme.js) is injected into this <head> by
+// astro.config.mjs, so it runs before first paint; `color-scheme` lets the browser paint its own chrome to match.
+// With `DEMO_BANNER` on, every page opens with one line saying it is a demo.
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+const { DEMO_BANNER: demo, DEMO_LOGIN: pick } = currentEnv();
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    {demo && (
+      <p
+        class="border-b border-border bg-notice-surface px-gutter py-2 text-center text-sm text-notice"
+        data-demo-banner
+      >
+        <strong class="font-semibold">Demo.</strong> Every firm, person and note here is invented,
+        and the data is reset from time to time. Enter nothing real.{' '}
+        {pick && (
+          <a class="underline" href="/demo">
+            Pick a person to sign in as.
+          </a>
+        )}
+      </p>
+    )}
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,100 @@
+---
+import type { AuditEntry } from '../../db/audit-read';
+import { changeLines } from '../../lib/audit-summary';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import Empty from './empty.astro';
+// One page of the audit log, newest first. The columns say when (UTC), who, what the Action was, what it touched
+// and what changed; a note is only ever "note changed". The pager link carries the same filters.
+interface Props {
+  events: readonly AuditEntry[];
+  olderQuery: string | null;
+  /** The filters alone, for the way back to the newest page; null when this is that page. */
+  newestQuery: string | null;
+  filtered: boolean;
+}
+const { events, olderQuery, newestQuery, filtered } = Astro.props;
+const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+const who = (e: AuditEntry) => e.actor_name ?? (e.actor_id === null ? 'System' : 'Removed person');
+const link =
+  'inline-flex h-9 items-center rounded-lg border border-control px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:h-11';
+---
+
+{events.length === 0 ? (
+  <Empty title={filtered ? 'No event matches these filters' : 'The audit log is empty'}>
+    {filtered
+      ? 'Widen the dates, or clear a filter. Action and target match on how they start.'
+      : 'Every change the app makes is recorded here as it happens.'}
+  </Empty>
+) : (
+  <div class="grid gap-3">
+    <Table aria-label="Audit events, newest first">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Event</TableHead>
+          <TableHead>When (UTC)</TableHead>
+          <TableHead>Who</TableHead>
+          <TableHead>Action</TableHead>
+          <TableHead>Touched</TableHead>
+          <TableHead>Changed</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {events.map((e) => {
+          const lines = changeLines(e.before_json, e.after_json);
+          return (
+            <TableRow>
+              <TableCell
+                data-label="Event"
+                className="tabular-nums text-muted-foreground md:align-top"
+              >
+                {e.seq}
+              </TableCell>
+              <TableCell data-label="When (UTC)" className="tabular-nums md:align-top">
+                {stamp(e.at)}
+              </TableCell>
+              <TableCell data-label="Who" className="md:align-top">
+                {who(e)}
+              </TableCell>
+              <TableCell data-label="Action" className="font-mono text-sm md:align-top">
+                {e.action}
+              </TableCell>
+              <TableCell data-label="Touched" className="min-w-0 md:align-top max-md:items-start">
+                <span class="grid min-w-0 gap-0.5 break-all max-md:text-right">
+                  <span class="font-mono text-xs">{e.target}</span>
+                  {e.client_name && (
+                    <span class="text-xs text-muted-foreground">{e.client_name}</span>
+                  )}
+                </span>
+              </TableCell>
+              <TableCell data-label="Changed" className="md:align-top max-md:items-start">
+                {lines.length === 0 ? (
+                  <span class="text-sm text-muted-foreground">Nothing recorded</span>
+                ) : (
+                  <ul class="grid gap-0.5 break-words text-sm max-md:text-right">
+                    {lines.map((line) => (
+                      <li>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+    <nav aria-label="Audit pages" class="flex flex-wrap items-center gap-3">
+      {olderQuery !== null ? (
+        <a class={link} href={`/audit?${olderQuery}`} rel="next">
+          Older events
+        </a>
+      ) : (
+        <span class="text-sm text-muted-foreground">That is the oldest event.</span>
+      )}
+      {newestQuery !== null && (
+        <a class={link} href={newestQuery === '' ? '/audit' : `/audit?${newestQuery}`}>
+          Newest events
+        </a>
+      )}
+    </nav>
+  </div>
+)}

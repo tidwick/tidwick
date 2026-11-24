@@ -1,0 +1,26 @@
+---
+import { Badge } from '../ui/badge';
+import type { WeekState } from '../../lib/week';
+// A week's state as the badge every page uses: beside the week heading and in the approver's decision card. A
+// returned week is the one that needs its owner, so it takes the danger tone; the others stay quiet.
+interface Props {
+  state: WeekState;
+}
+const { state } = Astro.props;
+const LABEL = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  approved: 'Approved',
+  returned: 'Returned',
+};
+const TONE = {
+  draft: 'outline',
+  submitted: 'default',
+  approved: 'secondary',
+  returned: 'danger',
+} as const;
+---
+
+<Badge variant={TONE[state]} data-week-state={state}>
+  {LABEL[state]}
+</Badge>

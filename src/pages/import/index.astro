@@ -1,0 +1,78 @@
+---
+import { actions } from 'astro:actions';
+import ImportReport from '../../components/admin/import-report.astro';
+import Shell from '../../components/admin/shell.astro';
+import StepUp from '../../components/admin/step-up.astro';
+import { Button } from '../../components/ui/button';
+import { pageContext, problemOf } from '../_context';
+
+const ctx = await pageContext(Astro);
+const previewed = Astro.getActionResult(actions.import.preview);
+const applied = Astro.getActionResult(actions.import.apply);
+const report = applied?.data ?? previewed?.data ?? null;
+---
+
+<Shell
+  title="Import"
+  admin={ctx.admin}
+  accounting={ctx.accounting}
+  problem={problemOf([previewed, applied])}
+>
+  <Fragment slot="lead">
+    Upload a time-tracking CSV, up to 2 MB and 5,000 rows. Its columns are read through the mapping
+    in
+    <a class="underline underline-offset-2" href="/settings/csv">
+      CSV settings
+    </a>{' '}
+    and a preview shows what would happen and changes nothing. Applying the same file under the same
+    mapping twice writes nothing twice.
+  </Fragment>
+
+  <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="applying an import" />
+
+  <form
+    method="POST"
+    enctype="multipart/form-data"
+    class="grid max-w-xl grid-cols-1 gap-4 rounded-lg border border-border p-4"
+  >
+    <input type="hidden" name="_csrf" value={ctx.csrf} />
+    <div class="grid gap-1.5">
+      <label for="import-file" class="text-sm font-medium">
+        CSV file
+      </label>
+      <input
+        id="import-file"
+        type="file"
+        name="file"
+        accept=".csv,text/csv"
+        required
+        class="w-full min-w-0 text-base file:mr-3 file:min-h-11 file:rounded-lg file:border file:border-control file:bg-background file:px-3 file:text-sm md:file:min-h-9"
+      />
+      <p class="text-xs text-muted-foreground">
+        A file applied before under a different mapping is refused; correct its weeks by editing
+        them instead.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <Button
+        type="submit"
+        variant="outline"
+        size="lg"
+        className="border-control max-md:h-11"
+        formAction={`${Astro.url.pathname}?_action=import.preview`}
+      >
+        Preview
+      </Button>
+      <Button
+        type="submit"
+        size="lg"
+        className="max-md:h-11"
+        formAction={`${Astro.url.pathname}?_action=import.apply`}
+      >
+        Apply
+      </Button>
+    </div>
+  </form>
+
+  {report && <ImportReport report={report} />}
+</Shell>

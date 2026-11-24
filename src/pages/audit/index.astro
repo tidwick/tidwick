@@ -1,0 +1,61 @@
+---
+import { actions } from 'astro:actions';
+import AuditEvents from '../../components/admin/audit-events.astro';
+import AuditFilters from '../../components/admin/audit-filters.astro';
+import AuditVerdict from '../../components/admin/audit-verdict.astro';
+import PostForm from '../../components/admin/post-form.astro';
+import Shell from '../../components/admin/shell.astro';
+import { auditChoices, readAuditPage } from '../../db/audit-read';
+import { auditQuery, filterQuery, nextPageQuery } from '../../lib/audit-filter';
+import { pageContext, problemOf } from '../_context';
+
+const ctx = await pageContext(Astro);
+const verified = Astro.getActionResult(actions.audit.verify);
+const params = Astro.url.searchParams;
+const { filter, before, problem } = auditQuery(params);
+const [page, choices] = await Promise.all([
+  readAuditPage(ctx.scope, ctx.db, filter, before),
+  auditChoices(ctx.scope, ctx.db),
+]);
+const kept = filterQuery(params).toString();
+const olderQuery = page.next === null ? null : nextPageQuery(params, page.next);
+const filtered = Object.values(filter).some((value) => value !== null);
+---
+
+<Shell
+  title="Audit log"
+  admin={ctx.admin}
+  accounting={ctx.accounting}
+  problem={problemOf([verified]) ?? problem}
+>
+  <Fragment slot="lead">
+    Every change the app records, newest first. Times are UTC. A note shows only as "note changed";
+    the log never holds its words.
+  </Fragment>
+
+  <section aria-labelledby="audit-check-h" class="grid gap-3 rounded-lg border border-border p-4">
+    <h2 id="audit-check-h" class="text-lg font-semibold">
+      Check the chain
+    </h2>
+    <p class="max-w-prose text-sm text-muted-foreground">
+      Each event holds a hash of the one before it. This recomputes every hash from the first event
+      and names the first one that does not follow. The 09:00 check does the same every day.
+    </p>
+    <PostForm
+      action={`?${kept === '' ? '' : `${kept}&`}_action=audit.verify`}
+      csrf={ctx.csrf}
+      label="Check the chain"
+      tone="plain"
+    />
+    {verified?.data && <AuditVerdict verdict={verified.data} />}
+  </section>
+
+  <AuditFilters filter={filter} choices={choices} filtered={filtered} />
+
+  <AuditEvents
+    events={page.events}
+    olderQuery={olderQuery}
+    newestQuery={before === null ? null : kept}
+    filtered={filtered}
+  />
+</Shell>

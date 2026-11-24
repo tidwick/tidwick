@@ -1,0 +1,194 @@
+---
+import { actions } from 'astro:actions';
+import Heading from '../components/auth/heading.astro';
+import { DANGER, PRIMARY, SECONDARY } from '../components/auth/classes';
+import Status from '../components/auth/status.astro';
+import SavedLine from '../components/saved-line.astro';
+import SignOutForm from '../components/sign-out-form.astro';
+import { Alert } from '../components/ui/alert';
+import { STEP_UP_MS } from '../auth/step-up';
+import { listedCredentialsOf } from '../db/credentials';
+import { unusedCodeCount } from '../db/recovery-codes';
+import { clockUtc } from '../lib/dates';
+import { cn } from 'cn';
+import AccountFrame from '../components/admin/account-frame.astro';
+import { pageContext, problemOf, savedAt, succeeded } from './_context';
+
+const session = Astro.locals.session;
+if (!session) return Astro.redirect('/login');
+const ctx = await pageContext(Astro);
+const renewed = Astro.getActionResult(actions.auth.regenerateCodes);
+const posted = [
+  Astro.getActionResult(actions.auth.revokePasskey),
+  Astro.getActionResult(actions.auth.logoutOthers),
+];
+if (succeeded(posted)) return Astro.redirect(savedAt('/account'), 303);
+const problem = problemOf([...posted, renewed]);
+const newCodes = renewed?.data?.codes ?? [];
+const codesLeft = await unusedCodeCount(ctx.db, session.personId);
+const passkeys = await listedCredentialsOf(ctx.db, session.personId);
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const confirmed = session.stepUpAt + STEP_UP_MS > Date.now();
+const recovery = session.mustEnrol;
+// One size of button on the page; only adding a passkey is primary.
+const ADD = cn(PRIMARY, 'w-fit');
+const CONFIRM = cn(SECONDARY, 'w-fit');
+---
+
+<AccountFrame
+  recovery={recovery}
+  title="Your account"
+  admin={ctx.admin}
+  accounting={ctx.accounting}
+  problem={problem}
+  lead={`Signed in as ${session.name}.`}
+>
+  <div class="grid max-w-xl gap-section">
+    {recovery && (
+      <section>
+        <Heading text="Your account">Signed in as {session.name}.</Heading>
+        <Alert variant="notice" role="status" className="mt-4">
+          You signed in with a recovery code. Add a passkey to finish.
+        </Alert>
+        <SavedLine problem={problem} />
+        {problem && (
+          <Alert variant="danger" className="mt-4 font-medium">
+            {problem}
+          </Alert>
+        )}
+      </section>
+    )}
+
+    <section aria-labelledby="passkeys-h" class="grid gap-3">
+      <h2 id="passkeys-h" class="text-lg font-semibold">
+        Your passkeys
+      </h2>
+      <ul class="divide-y divide-border rounded-md border border-border">
+        {passkeys.length === 0 && (
+          <li class="p-4 text-sm text-muted-foreground">No passkeys yet.</li>
+        )}
+        {passkeys.map((p) => (
+          <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div class="text-sm">
+              <p class="font-medium">Added {day(p.created_at)}</p>
+              <p class="text-muted-foreground">
+                {p.last_used_at === null
+                  ? 'Never used to sign in'
+                  : `Last used ${day(p.last_used_at)}`}
+              </p>
+            </div>
+            {!session.mustEnrol && passkeys.length > 1 && (
+              <form method="POST" action={`/account${actions.auth.revokePasskey}`}>
+                <input type="hidden" name="_csrf" value={ctx.csrf} />
+                <input type="hidden" name="id" value={p.id} />
+                <button type="submit" class={DANGER}>
+                  Remove
+                </button>
+              </form>
+            )}
+            {passkeys.length === 1 && (
+              <p class="text-sm text-muted-foreground">Your only passkey</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      {passkeys.length === 1 && (
+        <p class="text-sm text-muted-foreground">
+          Your only passkey cannot be removed. Add another first.
+        </p>
+      )}
+      {!session.mustEnrol && passkeys.length > 1 && (
+        <p data-remove-note class="text-sm text-muted-foreground">
+          Removing a passkey does not sign out a browser already signed in with it. Use Sign out
+          other sessions below for that.
+        </p>
+      )}
+      <button type="button" data-passkey="add" data-csrf={ctx.csrf} class={ADD}>
+        Add a passkey
+      </button>
+      <Status />
+      <p class="rounded-md border border-border p-3 text-sm text-muted-foreground">
+        If you lose every passkey and every recovery code, an admin has to re-enrol you.
+        Re-enrolment revokes all your passkeys, recovery codes and sessions, and gives you a new
+        single-use link to start again.
+      </p>
+    </section>
+
+    {!session.mustEnrol && (
+      <section aria-labelledby="confirm-h" class="grid gap-3">
+        <h2 id="confirm-h" class="text-lg font-semibold">
+          Confirm for sensitive changes
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          {confirmed
+            ? `Confirmed until ${clockUtc(session.stepUpAt + STEP_UP_MS)} UTC.`
+            : 'Removing a passkey, making new recovery codes and similar changes need a passkey confirmation from the last 15 minutes.'}
+        </p>
+        <button type="button" data-passkey="step-up" data-csrf={ctx.csrf} class={CONFIRM}>
+          Confirm with your passkey
+        </button>
+      </section>
+    )}
+
+    {!session.mustEnrol && (
+      <section aria-labelledby="codes-h" class="grid gap-3">
+        <h2 id="codes-h" class="text-lg font-semibold">
+          Recovery codes
+        </h2>
+        {newCodes.length > 0 ? (
+          <>
+            <p class="text-sm text-muted-foreground">
+              Your old codes no longer work. Keep these ten somewhere safe; they are shown only
+              once.
+            </p>
+            <ol class="grid gap-2 rounded-md sm:grid-cols-2 border border-border p-4 font-mono text-sm">
+              {newCodes.map((code) => (
+                <li data-code>{code}</li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <p class="text-sm text-muted-foreground">
+            {codesLeft === 1 ? '1 unused code left.' : `${String(codesLeft)} unused codes left.`}{' '}
+            Making new codes retires every old one, and does not sign out a browser already signed
+            in with one; Sign out other sessions below does that.
+          </p>
+        )}
+        <form method="POST" action={`/account${actions.auth.regenerateCodes}`}>
+          <input type="hidden" name="_csrf" value={ctx.csrf} />
+          <button type="submit" class={SECONDARY}>
+            Make new recovery codes
+          </button>
+        </form>
+        {!confirmed && (
+          <p class="text-sm text-muted-foreground">Confirm with your passkey below first.</p>
+        )}
+      </section>
+    )}
+
+    {!session.mustEnrol && (
+      <section aria-labelledby="sessions-h" class="grid gap-3">
+        <h2 id="sessions-h" class="text-lg font-semibold">
+          Other sessions
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          Sign out every other browser and device. This one stays signed in.
+        </p>
+        <form method="POST" action={`/account${actions.auth.logoutOthers}`}>
+          <input type="hidden" name="_csrf" value={ctx.csrf} />
+          <button type="submit" class={DANGER}>
+            Sign out other sessions
+          </button>
+        </form>
+      </section>
+    )}
+
+    {recovery && <SignOutForm />}
+  </div>
+</AccountFrame>
+
+<script>
+  import { wireAddPasskey, wireStepUp } from '../components/passkey/ceremony';
+  wireAddPasskey();
+  wireStepUp();
+</script>

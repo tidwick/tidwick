@@ -1,0 +1,21 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    ".astro/types.d.ts",
+    "src/**/*",
+    "test/**/*",
+    "e2e/**/*",
+    "scripts/**/*",
+    "*.ts",
+    "*.mjs"
+  ],
+  "exclude": ["dist"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "types": ["@cloudflare/vitest-plugin/types"],
+    "paths": { "@/*": ["./src/*"] }
+  }
+}

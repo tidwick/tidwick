@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 240" role="img" font-family="'IBM Plex Sans', system-ui, sans-serif">
+<style>.bgf{fill:#ffffff}.sff{fill:#f4f4f4}.acf{fill:#4a6741}.bds{stroke:#e0e0e0}.t{fill:#0a0a0a}.t2{fill:#404040}.tm{fill:#707070}.ace{fill:#ffffff}.s2{stroke:#404040}.acs{stroke:#4a6741}.f2{fill:#404040}
+@media (prefers-color-scheme:dark){
+.bgf{fill:#0a0a0a}.sff{fill:#161616}.acf{fill:#6f9a63}.bds{stroke:#2e2e2e}.t{fill:#f4f4f4}.t2{fill:#c4c4c4}.tm{fill:#909090}.ace{fill:#0a0a0a}.s2{stroke:#c4c4c4}.acs{stroke:#6f9a63}.f2{fill:#c4c4c4}
+}
+</style>
+<defs><marker id="request-m" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker><marker id="request-f" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="acf"/></marker><marker id="request-d" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker></defs>
+<g font-family="'IBM Plex Sans', system-ui, sans-serif">
+<rect x="20" y="20" width="620" height="200" rx="6" class="bgf bds" stroke-width="1"/>
+<path d="M116,96 H136" fill="none" class="s2" stroke-width="1.5" marker-end="url(#request-m)"/>
+<path d="M252,96 H272" fill="none" class="acs" stroke-width="1.5" marker-end="url(#request-f)"/>
+<path d="M356,96 H376" fill="none" class="acs" stroke-width="1.5" marker-end="url(#request-f)"/>
+<path d="M444,96 H464" fill="none" class="s2" stroke-width="1.5" marker-end="url(#request-m)"/>
+<path d="M536,96 H556" fill="none" class="s2" stroke-width="1.5" marker-end="url(#request-m)"/>
+<path d="M500,120 V148" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#request-d)"/>
+<rect x="502" y="126" width="57" height="12" class="bgf"/>
+<text x="530" y="134" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">same batch</text>
+<rect x="40" y="72" width="76" height="48" rx="6" class="sff bds" stroke-width="1"/>
+<text x="78.0" y="91.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">FETCH</text>
+<text x="78.0" y="106.0" text-anchor="middle" font-size="12" font-weight="600" class="t">headers.ts</text>
+<rect x="136" y="72" width="116" height="48" rx="6" class="sff bds" stroke-width="1"/>
+<text x="194.0" y="84.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">MIDDLEWARE</text>
+<text x="194.0" y="99.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Gate chain</text>
+<text x="194.0" y="112.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">err, session, CSRF</text>
+<rect x="272" y="72" width="84" height="48" rx="6" class="acf"/>
+<text x="314.0" y="84.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="ace" opacity="0.8">AUTHZ</text>
+<text x="314.0" y="99.0" text-anchor="middle" font-size="12" font-weight="600" class="ace">routes.ts</text>
+<text x="314.0" y="112.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="ace" opacity="0.85">deny unlisted</text>
+<rect x="376" y="72" width="68" height="48" rx="6" class="sff bds" stroke-width="1"/>
+<text x="410.0" y="91.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">HANDLER</text>
+<text x="410.0" y="106.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Action</text>
+<rect x="464" y="72" width="72" height="48" rx="6" class="sff bds" stroke-width="1"/>
+<text x="500.0" y="84.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">DB</text>
+<text x="500.0" y="99.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Scope</text>
+<text x="500.0" y="112.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">row access</text>
+<rect x="556" y="72" width="68" height="48" rx="6" class="sff bds" stroke-width="1"/>
+<text x="590.0" y="91.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">STORE</text>
+<text x="590.0" y="106.0" text-anchor="middle" font-size="12" font-weight="600" class="t">D1</text>
+<rect x="484" y="148" width="128" height="40" rx="6" class="sff bds" stroke-width="1"/>
+<text x="548.0" y="163.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">APPEND-ONLY</text>
+<text x="548.0" y="178.0" text-anchor="middle" font-size="12" font-weight="600" class="t2">audit_event</text>
+</g>
+</svg>

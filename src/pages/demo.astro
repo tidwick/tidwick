@@ -1,0 +1,74 @@
+---
+import { actions } from 'astro:actions';
+import Heading from '../components/auth/heading.astro';
+import { LINK, SECONDARY } from '../components/auth/classes';
+import { Alert } from '../components/ui/alert';
+import { Input } from '../components/ui/input';
+import Auth from '../layouts/auth.astro';
+import { demoOpen, demoPasswordShown } from '../auth/demo';
+import { DEMO_PERSONAS } from '../lib/demo-personas';
+import { currentEnv } from '../lib/env';
+
+// The demo's sign-in. With any of its four signals missing this is a route that does not exist.
+if (!(await demoOpen(currentEnv()))) return new Response(null, { status: 404 });
+const shown = await demoPasswordShown(currentEnv());
+const result = Astro.getActionResult(actions.auth.demoSignin);
+if (result && !result.error) return Astro.redirect(result.data.next);
+const problem = result?.error ? 'That did not work. Check the password and try again.' : '';
+---
+
+<Auth title="Demo sign-in">
+  <section>
+    <Heading text="Try the demo">
+      Enter the demo password shown below, then pick who to be. The people and their time are
+      invented, a session lasts two hours and asks for no passkey, and everything is reset
+      overnight.
+    </Heading>
+    {problem && (
+      <Alert id="demo-problem" variant="danger" className="mt-4 font-medium">
+        {problem}
+      </Alert>
+    )}
+    {shown !== null && (
+      <p class="mt-4 text-sm">
+        Demo password:{' '}
+        <code id="demo-password" class="font-mono font-semibold">
+          {shown}
+        </code>
+      </p>
+    )}
+    <form method="POST" action={actions.auth.demoSignin} class="mt-6 grid gap-4">
+      <input type="hidden" name="_csrf" value={Astro.locals.csrf} />
+      <label class="grid gap-1 text-sm font-medium">
+        Demo password
+        <Input
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          aria-describedby={problem ? 'demo-problem' : undefined}
+          className="min-h-11"
+        />
+      </label>
+      <p class="text-sm font-medium">Sign in as</p>
+      {DEMO_PERSONAS.map((p) => (
+        <button
+          type="submit"
+          name="persona"
+          value={p.key}
+          class={`${SECONDARY} h-auto w-full min-w-0 justify-start py-2`}
+        >
+          <span class="grid min-w-0 text-left leading-tight whitespace-normal">
+            <span>{p.name}</span>
+            <span class="text-sm font-normal">{p.role}</span>
+          </span>
+        </button>
+      ))}
+    </form>
+  </section>
+  <p class="text-sm">
+    <a class={LINK} href="/login">
+      Sign in with a passkey instead
+    </a>
+  </p>
+</Auth>

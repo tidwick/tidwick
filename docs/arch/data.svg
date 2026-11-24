@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 240" role="img" font-family="'IBM Plex Sans', system-ui, sans-serif">
+<style>.bgf{fill:#ffffff}.sff{fill:#f4f4f4}.acf{fill:#4a6741}.bds{stroke:#e0e0e0}.t{fill:#0a0a0a}.t2{fill:#404040}.tm{fill:#707070}.ace{fill:#ffffff}.s2{stroke:#404040}.acs{stroke:#4a6741}.f2{fill:#404040}
+@media (prefers-color-scheme:dark){
+.bgf{fill:#0a0a0a}.sff{fill:#161616}.acf{fill:#6f9a63}.bds{stroke:#2e2e2e}.t{fill:#f4f4f4}.t2{fill:#c4c4c4}.tm{fill:#909090}.ace{fill:#0a0a0a}.s2{stroke:#c4c4c4}.acs{stroke:#6f9a63}.f2{fill:#c4c4c4}
+}
+</style>
+<defs><marker id="data-m" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker><marker id="data-f" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="acf"/></marker><marker id="data-d" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" class="f2"/></marker></defs>
+<g font-family="'IBM Plex Sans', system-ui, sans-serif">
+<rect x="20" y="20" width="620" height="200" rx="6" class="bgf bds" stroke-width="1"/>
+<path d="M140,74 H212" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M384,74 H312" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M262,100 V148" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M434,100 V148" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M404,100 V118 H348 V174 H312" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M212,174 H140" fill="none" class="s2" stroke-width="1.5" marker-end="url(#data-m)"/>
+<path d="M584,148 V100" fill="none" class="s2" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#data-d)"/>
+<rect x="150" y="66" width="52" height="12" class="bgf"/>
+<text x="176" y="74" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">client_id</text>
+<rect x="320" y="66" width="57" height="12" class="bgf"/>
+<text x="348" y="74" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">assignment</text>
+<rect x="408" y="116" width="52" height="12" class="bgf"/>
+<text x="434" y="124" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">person_id</text>
+<rect x="158" y="166" width="37" height="12" class="bgf"/>
+<text x="176" y="174" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">row_id</text>
+<rect x="556" y="116" width="57" height="12" class="bgf"/>
+<text x="584" y="124" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">chain head</text>
+<rect x="40" y="48" width="100" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="90.0" y="62.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="90.0" y="77.0" text-anchor="middle" font-size="12" font-weight="600" class="t">client</text>
+<text x="90.0" y="90.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">key seals notes</text>
+<rect x="212" y="48" width="100" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="262.0" y="62.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="262.0" y="77.0" text-anchor="middle" font-size="12" font-weight="600" class="t">project</text>
+<text x="262.0" y="90.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">composite keys</text>
+<rect x="384" y="48" width="120" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="444.0" y="62.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="444.0" y="77.0" text-anchor="middle" font-size="12" font-weight="600" class="t">person</text>
+<text x="444.0" y="90.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">roles, passkeys</text>
+<rect x="212" y="148" width="100" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="262.0" y="162.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="262.0" y="177.0" text-anchor="middle" font-size="12" font-weight="600" class="t">week_row</text>
+<text x="262.0" y="190.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">person x week</text>
+<rect x="40" y="148" width="100" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="90.0" y="162.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="90.0" y="177.0" text-anchor="middle" font-size="12" font-weight="600" class="t">entry</text>
+<text x="90.0" y="190.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">hundredths</text>
+<rect x="384" y="148" width="120" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="444.0" y="162.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="444.0" y="177.0" text-anchor="middle" font-size="12" font-weight="600" class="t">week_submission</text>
+<text x="444.0" y="190.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">state, decider</text>
+<rect x="540" y="48" width="88" height="52" rx="6" class="acf"/>
+<text x="584.0" y="69.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="ace" opacity="0.8">CHAIN</text>
+<text x="584.0" y="84.0" text-anchor="middle" font-size="12" font-weight="600" class="ace">audit_event</text>
+<rect x="540" y="148" width="88" height="52" rx="6" class="sff bds" stroke-width="1"/>
+<text x="584.0" y="169.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TABLE</text>
+<text x="584.0" y="184.0" text-anchor="middle" font-size="12" font-weight="600" class="t">backup_run</text>
+</g>
+</svg>

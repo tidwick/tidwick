@@ -1,0 +1,93 @@
+---
+import { actions } from 'astro:actions';
+import Shell from '../../components/admin/shell.astro';
+import WeekStateBadge from '../../components/admin/week-state-badge.astro';
+import { LINK } from '../../components/auth/classes';
+import { WeekGrid } from '../../components/week-grid/week-grid';
+import { exportNoteLimit } from '../../db/csv-settings';
+import { timeZone } from '../../db/settings';
+import { emptyCause } from '../../db/week-empty';
+import { addRowOptions, loadWeek } from '../../db/week-view';
+import { writtenDate } from '../../lib/dates';
+import { noteKeks } from '../../lib/env';
+import { isWeekStart, neighbourWeek, todayIn, weekDates, weekStartOf } from '../../lib/week';
+import { pageContext, problemOf, savedAt, succeeded } from '../_context';
+
+const session = Astro.locals.session;
+if (!session) return Astro.redirect('/login');
+if (session.mustEnrol) return Astro.redirect('/account');
+
+const ctx = await pageContext(Astro);
+const requested = Astro.params.start ?? '';
+const monday = requested === '' ? null : weekStartOf(requested);
+if (requested !== '' && monday === null) return new Response('Not found', { status: 404 });
+if (monday !== null && !isWeekStart(requested)) return Astro.redirect(`/week/${monday}`, 302);
+const weekStart = monday ?? weekStartOf(todayIn(await timeZone(ctx.db), Date.now())) ?? '';
+
+const previous = neighbourWeek(weekStart, -1);
+const next = neighbourWeek(weekStart, 1);
+
+const posted = [
+  Astro.getActionResult(actions.entries.save),
+  Astro.getActionResult(actions.entries.addRow),
+  Astro.getActionResult(actions.entries.removeRow),
+  Astro.getActionResult(actions.entries.copyLastWeek),
+  Astro.getActionResult(actions.submission.submit),
+];
+if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+
+const [week, options, noteLimit] = await Promise.all([
+  loadWeek(ctx.scope, ctx.db, noteKeks(), ctx.personId, weekStart),
+  addRowOptions(ctx.scope, ctx.db, ctx.personId),
+  exportNoteLimit(ctx.db),
+]);
+const empty = options.length === 0 ? await emptyCause(ctx.scope, ctx.db, ctx.personId) : null;
+const days = weekDates(weekStart);
+const addProjectId = options.some((o) => o.projectId === Astro.url.searchParams.get('projectId'))
+  ? (Astro.url.searchParams.get('projectId') ?? '')
+  : '';
+---
+
+<Shell
+  title={`Week of ${writtenDate(weekStart)}`}
+  admin={ctx.admin}
+  accounting={ctx.accounting}
+  wide
+>
+  <WeekStateBadge slot="badge" state={week.state} />
+  <Fragment slot="lead">
+    {session.name}, {writtenDate(weekStart)} to {writtenDate(days[6] ?? weekStart)}.
+  </Fragment>
+  <nav class="flex flex-wrap items-center gap-block text-sm" aria-label="Week">
+    {previous !== null && (
+      <a class={LINK} href={`/week/${previous}`}>
+        Previous week
+      </a>
+    )}
+    <a class={LINK} href="/week">
+      This week
+    </a>
+    {next !== null && (
+      <a class={LINK} href={`/week/${next}`}>
+        Next week
+      </a>
+    )}
+  </nav>
+  <WeekGrid
+    client:load
+    mode="own"
+    personId=""
+    editing={false}
+    path={Astro.url.pathname}
+    csrf={ctx.csrf}
+    weekStart={weekStart}
+    days={days}
+    state={week.state}
+    rows={week.rows}
+    options={options}
+    empty={empty}
+    addProjectId={addProjectId}
+    problem={problemOf(posted)}
+    noteLimit={noteLimit}
+  />
+</Shell>

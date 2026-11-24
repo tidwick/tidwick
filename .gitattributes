@@ -1,0 +1,2 @@
+# CSV fixtures and golden files keep their CRLF line ends byte for byte.
+*.csv -text

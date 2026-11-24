@@ -1,0 +1,18 @@
+Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo
+01/05/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DES,7.5,Counter drawings
+01/06/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DES,8,
+01/06/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DRF,0.5,"Notes, with a comma and ""quotes"""
+01/07/2026,bram@import.example,Marlowe Bakery,Shopfit,26-0101,MTG,2.25,kickoff
+01/07/2026,bram@import.example,Marlowe Bakery,Shopfit,26-0101,MTG,1.755,follow up
+01/08/2026,cora@import.example,Marlowe Bakery,Shopfit,26-0101,DRF,6,=SUM(A1)
+01/09/2026,cora@import.example,Marlowe Bakery,Shopfit,26-0101,DES,4,
+01/12/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DES,8,
+01/13/2026,bram@import.example,Marlowe Bakery,Shopfit,26-0101,DRF,3.5,
+01/32/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DES,1,not a date
+01/07/2026,nobody@import.example,Marlowe Bakery,Shopfit,26-0101,DES,1,
+01/07/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DES,abc,
+01/08/2026,ada@import.example,Marlowe Bakery
+01/08/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,ZZZ,1,
+01/05/2026,ada@import.example,Marlowe Bakery,Shopfit,26-0101,DRF,20,pushes the day past 24
+01/05/2026,bram@import.example,Marlowe Bakery,Annex,26-0102,DES,3,
+01/05/2026,cora@import.example,Ivywood Library,Reading room,26-0103,DES,2,

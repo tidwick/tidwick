@@ -1,0 +1,133 @@
+---
+import { actions } from 'astro:actions';
+import Empty from '../../components/admin/empty.astro';
+import Field from '../../components/admin/field.astro';
+import PostForm from '../../components/admin/post-form.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Badge } from '../../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../../components/ui/table';
+import { listTaskCodes } from '../../db/task-codes';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const ctx = await pageContext(Astro);
+const created = Astro.getActionResult(actions.taskCodes.create);
+const renamed = Astro.getActionResult(actions.taskCodes.update);
+const posted = [created, renamed, Astro.getActionResult(actions.taskCodes.archive)];
+if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const codes = await listTaskCodes(ctx.db);
+const typed = await postedFields(Astro);
+const renameId = renamed?.error ? typed.id : undefined;
+---
+
+<Shell title="Task codes" admin={ctx.admin} problem={problemOf(posted)}>
+  <Fragment slot="lead">
+    Task codes are shared by every project. A project allows the ones listed on its page; an
+    archived code cannot be added to a project, and stays on the weeks it was booked to.
+  </Fragment>
+
+  {codes.length === 0 ? (
+    <Empty title="No task codes yet">
+      Add a code below, such as DES for Design. Then open a project and allow it, so people can book
+      time to it.
+    </Empty>
+  ) : (
+    <Table aria-label="Task codes">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Code</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>
+            <span class="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {codes.map((code) => (
+          <TableRow>
+            <TableRowHead className="font-mono">{code.code}</TableRowHead>
+            <TableCell data-label="Name">{code.name}</TableCell>
+            <TableCell data-label="Status">
+              {code.archived_at === null ? (
+                <Badge variant="outline">Active</Badge>
+              ) : (
+                <Badge variant="secondary">Archived</Badge>
+              )}
+            </TableCell>
+            <TableCell className="md:text-right">
+              <div class="flex flex-wrap items-start gap-2 md:justify-end">
+                <details open={renameId === code.id} class="group">
+                  <summary
+                    class="inline-flex h-7 cursor-pointer md:text-[0.8rem] items-center rounded-lg border border-control px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:h-11"
+                    aria-label={`Rename ${code.code}`}
+                  >
+                    Rename
+                  </summary>
+                  <div class="mt-2 min-w-64">
+                    <PostForm
+                      action={actions.taskCodes.update}
+                      csrf={ctx.csrf}
+                      label="Save name"
+                      fields={{ id: code.id }}
+                    >
+                      <Field
+                        label="Name"
+                        field="name"
+                        value={renameId === code.id ? typed.name : code.name}
+                        required
+                        errors={renameId === code.id ? (fieldErrors([renamed]).name ?? []) : []}
+                      />
+                    </PostForm>
+                  </div>
+                </details>
+                <PostForm
+                  compact
+                  action={actions.taskCodes.archive}
+                  csrf={ctx.csrf}
+                  label={code.archived_at === null ? 'Archive' : 'Restore'}
+                  named={`${code.archived_at === null ? 'Archive' : 'Restore'} ${code.code}`}
+                  tone="plain"
+                  fields={
+                    code.archived_at === null ? { id: code.id } : { id: code.id, restore: '1' }
+                  }
+                />
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+
+  <section aria-labelledby="new-code" class="max-w-md rounded-lg border border-border p-4">
+    <h2 id="new-code" class="mb-3 text-lg font-semibold">
+      New task code
+    </h2>
+    <PostForm action={actions.taskCodes.create} csrf={ctx.csrf} label="Add task code">
+      <Field
+        label="Code"
+        field="code"
+        required
+        hint="Up to 16 letters, digits, dots, dashes or underscores. It cannot change later."
+        maxlength={16}
+        value={created?.error ? typed.code : ''}
+        errors={fieldErrors([created]).code ?? []}
+      />
+      <Field
+        label="Name"
+        field="name"
+        required
+        value={created?.error ? typed.name : ''}
+        errors={fieldErrors([created]).name ?? []}
+      />
+    </PostForm>
+  </section>
+</Shell>

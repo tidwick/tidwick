@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/tidwick/tidwick/discussions
+    about: Ask or propose in Discussions. A large change starts there.
+  - name: Security vulnerability
+    url: https://github.com/tidwick/tidwick/security/advisories/new
+    about: Report privately, after reproducing it against the current release.

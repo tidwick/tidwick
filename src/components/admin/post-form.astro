@@ -1,0 +1,45 @@
+---
+import { Button } from '../ui/button';
+// A no-script form that posts to one Action on this page; `csrf` rides as the hidden field every POST needs.
+// `compact` makes a button-only form that sits in a table cell; `named` is the button's full name for a screen
+// reader when its visible words ("Archive") do not say which row they act on.
+interface Props {
+  action: string;
+  csrf: string;
+  label: string;
+  tone?: 'primary' | 'plain' | 'danger';
+  fields?: Record<string, string>;
+  compact?: boolean;
+  named?: string;
+}
+const { action, csrf, label, tone = 'primary', fields = {}, compact = false, named } = Astro.props;
+const variants = { primary: 'default', plain: 'outline', danger: 'outline' } as const;
+const variant = variants[tone];
+// The destructive variant's red on its pale ground misses 4.5:1; a danger button is an outline in the danger token.
+const toneClass = {
+  primary: '',
+  plain: 'border-control',
+  danger: 'border-danger text-danger hover:bg-danger-surface hover:text-danger',
+}[tone];
+---
+
+<form
+  method="POST"
+  action={`${Astro.url.pathname}${action}`}
+  class={compact ? 'contents' : 'grid gap-3'}
+>
+  <input type="hidden" name="_csrf" value={csrf} />
+  {Object.entries(fields).map(([name, value]) => (
+    <input type="hidden" name={name} value={value} />
+  ))}
+  <slot />
+  <Button
+    type="submit"
+    variant={variant}
+    size={compact ? 'sm' : 'lg'}
+    aria-label={named}
+    className={`justify-self-start max-md:h-11 max-md:px-4 max-md:text-sm ${toneClass}`}
+  >
+    {label}
+  </Button>
+</form>

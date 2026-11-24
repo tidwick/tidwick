@@ -1,0 +1,78 @@
+---
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../ui/table';
+import type { WeekEdit } from '../../db/week-edits';
+import { formatHours, formatSignedHours } from '../../lib/hours';
+import { dayLabel } from '../../lib/week';
+import Empty from './empty.astro';
+// The audit view of a week: each cell an accounting admin edited through the lock, with the hours before and
+// after. A note is only said to have changed, never shown.
+interface Props {
+  edits: readonly WeekEdit[];
+  days: readonly string[];
+  person: string;
+}
+const { edits, days, person } = Astro.props;
+const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
+---
+
+<section aria-labelledby="edits-h" class="grid gap-3">
+  <h2 id="edits-h" class="text-lg font-semibold">
+    Edits made through the lock
+  </h2>
+  {edits.length === 0 ? (
+    <Empty title="No cell has been edited here" compact>
+      When an accounting admin changes a cell of {person}'s week after it was submitted, the hours
+      before and after are listed here.
+    </Empty>
+  ) : (
+    <Table aria-label={`Edits to ${person}'s week`}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Cell</TableHead>
+          <TableHead>Before</TableHead>
+          <TableHead>After</TableHead>
+          <TableHead>Change</TableHead>
+          <TableHead>Edited by</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {edits.map((edit) => (
+          <TableRow>
+            <TableRowHead>
+              {dayLabel(days[edit.dow] ?? '', edit.dow)}
+              <span class="block text-xs font-normal text-muted-foreground">
+                {edit.project} · {edit.task}
+              </span>
+            </TableRowHead>
+            <TableCell data-label="Before" className="tabular-nums">
+              {edit.before === null ? 'Blank' : formatHours(edit.before)}
+            </TableCell>
+            <TableCell data-label="After" className="font-medium tabular-nums">
+              {formatHours(edit.after)}
+            </TableCell>
+            <TableCell data-label="Change" className="tabular-nums">
+              {formatSignedHours(edit.after - (edit.before ?? 0))}
+              {edit.noteChanged && (
+                <span class="ml-2 text-xs text-muted-foreground">note changed</span>
+              )}
+            </TableCell>
+            <TableCell data-label="Edited by">
+              {edit.editor ?? 'Unknown'}
+              <span class="ml-2 text-xs tabular-nums text-muted-foreground">
+                {stamp(edit.at)} UTC
+              </span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+</section>

@@ -1,0 +1,51 @@
+---
+import { SEARCH_MAX } from '../../lib/search';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { nextId } from './ids';
+// The search box of a list: a plain GET to the same page, so a search is a link that survives a refresh and works
+// with no script. `hint` is the placeholder and `status` says what the search found, in words, under the box.
+interface Props {
+  action: string;
+  label: string;
+  term: string;
+  hint: string;
+  status: string;
+}
+const { action, label, term, hint, status } = Astro.props;
+const id = nextId('search');
+---
+
+<form method="GET" action={action} role="search" class="grid gap-1.5">
+  <label for={id} class="text-sm font-medium">
+    {label}
+  </label>
+  <div class="flex flex-wrap gap-2">
+    <Input
+      id={id}
+      name="q"
+      type="search"
+      value={term}
+      placeholder={hint}
+      maxLength={SEARCH_MAX}
+      autoComplete="off"
+      enterKeyHint="search"
+      aria-describedby={`${id}-status`}
+      className="h-11 min-w-0 flex-1 basis-56 border-control md:h-9 md:max-w-sm"
+    />
+    <Button type="submit" size="lg" className="max-md:h-11">
+      Search
+    </Button>
+    {term !== '' && (
+      <a
+        href={action}
+        class="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium underline underline-offset-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:h-9"
+      >
+        Clear search
+      </a>
+    )}
+  </div>
+  <p id={`${id}-status`} role="status" class="text-sm text-muted-foreground">
+    {status}
+  </p>
+</form>

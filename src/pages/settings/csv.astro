@@ -1,0 +1,153 @@
+---
+import { actions } from 'astro:actions';
+import JsonEditor from '../../components/admin/json-editor.astro';
+import Shell from '../../components/admin/shell.astro';
+import { Button } from '../../components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
+import { loadExportMapping, loadImportMapping } from '../../db/csv-settings';
+import { EXPORT_FIELDS } from '../../lib/csv-mapping';
+import { importPreview, previewEntries } from '../../lib/csv-preview';
+import { exportRows } from '../../lib/export';
+import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
+
+const ctx = await pageContext(Astro);
+const posted = [Astro.getActionResult(actions.settings.saveCsv)];
+if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+const saved = { export: await loadExportMapping(ctx.db), import: await loadImportMapping(ctx.db) };
+const typed = await postedFields(Astro);
+const errors = fieldErrors(posted);
+const refused = posted[0]?.error !== undefined;
+const exportText = refused ? (typed.exportMapping ?? '') : JSON.stringify(saved.export, null, 2);
+const importText = refused ? (typed.importMapping ?? '') : JSON.stringify(saved.import, null, 2);
+const [header = [], ...sample] = exportRows(previewEntries(), saved.export);
+const incoming = importPreview(saved.import);
+---
+
+<Shell
+  title="CSV settings"
+  admin={ctx.admin}
+  accounting={ctx.accounting}
+  problem={problemOf(posted)}
+>
+  <Fragment slot="lead">
+    The column mappings for the export and the import are settings, not code. Each is a JSON
+    document checked when you save; a change is recorded in the audit log.
+  </Fragment>
+
+  <form method="POST" action={`${Astro.url.pathname}?_action=settings.saveCsv`} class="grid gap-8">
+    <input type="hidden" name="_csrf" value={ctx.csrf} />
+
+    <section aria-labelledby="export-h" class="grid gap-4">
+      <h2 id="export-h" class="text-lg font-semibold">
+        Export
+      </h2>
+      <JsonEditor
+        label="Export mapping"
+        field="exportMapping"
+        value={exportText}
+        rows={16}
+        errors={errors.exportMapping ?? []}
+      >
+        Each column has a header and exactly one of <code>field</code>, <code>literal</code> or{' '}
+        <code>template</code> (with
+        <code>{'{field}'}</code> placeholders), and an optional <code>max</code> length. Fields:{' '}
+        {EXPORT_FIELDS.join(', ')}. Dates are
+        <code>iso</code>, <code>mdy</code> or <code>dmy</code>.
+      </JsonEditor>
+      <div class="grid gap-2">
+        <h3 class="text-sm font-medium">First rows of the saved export, from invented entries</h3>
+        <div
+          role="region"
+          aria-label="Export preview"
+          tabindex="0"
+          class="overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <Table aria-label="First rows of the saved export" className="md:min-w-max">
+            <TableHeader>
+              <TableRow>
+                {header.map((h) => (
+                  <TableHead>{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sample.map((row) => (
+                <TableRow>
+                  {row.map((cell, i) => (
+                    <TableCell data-label={header[i]} className="whitespace-nowrap">
+                      {cell}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="import-h" class="grid gap-4">
+      <h2 id="import-h" class="text-lg font-semibold">
+        Import
+      </h2>
+      <JsonEditor
+        label="Import mapping"
+        field="importMapping"
+        value={importText}
+        rows={14}
+        errors={errors.importMapping ?? []}
+      >
+        <code>headers</code> names the file's column for each field; <code>project_number</code> and{' '}
+        <code>note</code> are optional.
+      </JsonEditor>
+      <div class="grid gap-2">
+        <h3 class="text-sm font-medium">The first lines of a file this saved mapping reads</h3>
+        <div
+          role="region"
+          aria-label="Import preview"
+          tabindex="0"
+          class="overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <Table
+            aria-label="First lines of a file the saved import mapping reads"
+            className="md:min-w-max"
+          >
+            <TableHeader>
+              <TableRow>
+                {incoming.headers.map((h) => (
+                  <TableHead>{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                {incoming.example.map((cell, i) => (
+                  <TableCell data-label={incoming.headers[i]} className="whitespace-nowrap">
+                    {cell}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid gap-2">
+      <Button type="submit" size="lg" className="justify-self-start max-md:h-11">
+        Save mappings
+      </Button>
+      <p class="text-xs text-muted-foreground">
+        The previews show the saved mappings. Save to see a change; a mapping with a mistake is
+        refused and nothing is saved.
+      </p>
+    </div>
+  </form>
+</Shell>

@@ -1,0 +1,27 @@
+---
+import Auth from '../../layouts/auth.astro';
+import Shell from './shell.astro';
+// The account page's frame. A normal session reads its account inside the signed-in frame, with the navigation;
+// a recovery session can reach nothing else, so it keeps the bare card.
+interface Props {
+  recovery: boolean;
+  title: string;
+  admin: boolean;
+  accounting: boolean;
+  problem: string | null;
+  /** The sentence under the heading in the signed-in frame. */
+  lead: string;
+}
+const { recovery, title, admin, accounting, problem, lead } = Astro.props;
+---
+
+{recovery ? (
+  <Auth title={title}>
+    <slot />
+  </Auth>
+) : (
+  <Shell title={title} admin={admin} accounting={accounting} problem={problem}>
+    <Fragment slot="lead">{lead}</Fragment>
+    <slot />
+  </Shell>
+)}
