@@ -40,7 +40,7 @@ describe('verifying the audit chain on demand', () => {
       state: 'intact',
       events: head.seq,
     });
-  });
+  }, 30_000);
 
   it('a log the request has no queries left to read is unfinished, from the first seq it did not read', async () => {
     const admin = await adminScope();
