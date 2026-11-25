@@ -51,9 +51,10 @@ describe('audit map', () => {
     }
   });
 
-  it('keys the page rows to real POST routes', () => {
+  it('keys the page rows to real POST routes, and to the SSO callback, the one GET that appends an event', () => {
     for (const route of Object.keys(AUDIT_OF_PAGES)) {
-      expect(PAGES[route]?.POST, route).toBeDefined();
+      const method = route === '/auth/sso/callback' ? 'GET' : 'POST';
+      expect(PAGES[route]?.[method], route).toBeDefined();
     }
   });
 
