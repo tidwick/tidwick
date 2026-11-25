@@ -62,12 +62,11 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 | Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                    | `src/db/scope-kind.test.ts`                                    |
 | Migrations only move forward                                                                                        | the migration gate (`just guard`)                              |
 | Security tests are `SEC-nn`, each with a negative case                                                              | review                                                         |
-| A new runtime dependency needs an ADR (0012)                                                                        | review                                                         |
 | Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                                   |
 | Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just guard`                                                   |
 | Source files <= 250 lines                                                                                           | `just guard`                                                   |
 | Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                  | `just guard`                                                   |
-| Exact dependency pins                                                                                               | `SEC-27 (src/lib/dependencies.test.ts)`                        |
+| Exact dependency pins; a new runtime dependency needs an ADR (0012)                                                 | `SEC-27 (src/lib/dependencies.test.ts)`; review                |
 | Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                           | comment in `src/backup/export.ts`, restore drill               |
 | Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code | review                                                         |
 

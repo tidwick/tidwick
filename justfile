@@ -145,7 +145,8 @@ restore-drill: backup-fixture
     just restore test/fixtures/backup.age test/fixtures/backup-key.txt
     node scripts/restore-drill.ts .wrangler/drill/source .wrangler/restore
 
-# Deploy recipes; the order is in ARCHITECTURE, Deploy.
+# Deploy recipes; the order is in ARCHITECTURE, Deploy. `env` is "" for the real deployment or "demo" for
+# wrangler.jsonc env.demo. Nothing here prints a secret value.
 [private]
 _wr env:
     #!/usr/bin/env bash
