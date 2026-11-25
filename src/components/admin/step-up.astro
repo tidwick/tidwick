@@ -23,7 +23,11 @@ const clock = until === null ? '' : clockUtc(until);
 const who = until === null ? Astro.locals.session?.personId : undefined;
 const sso =
   who === undefined ? [] : await confirmLinks(who, `${Astro.url.pathname}${Astro.url.search}`);
-const passkeys = who === undefined ? 1 : (await activeCredentialsOf(currentEnv().DB, who)).length;
+// With no passkey and a provider to confirm at, the passkey button would only fail.
+const viaProvider =
+  who !== undefined &&
+  sso.length > 0 &&
+  (await activeCredentialsOf(currentEnv().DB, who)).length === 0;
 ---
 
 {until !== null ? (
@@ -50,14 +54,14 @@ const passkeys = who === undefined ? 1 : (await activeCredentialsOf(currentEnv()
     class="rounded-lg border border-control bg-muted/40 p-4"
   >
     <h2 id="step-up-h" class="text-sm font-semibold">
-      {passkeys > 0 ? 'Confirm with your passkey' : 'Confirm with your sign-in provider'}
+      {viaProvider ? 'Confirm with your sign-in provider' : 'Confirm with your passkey'}
     </h2>
     <p class="mt-1 text-sm text-muted-foreground">
-      A {passkeys > 0 ? 'passkey ' : ''}confirmation from the last 15 minutes is needed for{' '}
-      {unlocks}.
+      A {viaProvider ? '' : 'passkey '}confirmation from the last 15 minutes is needed for {unlocks}
+      .
     </p>
     <div class="mt-3 [&_[data-passkey-status]]:mt-2 [&_[data-passkey-status]]:min-h-0">
-      {passkeys > 0 && (
+      {!viaProvider && (
         <Button
           type="button"
           data-passkey="step-up"

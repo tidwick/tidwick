@@ -129,7 +129,7 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
             ? `Confirmed until ${clockUtc(session.stepUpAt + STEP_UP_MS)} UTC.`
             : 'Removing a passkey, making new recovery codes and similar changes need a passkey confirmation from the last 15 minutes.'}
         </p>
-        {passkeys.length > 0 && (
+        {(passkeys.length > 0 || sso.length === 0) && (
           <button type="button" data-passkey="step-up" data-csrf={ctx.csrf} class={CONFIRM}>
             Confirm with your passkey
           </button>

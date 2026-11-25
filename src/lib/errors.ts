@@ -36,7 +36,7 @@ export const CATALOG = {
   number_required: { status: 400, message: 'A project number is required (format YY-NNNN)' },
   last_method: {
     status: 409,
-    message: 'That is your only way to sign in; add a passkey before removing it',
+    message: 'That is your only passkey and nothing else signs you in; add another way in first',
   },
   chain_broken: { status: 500, message: 'The audit chain does not verify' },
   unauthenticated: { status: 401, message: 'Sign in first' },
