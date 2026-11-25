@@ -1,4 +1,5 @@
-// Revoking a person's access: every credential, session, unused recovery code and open link, each audited.
+// Revoking a person's access: every credential, session, unused recovery code, open link and agent grant, each audited.
+import { liveGrantIdsOf, revokeGrantsOf } from '../db/agent-grants';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
 import { activeCredentialsOf, revokeCredentialsOf } from '../db/credentials';
 import { closeEnrolmentsOf, openEnrolmentCount } from '../db/enrolments';
@@ -8,6 +9,31 @@ import { requireAll, type Scope } from '../db/scope';
 import { liveSessionCount, revokeSessionsOf } from '../db/sessions';
 import { fail } from '../lib/errors';
 import { recordEnrolment } from './enrol';
+
+/**
+ * Adds a person's agent grants' revocation to `batch`, with an `agents.revoke` event only when there are grants to
+ * revoke. Every path that cuts a person's own access calls it, so an agent never outlives the sign-in behind it.
+ */
+export async function recordGrantRevocation(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  now: number,
+): Promise<void> {
+  const grants = await liveGrantIdsOf(db, personId);
+  if (grants.length === 0) return;
+  await batch.record(
+    revokeGrantsOf(db, personId, now),
+    {
+      at: now,
+      action: 'agents.revoke',
+      clientId: null,
+      target: `person:${personId}`,
+      before: { grants },
+    },
+    grants.length,
+  );
+}
 
 /** Adds the four revocations to `batch`, each followed by an event that lands only if it changed what was read. */
 export async function recordRevocations(
@@ -41,6 +67,7 @@ export async function recordRevocations(
     { ...event, action: 'people.revokeEnrolments', before: { open: links } },
     links,
   );
+  await recordGrantRevocation(batch, db, personId, now);
 }
 
 /** Revokes all of a person's access, as offboarding does; one retry if a concurrent write moved the counts. */
