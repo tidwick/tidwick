@@ -21,6 +21,8 @@ export const DROP_ORDER = [
   'recovery_code',
   'recovery_attempt',
   'auth_challenge',
+  'agent_token',
+  'agent_grant',
   'session',
   'enrolment',
   'credential',
