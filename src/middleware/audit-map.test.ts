@@ -10,7 +10,7 @@ import {
   NON_ACTION_SOURCES,
   type AuditEvent,
 } from '../db/audit-actions';
-import { PAGES } from '../routes';
+import { PAGES, TOOLS } from '../routes';
 
 const ACTION_FILES = Object.keys(
   import.meta.glob(['../actions/*/*.ts', '!../actions/*/*.test.ts']),
@@ -55,6 +55,24 @@ describe('audit map', () => {
     for (const route of Object.keys(AUDIT_OF_PAGES)) {
       expect(PAGES[route]?.POST, route).toBeDefined();
     }
+  });
+
+  it('declares, for every tool that writes, the events an agent’s call may append', () => {
+    const writers = Object.values(TOOLS)
+      .filter((tool) => tool.scope !== 'read' && 'action' in tool.gate)
+      .map((tool) => ('action' in tool.gate ? tool.gate.action : ''));
+    expect(writers.length).toBeGreaterThan(0);
+    expect(undeclaredAudit(AUDIT_OF_AGENT, writers)).toEqual([]);
+    const known: readonly string[] = AUDIT_EVENTS;
+    for (const [name, events] of Object.entries(AUDIT_OF_AGENT)) {
+      if (events !== 'none') for (const event of events) expect(known, name).toContain(event);
+    }
+  });
+
+  it('gives the agent an event for the Action a person’s own call leaves unaudited, cell saves, and for submit', () => {
+    expect(AUDIT_OF['entries.save']).toBe('none');
+    expect(AUDIT_OF_AGENT['entries.save']).toEqual(['entries.save']);
+    expect(AUDIT_OF_AGENT['submission.submit']).toEqual(AUDIT_OF['submission.submit']);
   });
 
   it('can reach every event in the vocabulary from some row', () => {

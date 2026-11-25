@@ -1,5 +1,6 @@
 // `/mcp`: one stateless JSON-RPC route. A bearer finds the grant, the agent's scope is built fresh from it, and each
 // tool call passes the same route-table gate a person's would, as a principal with no grants and no step-up.
+import { version } from '../../package.json';
 import { bearerOf, verifyAccess } from '../auth/agent-tokens';
 import type { Session } from '../auth/session';
 import { touchGrant, type GrantRow } from '../db/agent-grants';
@@ -23,9 +24,22 @@ import { authorize } from '../middleware/authz';
 import { TOOLS, toolRule, type ToolName, type ToolScope } from '../routes';
 import { INSTRUCTIONS } from './schemas';
 import { IMPLS } from './tools';
-import { classify, LEGACY_VERSIONS, readMessage, type Message } from './protocol';
+import { classify, LEGACY_VERSIONS, MODERN_VERSION, readMessage, type Message } from './protocol';
 
-const SERVER = { name: 'tidwick', title: 'tidwick timesheet' } as const;
+const SERVER = { name: 'tidwick', title: 'tidwick timesheet', version } as const;
+
+/** The per-result `_meta` key a 2026 server names itself under; the tool list is the same for everyone and changes only on a deploy. */
+const SERVER_INFO = 'io.modelcontextprotocol/serverInfo';
+const CACHE = { ttlMs: 60_000, cacheScope: 'private' } as const;
+
+/** A 2026 result: complete, naming the server and, where it is cacheable, how long and for whom. */
+const modern = (id: RpcId, result: object, cacheable = false): Response =>
+  rpcResult(id, {
+    resultType: 'complete',
+    ...(cacheable ? CACHE : {}),
+    ...result,
+    _meta: { [SERVER_INFO]: SERVER },
+  });
 
 const isTool = (name: unknown): name is ToolName =>
   typeof name === 'string' && Object.hasOwn(TOOLS, name);
@@ -41,7 +55,7 @@ function listed(name: ToolName) {
 }
 
 /** A person with a member's rights and nothing more: no grants, and a step-up stamp of 0 that no row accepts. */
-const principal = (personId: string): Session => ({
+export const agentPrincipal = (personId: string): Session => ({
   rawId: '',
   personId,
   name: '',
@@ -58,7 +72,12 @@ function scopesOf(grant: GrantRow): readonly ToolScope[] {
   }
 }
 
-async function callTool(env: Env, grant: GrantRow, message: Message): Promise<Response> {
+async function callTool(
+  env: Env,
+  grant: GrantRow,
+  message: Message,
+  era: 'modern' | 'legacy',
+): Promise<Response> {
   const { name, arguments: input } = message.params;
   const id = message.id ?? null;
   if (!isTool(name)) return rpcError(id, RPC.invalidParams, 'Unknown tool');
@@ -66,7 +85,7 @@ async function callTool(env: Env, grant: GrantRow, message: Message): Promise<Re
   if (!scopesOf(grant).includes(needs)) return bearerRefusal('insufficient_scope', needs);
   const now = Date.now();
   try {
-    authorize(toolRule(name), principal(grant.person_id), [], now);
+    authorize(toolRule(name), agentPrincipal(grant.person_id), [], now);
     const scope = await agentScopeFor(env.DB, grant);
     await touchGrant(env.DB, grant.id, now);
     const context = {
@@ -79,10 +98,13 @@ async function callTool(env: Env, grant: GrantRow, message: Message): Promise<Re
       grantId: grant.id,
       now,
     };
-    return rpcResult(id, toolResult(await IMPLS[name].call(context, input)));
+    const result = toolResult(await IMPLS[name].call(context, input));
+    return era === 'modern' ? modern(id, result) : rpcResult(id, result);
   } catch (error) {
-    if (isAppError(error) && error.status < 500)
-      return rpcResult(id, toolRefusal(error.code, error.detail));
+    if (isAppError(error) && error.status < 500) {
+      const refusal = toolRefusal(error.code, error.detail);
+      return era === 'modern' ? modern(id, refusal) : rpcResult(id, refusal);
+    }
     console.error('tidwick: tool failed:', errorText(error));
     return rpcError(id, RPC.internal, 'Internal error', 500);
   }
@@ -90,13 +112,25 @@ async function callTool(env: Env, grant: GrantRow, message: Message): Promise<Re
 
 function initialize(message: Message): Response {
   const asked = message.params.protocolVersion;
-  const version = LEGACY_VERSIONS.find((v) => v === asked) ?? LEGACY_VERSIONS[0];
   return rpcResult(message.id ?? null, {
-    protocolVersion: version,
+    protocolVersion: LEGACY_VERSIONS.find((v) => v === asked) ?? LEGACY_VERSIONS[0],
     capabilities: { tools: { listChanged: false } },
     serverInfo: SERVER,
     instructions: INSTRUCTIONS,
   });
+}
+
+/** What a 2026 client asks first, in place of a handshake: the versions served and what the server offers. */
+function discover(id: RpcId): Response {
+  return modern(
+    id,
+    {
+      supportedVersions: [MODERN_VERSION, ...LEGACY_VERSIONS],
+      capabilities: { tools: { listChanged: false } },
+      instructions: INSTRUCTIONS,
+    },
+    true,
+  );
 }
 
 /** Answers one `/mcp` request; MCP off is a 404 and a GET is a 405, both before any token is read. */
@@ -120,12 +154,16 @@ export async function handleMcp(request: Request): Promise<Response> {
       return era === 'legacy'
         ? initialize(message)
         : rpcError(id, RPC.methodNotFound, 'Method not found');
+    case 'server/discover':
+      return era === 'modern' ? discover(id) : rpcError(id, RPC.methodNotFound, 'Method not found');
     case 'ping':
-      return rpcResult(id, {});
+      return era === 'modern' ? modern(id, {}) : rpcResult(id, {});
     case 'tools/list':
-      return rpcResult(id, { tools: toolList() });
+      return era === 'modern'
+        ? modern(id, { tools: toolList() }, true)
+        : rpcResult(id, { tools: toolList() });
     case 'tools/call':
-      return callTool(env, grant, message);
+      return callTool(env, grant, message, era);
     default:
       return rpcError(id, RPC.methodNotFound, 'Method not found');
   }
