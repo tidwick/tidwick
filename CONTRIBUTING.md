@@ -38,7 +38,7 @@ The deploy recipes (`deploy-init`, `deploy`, `deploy-secrets`, `first-admin`) ac
 
 `just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at phone width; a weekly run checks advisories (`just audit`) and that both public sites answer (`just live`). It runs typecheck, lint, format check, build, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
 
-`just guard` holds a few boundaries that keep the code reviewable:
+`just lint` and `just guard` hold a few boundaries that keep the code reviewable:
 
 - SQL lives only under `src/db/`, so every query can be read in one place.
 - Role names appear only in `src/routes.ts` and `src/db/`, so authorization stays in one table.

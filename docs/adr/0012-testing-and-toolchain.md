@@ -14,7 +14,7 @@ A contributor, CI and an agent must agree on what green means. Tests should run 
 - Package manager is npm.
 - Tests run in the Workers pool; a jsdom project covers the named DOM tests.
 - A new runtime dependency needs an ADR.
-- Documentation is `docs/ARCHITECTURE.md` and the ADRs only; `just docs-bar` fails any other markdown.
+- Documentation is `docs/ARCHITECTURE.md` and the ADRs only; `just guard` fails any other markdown.
 - Dependency install scripts are denied by name.
 
 ## Consequences

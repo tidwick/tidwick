@@ -50,18 +50,20 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 
 ## 8. Boundaries enforced by gates
 
-| Rule                                                                                                                | Gate                                             |
-| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| SQL only under `src/db/`                                                                                            | `just lint-sql-boundary`                         |
-| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                   | `just lint-import-gate`                          |
-| Roles only in `src/routes.ts` and `src/db/`                                                                         | `just lint-role-boundary`                        |
-| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                     |
-| Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just colour-literals`, `just contrast`          |
-| Source files <= 250 lines                                                                                           | `just size`                                      |
-| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                  | `just docs-bar`                                  |
-| Exact dependency pins                                                                                               | `SEC-27 (src/lib/dependencies.test.ts)`          |
-| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                           | comment in `src/backup/export.ts`, restore drill |
-| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code | review                                           |
+| Rule                                                                                                                | Gate                                                           |
+| ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| SQL only under `src/db/`                                                                                            | `just lint` (`guard/sql-boundary`)                             |
+| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                   | `just lint` (`guard/import-gate`)                              |
+| Roles only in `src/routes.ts` and `src/db/`                                                                         | `just lint` (`guard/role-boundary`)                            |
+| Test support, `systemScope` and `test/` never reach shipped source                                                  | `just lint` (`guard/test-support-gate`, `guard/test-boundary`) |
+| A shipped migration never changes                                                                                   | `just guard`                                                   |     |
+| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                                   |
+| Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just guard`                                                   |
+| Source files <= 250 lines                                                                                           | `just guard`                                                   |
+| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                  | `just guard`                                                   |
+| Exact dependency pins                                                                                               | `SEC-27 (src/lib/dependencies.test.ts)`                        |
+| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                           | comment in `src/backup/export.ts`, restore drill               |
+| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code | review                                                         |
 
 ## 9. Deploy
 
