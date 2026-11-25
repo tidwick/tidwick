@@ -4,7 +4,7 @@
   "main": "./src/worker.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": false,
+  "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   "vars": {
@@ -32,7 +32,6 @@
     {
       "binding": "DB",
       "database_name": "tidwick",
-      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations",
     },
   ],
@@ -46,6 +45,7 @@
   "env": {
     "demo": {
       "name": "tidwick-demo",
+      "workers_dev": false,
       "routes": [{ "pattern": "demo.tidwick.dev", "custom_domain": true }],
       "vars": {
         "ORIGIN": "https://demo.tidwick.dev",

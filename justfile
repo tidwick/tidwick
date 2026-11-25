@@ -139,9 +139,9 @@ backup-fixture:
     [ -f test/fixtures/backup-recipient.txt ] || just gen-test-keys
     state=.wrangler/drill
     rm -rf "$state" && mkdir -p "$state"
-    just db-migrate --persist-to "$state/source" > "$state/migrate.log" 2>&1 || { cat "$state/migrate.log"; echo "FAIL backup-fixture: migrations did not apply to the drill source; fix the SQL named above"; exit 1; }
+    just db-migrate --config test/wrangler.test.jsonc --persist-to "$state/source" > "$state/migrate.log" 2>&1 || { cat "$state/migrate.log"; echo "FAIL backup-fixture: migrations did not apply to the drill source; fix the SQL named above"; exit 1; }
     node scripts/seed.ts > "$state/seed.sql"
-    npx --no-install wrangler d1 execute tidwick --local --persist-to "$state/source" --file "$state/seed.sql" > "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the synthetic seed did not load; fix test/seed/"; exit 1; }
+    npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file "$state/seed.sql" > "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the synthetic seed did not load; fix test/seed/"; exit 1; }
     node scripts/backup-fixture.ts "$state/source" test/fixtures/backup-recipient.txt test/fixtures/backup.age
 
 restore file identity persist=".wrangler/restore":
@@ -150,8 +150,8 @@ restore file identity persist=".wrangler/restore":
     persist="$(./scripts/restore-target.sh {{ quote(persist) }})"
     rm -rf "$persist" && mkdir -p -m 700 "$persist"
     node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$persist/restore.sql"
-    just db-migrate --persist-to "$persist" > "$persist/migrate.log" 2>&1 || { cat "$persist/migrate.log"; echo "FAIL restore: migrations did not apply to the fresh D1"; exit 1; }
-    npx --no-install wrangler d1 execute tidwick --local --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
+    just db-migrate --config test/wrangler.test.jsonc --persist-to "$persist" > "$persist/migrate.log" 2>&1 || { cat "$persist/migrate.log"; echo "FAIL restore: migrations did not apply to the fresh D1"; exit 1; }
+    npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
     echo "PASS restore: loaded into the local D1 at $persist"
 
 restore-drill: backup-fixture
@@ -193,8 +193,8 @@ _wr env:
     #!/usr/bin/env bash
     set -euo pipefail
     case {{ quote(env) }} in
-      "") echo 'db=tidwick; flags=""' ;;
-      demo) echo 'db=tidwick-db; flags="--config wrangler.jsonc --env demo"' ;;
+      "") echo 'db=tidwick; mig=DB; flags=""' ;;
+      demo) echo 'db=tidwick-db; mig=tidwick-db; flags="--config wrangler.jsonc --env demo"' ;;
       *) echo "FAIL deploy: the env is empty or demo, not \"{{ env }}\"" >&2; exit 1 ;;
     esac
 
@@ -206,7 +206,7 @@ deploy-init env="":
     npx --no-install wrangler d1 create "$db"
     [ -n "$flags" ] || npx --no-install wrangler r2 bucket create tidwick-backups
     [ -n "$flags" ] || npx --no-install wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35
-    echo "NEXT: put the database_id printed above in wrangler.jsonc, with the other edits in ARCHITECTURE, Deploy"
+    if [ -n "$flags" ]; then echo "NEXT: put the database_id printed above in wrangler.jsonc env.demo, with the other edits in ARCHITECTURE, Deploy"; else echo "NEXT: the database is found by name; make the other edits in ARCHITECTURE, Deploy"; fi
 
 deploy-keys out=".wrangler/kit":
     #!/usr/bin/env bash
@@ -224,7 +224,7 @@ deploy-check env="":
     #!/usr/bin/env bash
     set -euo pipefail
     eval "$(just _wr {{ quote(env) }})"
-    if [ -n "$flags" ]; then todo='REPLACE_WITH'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER|BACKUP_S3_'; else todo='0{8}-0{4}-0{4}-0{4}-0{12}|example\.com|localhost'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER'; fi
+    if [ -n "$flags" ]; then todo='REPLACE_WITH'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER|BACKUP_S3_'; else todo='example\.com|localhost'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER'; fi
     if grep -nE "$todo" wrangler.jsonc; then echo "FAIL deploy-check: wrangler.jsonc still holds a placeholder (lines above); edit it as ARCHITECTURE, Deploy says"; exit 1; fi
     have="$(npx --no-install wrangler secret list $flags --format json | grep -oE '"name": *"[A-Z_0-9]+"' | grep -oE '[A-Z_0-9]+"$' | tr -d '"')"
     want="$(grep -oE '^[A-Z_0-9]+=' .dev.vars.example | tr -d '=' | grep -vE "^($skip)")"
@@ -238,7 +238,7 @@ deploy env="":
     eval "$(just _wr {{ quote(env) }})"
     env ${flags:+CLOUDFLARE_ENV=demo} just build
     npx --no-install wrangler deploy ${flags:+--env demo} --dry-run
-    npx --no-install wrangler d1 migrations apply "$db" --remote $flags
+    npx --no-install wrangler d1 migrations apply "$mig" --remote $flags
     npx --no-install wrangler deploy ${flags:+--env demo}
 
 # Reads each kit file to the secret of that name, then the four off-account lines (endpoint, bucket, key id, secret)
@@ -282,13 +282,14 @@ contrast:
     ./scripts/contrast.test.sh
     node scripts/contrast.ts
 
-# One Node source: mise.toml, mirrored in package.json engines.
+# One Node source: mise.toml, mirrored in package.json engines and .node-version.
 node-pin:
     #!/usr/bin/env bash
     set -euo pipefail
     want="$(sed -n 's/^node = "\(.*\)"$/\1/p' mise.toml)"
     have="$(node -p 'require("./package.json").engines.node')"
-    [ -n "$want" ] && [ "$want" = "$have" ] || { echo "FAIL node-pin: mise.toml says '$want', package.json engines says '$have'; make them match"; exit 1; }
+    file="$(tr -d '[:space:]' < .node-version)"
+    [ -n "$want" ] && [ "$want" = "$have" ] && [ "$want" = "$file" ] || { echo "FAIL node-pin: mise.toml says '$want', package.json engines says '$have', .node-version says '$file'; make them match"; exit 1; }
     echo "PASS node-pin"
 
 guard: node-pin migration-manifest lint-sql-boundary lint-test-support-gate lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
