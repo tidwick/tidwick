@@ -22,7 +22,7 @@ const events =
 )}
 {verdict.state === 'broken' && (
   <Alert variant="danger" role="alert" className="font-medium">
-    {`The chain breaks at event ${String(verdict.seq)}: it was changed, removed or inserted after it was written. Treat the log as tampered with. Restore from the last good backup to compare it, as the runbook says.`}
+    {`The chain breaks at event ${String(verdict.seq)}: it was changed, removed or inserted after it was written. Treat the log as tampered with. Restore from the last good backup to compare it, as docs/ARCHITECTURE.md, Backup and restore, says.`}
   </Alert>
 )}
 {verdict.state === 'unfinished' && (

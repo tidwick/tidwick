@@ -36,7 +36,7 @@ Every response, assets included, passes `headers.ts`. Middleware order is errors
 
 ![Clients own projects, people are assigned to them, entries hang off weekly rows, and an append-only audit chain is anchored by each backup.](arch/data.svg)
 
-One D1 database, STRICT tables, hand-written SQL under `src/db/`, forward-only migrations. Hours are integer hundredths. Client rows carry `client_id` in composite keys. `audit_event` is append-only and hash-chained, its head recorded by each backup. Notes are sealed under a per-client key wrapped by `NOTE_KEK` (ADR 0005, 0006).
+One D1 database, STRICT tables, hand-written SQL under `src/db/`, forward-only migrations. Hours are integer hundredths. Client rows carry `client_id` in composite keys. `audit_event` is append-only and hash-chained, its head recorded by each backup. Notes are sealed under a per-client key wrapped by `NOTE_KEK` (ADR 0005, 0006). Per-client erasure is not built: `erased_at` and `destroyed_at` on the key rows are reserved and nothing writes them.
 
 ## 6. Week lifecycle
 

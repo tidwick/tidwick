@@ -19,5 +19,5 @@ Each deployment serves one firm and many of its clients. A cross-client leak is 
 ## Consequences
 
 - A D1 export alone does not reveal notes.
-- Losing `NOTE_KEK` loses notes; backup and runbook say so.
+- Losing `NOTE_KEK` loses notes; backup and docs/ARCHITECTURE.md say so.
 - SQL is written by hand and tested against the schema.

@@ -14,6 +14,7 @@ interface KeyRow {
   kek_id: string;
 }
 
+// `erased_at` and `destroyed_at` are reserved: nothing writes them yet, so no key is destroyed and erasure is not built.
 export interface DataKey {
   version: number;
   key: Bytes;
