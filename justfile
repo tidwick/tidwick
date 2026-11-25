@@ -235,9 +235,10 @@ release version:
     case "$branch" in main|next|"") echo "FAIL release: switch to a branch for the bump PR, not '$branch'"; exit 1;; esac
     [ -z "$(git status --porcelain)" ] || { echo "FAIL release: the tree is not clean"; exit 1; }
     npm version "{{ version }}" --no-git-tag-version >/dev/null
-    echo "PASS release: package.json and the lockfile say {{ version }}; commit them, open a PR to next, then the lab checklist in docs/ARCHITECTURE.md, Deploy"
-    echo "NEXT, by hand once the PR is merged:"
+    echo "PASS release: package.json and the lockfile say {{ version }}; commit them and open a PR to next; after the merge: fast-forward main, run the lab checklist in docs/ARCHITECTURE.md, Deploy, then tag"
+    echo "NEXT, by hand once the PR is merged (the lab runs between the two steps):"
     echo "  git fetch origin && git push origin origin/next:main"
+    echo "  (run the lab checklist against main)"
     echo "  git tag -a v{{ version }} -m v{{ version }} origin/next && git push origin v{{ version }}"
 
 # The checks ESLint cannot see (docs/ARCHITECTURE.md §8). Each prints one PASS or FAIL line.

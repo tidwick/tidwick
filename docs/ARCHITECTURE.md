@@ -96,7 +96,7 @@ The button clones `main`, so it deploys the last release. It builds on Node from
 6. Delete `SETUP_TOKEN`. Add the 35-day expiry to `tidwick-backups`; `/setup` repeats the command.
 7. Update by merging a release tag into the clone; migrations run on the next build.
 
-Lab checklist, run by hand each release, on a fresh account:
+Lab checklist, run by hand each release, on a fresh account. Order: merge the release PR to `next`, fast-forward `main` (`git push origin origin/next:main`), run the lab, then tag. The button clones `main`, so the lab only sees the release after the fast-forward:
 
 - Real button from the README, build green.
 - `/setup` lists the missing values; claim the first admin.
