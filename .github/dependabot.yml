@@ -24,3 +24,17 @@ updates:
       npm:
         patterns: ['*']
         update-types: [minor, patch]
+      # Majors that move together land in one PR so the lockfile never holds a mismatched pair.
+      astro:
+        patterns: ['astro', '@astrojs/*']
+        update-types: [major]
+      vitest:
+        patterns: ['vitest', '@cloudflare/vitest-plugin']
+        update-types: [major]
+      eslint:
+        patterns: ['eslint', 'typescript-eslint', '@eslint/*']
+        update-types: [major]
+    ignore:
+      # Remove when the @astrojs/check peer range accepts TypeScript 7.
+      - dependency-name: typescript
+        versions: ['>=7']

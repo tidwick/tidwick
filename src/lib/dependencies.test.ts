@@ -87,7 +87,7 @@ function unlistedRuns(yaml: string): string[] {
     'just ci',
     'just install',
     'just audit',
-    'just e2e --project=phone',
+    'just e2e',
     'just deploy demo',
     'just live',
     'just playwright-version',

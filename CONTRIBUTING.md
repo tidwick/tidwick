@@ -36,7 +36,7 @@ The deploy recipes (ARCHITECTURE, Deploy) act on a real Cloudflare account. Noth
 
 ## The checks
 
-`just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at phone width; a weekly run checks advisories (`just audit`) and that both public sites answer (`just live`). It runs typecheck, lint, format check, build, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
+`just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at both widths; `just live` checks that both public sites answer after each deploy, and the weekly run also checks advisories (`just audit`). It runs typecheck, lint, format check, build, a Worker deploy dry-run, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
 
 The boundaries those checks hold, and the tests that hold the rest, are listed in `docs/ARCHITECTURE.md`, Boundaries enforced by gates.
 
