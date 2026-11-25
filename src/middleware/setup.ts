@@ -19,9 +19,9 @@ export function setup(source?: object): MiddlewareHandler {
     if (pageRule('/setup', context.request.method) === undefined) fail('forbidden');
     const env = setupEnv(source);
     if (env === null) fail('not_found');
-    const first = env.missing[0];
+    const name = env.missing[0];
     const empty = env.DB !== null && (await instanceEmpty(env.DB).catch(() => false));
-    if (!empty) fail('missing_binding', first);
+    if (!empty) fail('missing_binding', name);
     const { origin, hostname } = context.url;
     const flags: string[] = [];
     if (env.ORIGIN !== origin)
