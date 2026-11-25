@@ -6,6 +6,7 @@ import { agentScopeFor, type Scope } from '../../src/db/scope';
 import { newId } from '../../src/lib/ids';
 import { currentEnv } from '../../src/lib/env';
 import { keyedHash, randomToken, type HashKind } from '../../src/auth/tokens';
+import { booking, WEEK, type Booking } from './booking';
 import { ORIGIN } from './callers';
 
 export interface Agent {
@@ -160,3 +161,32 @@ export async function tool(
     : (result.structuredContent ?? {});
   return { status, isError: refused, data, text };
 }
+
+export interface Setup {
+  b: Booking;
+  agent: Agent;
+  rowId: string;
+}
+
+/** A member with an agent and one row in the week, added through the tool. */
+export async function setup(): Promise<Setup> {
+  const b = await booking();
+  const agent = await mintAgent(b.who.personId);
+  const task = b.tasks[0];
+  const added = await tool(agent, 'add_row', {
+    weekStart: WEEK,
+    projectId: b.projectId,
+    taskCodeId: task?.id,
+  });
+  const rows = added.data.rows as { rowId: string }[];
+  return { b, agent, rowId: rows[0]?.rowId ?? '' };
+}
+
+/** Cells for `save_entries`: `[day, hours, note?]` for one row. */
+export const cells = (rowId: string, ...days: [number, number | string, string?][]) =>
+  days.map(([day, hours, note]) => ({
+    rowId,
+    day,
+    hours,
+    ...(note === undefined ? {} : { note }),
+  }));

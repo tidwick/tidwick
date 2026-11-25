@@ -2,42 +2,15 @@
 // what it refuses, and what an agent's write leaves in the audit log.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { mintAgent, tool, type Agent } from '../../test/helpers/agent';
+import { cells, setup, tool } from '../../test/helpers/agent';
 import { adminScope, T0 } from '../../test/helpers/auth';
-import { booking, project, WEEK, weekOf, type Booking } from '../../test/helpers/booking';
+import { project, WEEK, weekOf } from '../../test/helpers/booking';
 import { caller } from '../../test/helpers/callers';
 import { eventsAfter, headSeq } from '../../test/helpers/reference';
 import { decideWeek } from '../db/submissions';
 import { saveCells } from '../db/entry-writes';
 import { scopeFor } from '../db/scope';
 import { noteKeks } from '../lib/env';
-
-interface Setup {
-  b: Booking;
-  agent: Agent;
-  rowId: string;
-}
-
-async function setup(): Promise<Setup> {
-  const b = await booking();
-  const agent = await mintAgent(b.who.personId);
-  const task = b.tasks[0];
-  const added = await tool(agent, 'add_row', {
-    weekStart: WEEK,
-    projectId: b.projectId,
-    taskCodeId: task?.id,
-  });
-  const rows = added.data.rows as { rowId: string }[];
-  return { b, agent, rowId: rows[0]?.rowId ?? '' };
-}
-
-const cells = (rowId: string, ...days: [number, number | string, string?][]) =>
-  days.map(([day, hours, note]) => ({
-    rowId,
-    day,
-    hours,
-    ...(note === undefined ? {} : { note }),
-  }));
 
 describe('reading', () => {
   it('list_projects names the assigned projects with their tasks, and no other', async () => {
@@ -204,66 +177,5 @@ describe('rows', () => {
     expect(JSON.stringify(week.data)).not.toContain(theirs.rowId);
     const poke = await tool(mine.agent, 'remove_row', { weekStart: WEEK, rowId: theirs.rowId });
     expect(poke).toMatchObject({ isError: true, data: { error: 'forbidden' } });
-  });
-});
-
-describe('submit_week asks twice', () => {
-  it('the first call summarises and changes nothing; the second submits, marked via', async () => {
-    const { b, agent, rowId } = await setup();
-    await tool(agent, 'save_entries', { weekStart: WEEK, cells: cells(rowId, [0, 8], [1, 4]) });
-    const seq = await headSeq();
-    const first = await tool(agent, 'submit_week', { weekStart: WEEK });
-    expect(first.data).toMatchObject({
-      submitted: false,
-      state: 'draft',
-      summary: { rows: 1, totalHundredths: 1200, dayHundredths: [800, 400, 0, 0, 0, 0, 0] },
-    });
-    expect(typeof first.data.confirm).toBe('string');
-    expect(await eventsAfter(seq)).toEqual([]);
-    const done = await tool(agent, 'submit_week', { weekStart: WEEK, confirm: first.data.confirm });
-    expect(done.data).toMatchObject({ submitted: true, state: 'submitted' });
-    const [event] = await eventsAfter(seq);
-    expect(event?.action).toBe('submission.submit');
-    expect(event?.after_json).toContain('"via":{"kind":"agent"');
-    expect((await weekOf(b.who, WEEK)).state).toBe('submitted');
-  });
-
-  it('a confirm made before a cell edit refuses, and so does a confirm for another week, person or form', async () => {
-    const { b, agent, rowId } = await setup();
-    await tool(agent, 'save_entries', { weekStart: WEEK, cells: cells(rowId, [0, 8]) });
-    const first = await tool(agent, 'submit_week', { weekStart: WEEK });
-    const member = await scopeFor(env.DB, b.who.personId);
-    await saveCells(
-      member,
-      env.DB,
-      noteKeks(),
-      WEEK,
-      [{ rowId, dow: 0, hundredths: 100, note: '' }],
-      T0,
-    );
-    const stale = await tool(agent, 'submit_week', {
-      weekStart: WEEK,
-      confirm: first.data.confirm,
-    });
-    expect(stale).toMatchObject({ isError: true, data: { error: 'conflict' } });
-    expect((await weekOf(b.who, WEEK)).state).toBe('draft');
-    const fresh = await tool(agent, 'submit_week', { weekStart: WEEK });
-    const forWeek = await tool(agent, 'submit_week', {
-      weekStart: '2026-01-12',
-      confirm: fresh.data.confirm,
-    });
-    expect(forWeek).toMatchObject({ isError: true, data: { error: 'invalid_input' } });
-    const stranger = await setup();
-    const theirs = await tool(stranger.agent, 'submit_week', {
-      weekStart: WEEK,
-      confirm: fresh.data.confirm,
-    });
-    expect(theirs).toMatchObject({ isError: true, data: { error: 'invalid_input' } });
-    const forged = String(fresh.data.confirm).replace(/.$/, (c) => (c === 'a' ? 'b' : 'a'));
-    for (const confirm of [forged, 'x', '1.2.3.4.5.6', '']) {
-      const bad = await tool(agent, 'submit_week', { weekStart: WEEK, confirm });
-      expect(bad, confirm).toMatchObject({ isError: true });
-    }
-    expect((await weekOf(b.who, WEEK)).state).toBe('draft');
   });
 });
