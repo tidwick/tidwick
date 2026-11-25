@@ -12,6 +12,7 @@ import {
   accepted,
   bearerRefusal,
   notAllowed,
+  rpcRefusal,
   RPC,
   rpcError,
   rpcResult,
@@ -19,7 +20,6 @@ import {
   toolResult,
   type RpcId,
 } from '../middleware/mcp-responses';
-import { errorResponse } from '../middleware/error-responses';
 import { authorize } from '../middleware/authz';
 import { TOOLS, toolRule, type ToolName, type ToolScope } from '../routes';
 import { INSTRUCTIONS } from './schemas';
@@ -72,6 +72,14 @@ function scopesOf(grant: GrantRow): readonly ToolScope[] {
   }
 }
 
+/**
+ * The one door every tool passes: its route-table row (the Action's, or the page's GET) judged for the agent's
+ * principal. Throws the catalog error that refuses it, so a tool wired to anything above a member's rights never runs.
+ */
+export function gateTool(name: ToolName, personId: string, now: number): void {
+  authorize(toolRule(name), agentPrincipal(personId), [], now);
+}
+
 async function callTool(
   env: Env,
   grant: GrantRow,
@@ -85,7 +93,7 @@ async function callTool(
   if (!scopesOf(grant).includes(needs)) return bearerRefusal('insufficient_scope', needs);
   const now = Date.now();
   try {
-    authorize(toolRule(name), agentPrincipal(grant.person_id), [], now);
+    gateTool(name, grant.person_id, now);
     const scope = await agentScopeFor(env.DB, grant);
     await touchGrant(env.DB, grant.id, now);
     const context = {
@@ -136,7 +144,7 @@ function discover(id: RpcId): Response {
 /** Answers one `/mcp` request; MCP off is a 404 and a GET is a 405, both before any token is read. */
 export async function handleMcp(request: Request): Promise<Response> {
   const env = currentEnv();
-  if (!env.MCP) return errorResponse('not_found');
+  if (!env.MCP) return rpcRefusal('not_found');
   if (request.method !== 'POST') return notAllowed();
   const header = request.headers.get('authorization');
   const token = bearerOf(header);
