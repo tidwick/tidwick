@@ -4,11 +4,14 @@ import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { formOriginFor } from '../../../test/helpers/browser';
 import { ORIGIN } from '../../../test/helpers/callers';
-import { personByEmail } from '../../db/people';
-import { adminGrants, rowCounts } from '../../db/test-support-bootstrap';
+import { adminGrants, claimedAs, rowCounts } from '../../db/test-support-bootstrap';
 import { currentEnv } from '../../lib/env';
 
-const WHO = { email: 'Ada@Example.test', name: 'Ada Example', firm: 'Example Studio' };
+const WHO = {
+  email: "O'Hara?1@Example.test",
+  name: "O'Hara ?1 ?2 --",
+  firm: "Firm'); DROP TABLE client;-- ?3",
+};
 
 function claim(
   fields: Record<string, string>,
@@ -65,14 +68,30 @@ describe('the first-admin claim page', () => {
     expect(await rowCounts(env.DB)).toEqual(before);
   });
 
-  it('SEC-48 the right token redirects to /enrol/<token>, which answers 200, and /setup is then 404 on GET and POST', async () => {
-    const response = await claim({ token: currentEnv().SETUP_TOKEN ?? '', ...WHO }, '203.0.113.52');
+  it('SEC-48 a newline in the name or firm is refused and writes nothing', async () => {
+    const before = await rowCounts(env.DB);
+    for (const bad of [{ name: 'Ada\nExample' }, { firm: 'Studio\nTwo' }]) {
+      const response = await claim(
+        { token: currentEnv().SETUP_TOKEN ?? '', ...WHO, ...bad },
+        '203.0.113.54',
+      );
+      expect(await response.text()).toContain('The input is not valid');
+    }
+    expect(await rowCounts(env.DB)).toEqual(before);
+  });
+
+  it('SEC-48 the right token, padded with whitespace, redirects to /enrol/<token>, which answers 200, and /setup is then 404 on GET and POST; hostile values are stored as given', async () => {
+    const response = await claim(
+      { token: ` ${currentEnv().SETUP_TOKEN ?? ''}\n`, ...WHO },
+      '203.0.113.52',
+    );
     expect([302, 303]).toContain(response.status);
     const next = new URL(response.headers.get('location') ?? '', ORIGIN);
     expect(next.pathname).toMatch(/^\/enrol\/[A-Za-z0-9_-]{43}$/);
     expect((await exports.default.fetch(new Request(next))).status).toBe(200);
     expect(await adminGrants(env.DB)).toBe(1);
-    expect((await personByEmail(env.DB, 'ada@example.test'))?.name).toBe('Ada Example');
+    const stored = await claimedAs(env.DB, "o'hara?1@example.test");
+    expect(stored).toEqual({ name: WHO.name, firm: WHO.firm });
     expect((await exports.default.fetch(new Request(`${ORIGIN}/setup`))).status).toBe(404);
     expect(
       (await claim({ token: currentEnv().SETUP_TOKEN ?? '', ...WHO }, '203.0.113.53')).status,

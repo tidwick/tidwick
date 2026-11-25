@@ -55,6 +55,19 @@ export async function adminGrants(db: D1Database): Promise<number> {
   return row?.n ?? 0;
 }
 
+/** The first admin's stored name and firm name, by email. */
+export async function claimedAs(
+  db: D1Database,
+  email: string,
+): Promise<{ name: string; firm: string } | null> {
+  return db
+    .prepare(
+      'SELECT p.name AS name, f.name AS firm FROM person p JOIN firm f ON f.id = p.firm_id WHERE p.email = ?1',
+    )
+    .bind(email)
+    .first<{ name: string; firm: string }>();
+}
+
 /** Runs a fresh bootstrap file for a new email and returns the row counts before and after it. */
 export async function seizeAttempt(
   db: D1Database,

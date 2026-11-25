@@ -88,10 +88,14 @@ describe('the setup gate', () => {
     NOTE_KEK: currentEnv().NOTE_KEK,
   };
 
-  it('SEC-48 a configured empty Worker without SETUP_TOKEN shows no form', async () => {
-    const c = context();
-    expect(await setup(next, source({ ...ready, SETUP_TOKEN: undefined }))(c, next)).toBe(reached);
-    expect(c.locals.setup).toMatchObject({ missing: [], claim: false, tokenSet: false });
+  it('SEC-48 a configured Worker without SETUP_TOKEN answers not_found and never reads the database', async () => {
+    const touched = vi.fn();
+    const gate = setup(
+      next,
+      source({ ...ready, SETUP_TOKEN: undefined, DB: { ...failingDb, prepare: touched } }),
+    );
+    expect((await refusal(() => gate(context(), next))).code).toBe('not_found');
+    expect(touched).not.toHaveBeenCalled();
   });
 
   it('SEC-48 a configured empty Worker with ORIGIN not this address shows the flag and no form', async () => {
@@ -99,7 +103,7 @@ describe('the setup gate', () => {
     const gate = setup(next, source({ ...ready, ORIGIN: 'https://elsewhere.example' }));
     expect(await gate(c, next)).toBe(reached);
     const shown = c.locals.setup as SetupReport;
-    expect([shown.claim, shown.tokenSet, shown.flags.length]).toEqual([false, true, 1]);
+    expect([shown.claim, shown.flags.length]).toEqual([false, 1]);
   });
 
   it('SEC-48 a configured empty Worker with SETUP_TOKEN opens the claim and hands on to the full chain', async () => {
@@ -107,7 +111,7 @@ describe('the setup gate', () => {
     const c = context();
     const gate = setup(() => claimed, source(ready));
     expect(await gate(c, next)).toBe(claimed);
-    expect(c.locals.setup).toMatchObject({ missing: [], claim: true, tokenSet: true });
+    expect(c.locals.setup).toMatchObject({ missing: [], claim: true });
   });
 
   it('SEC-47 a missing DB binding, or one whose read fails, keeps the old missing_binding error', async () => {

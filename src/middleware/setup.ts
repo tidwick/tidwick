@@ -1,8 +1,8 @@
 // Runs instead of session, CSRF and authz on `/setup` alone while the env does not parse: it renders only while a
 // binding is missing and the database is empty; with any history, or no readable database, it throws what
 // `readEnv` would have, so the page and log line are the old ones. It reports names, never a configured value.
-// Once the env parses, `/setup` is a 404 unless the database is empty; then the page is the first-admin claim and
-// runs the full chain (session, CSRF, authz) like every other form.
+// Once the env parses, `/setup` is a 404 without SETUP_TOKEN (and no database read), and a 404 unless the database
+// is empty; then the page is the first-admin claim and runs the full chain (session, CSRF, authz) like every other form.
 import type { MiddlewareHandler } from 'astro';
 import { instanceEmpty } from '../db/empty';
 import { s3Target } from '../backup/s3-copy';
@@ -16,7 +16,6 @@ export interface SetupReport {
   readonly flags: readonly string[];
   /** The claim form is open: the env parses, the database is empty, SETUP_TOKEN is set and ORIGIN is this address. */
   readonly claim: boolean;
-  readonly tokenSet: boolean;
 }
 
 export function setup(configured: MiddlewareHandler, source?: object): MiddlewareHandler {
@@ -24,17 +23,15 @@ export function setup(configured: MiddlewareHandler, source?: object): Middlewar
     const env = setupEnv(source);
     if (env === null) {
       const ready = source === undefined ? currentEnv() : readEnv(source);
-      if (!(await instanceEmpty(ready.DB))) fail('not_found');
+      if (ready.SETUP_TOKEN === null || !(await instanceEmpty(ready.DB))) fail('not_found');
       const { origin, hostname } = context.url;
-      const tokenSet = ready.SETUP_TOKEN !== null;
       const wrong = ready.ORIGIN !== origin;
       context.locals.setup = {
         missing: [],
         flags: wrong
           ? [`ORIGIN is not this address: set ORIGIN=${origin} and RP_ID=${hostname}`]
           : [],
-        claim: tokenSet && !wrong,
-        tokenSet,
+        claim: !wrong,
       };
       const response = await configured(context, next);
       if (response === undefined) fail('internal');
@@ -57,7 +54,7 @@ export function setup(configured: MiddlewareHandler, source?: object): Middlewar
     context.locals.cookies = [];
     context.locals.scope = null;
     context.locals.grants = [];
-    context.locals.setup = { missing: env.missing, flags, claim: false, tokenSet: false };
+    context.locals.setup = { missing: env.missing, flags, claim: false };
     return next();
   };
 }
