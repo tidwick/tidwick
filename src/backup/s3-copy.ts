@@ -47,7 +47,7 @@ const SHAPES: readonly [keyof CopySettings, (value: string) => boolean, string][
 export function s3Target(settings: CopySettings): S3Target | string {
   for (const [name, valid, shape] of SHAPES) {
     if (!valid(settings[name])) {
-      return `missing_binding: ${name} is unset or not ${shape}; set it as the runbook's "Copy backups off the account" says`;
+      return `missing_binding: ${name} is unset or not ${shape}; set it as docs/ARCHITECTURE.md, Deploy, says`;
     }
   }
   return {

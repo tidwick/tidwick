@@ -8,6 +8,7 @@ import {
   type LinkVerdict,
 } from '../lib/chain';
 import { fail } from '../lib/errors';
+import { errorText } from '../lib/error-text';
 import { PAGE_ROWS } from './backup-rows';
 import type { Scope } from './scope';
 
@@ -162,6 +163,12 @@ export function lostRace(error: unknown): boolean {
   return error instanceof Error && LOST_RACE.test(error.message);
 }
 
+/** A write that lost its race twice is a conflict; the log says why, since a permanent FK or CHECK failure looks the same. */
+function conflict(error: unknown): never {
+  console.error('tidwick: write conflict:', errorText(error));
+  fail('conflict');
+}
+
 /** Runs a read-then-batch write, and once more if a concurrent writer made its batch roll back; then `conflict`. */
 export async function retryOnce<T>(write: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
@@ -169,7 +176,7 @@ export async function retryOnce<T>(write: () => Promise<T>): Promise<T> {
       return await write();
     } catch (error) {
       if (!lostRace(error)) throw error;
-      if (attempt === 1) fail('conflict');
+      if (attempt === 1) conflict(error);
     }
   }
 }
@@ -192,7 +199,7 @@ export async function retryWhileOpen<T>(
     } catch (error) {
       if (!lostRace(error)) throw error;
       if (!(await stillOpen())) gone();
-      if (attempt === attempts) fail('conflict');
+      if (attempt === attempts) conflict(error);
     }
   }
 }

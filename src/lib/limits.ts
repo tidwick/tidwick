@@ -1,6 +1,6 @@
 // The platform budgets the code is checked against, and the product caps that keep a path inside them.
 
-/** D1 on Workers Paid allows this many queries per invocation (the runbook requires that plan). */
+/** D1 on Workers Paid allows this many queries per invocation (the Deploy prerequisites name that plan). */
 export const D1_QUERIES_PER_INVOCATION = 1000;
 
 /** D1 allows this many bound parameters in one statement. */

@@ -67,9 +67,9 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 
 Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `deploy`, `deploy-secrets`, `deploy-check`, `first-admin` (`env` is empty, or `demo` for the demo). What a recipe cannot do:
 
-- A Cloudflare account for the Worker, and a second account for backups, with its own bucket (a lock rule is required: a first-account takeover can otherwise overwrite the off-account copy; object lock shorter than its expiry, e.g. 35 days against 40) and an R2 token scoped to that one bucket.
+- A Cloudflare account on the Workers Paid plan for the Worker, and a second account for backups, with its own bucket (a lock rule is required: a first-account takeover can otherwise overwrite the off-account copy; object lock shorter than its expiry, e.g. 35 days against 40) and an R2 token scoped to that one bucket.
 - A domain. Set `ORIGIN`, `RP_ID`, `MAIL_FROM`, the D1 `database_id` and the route in `wrangler.jsonc`; leave `BACKUP_COPY` and `BACKUP_S3_REGION`.
-- Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain). Copy it out of `.wrangler/kit` and read it back before any data exists.
+- Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
 - `deploy-secrets` takes the four `BACKUP_S3_*` values on standard input.
 - The demo is the Worker `tidwick-demo`. Before its first CI deploy run `just deploy-secrets demo`, and move `demo.tidwick.dev` off any older `tidwick` Worker.
 - Demo only: `/demo` signs in as one of four seeded personas with a shared `DEMO_PASSWORD` secret (set it with `wrangler secret put`; 16 or more characters), for two hours and with no passkey prompt. It answers only while `DEMO_LOGIN` and `DEMO_BANNER` are `on`, the password is set and the seed's `demo` setting exists, otherwise 404. A 04:00 cron wipes the database and loads the seed again; `just demo-reset remote` still applies schema changes (ADR 0003).
@@ -81,7 +81,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (35 days; 40 off-account). The Worker deletes none.
-- No admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, and the deployed `SESSION_SECRET`.
+- No admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
 - Offboarding revokes sessions, passkeys and codes and is audited.
 - Migrations only move forward. Redeploy by merging your `wrangler.jsonc` edits into the new release.
 - Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.
@@ -90,7 +90,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 
 Numbers live in code; see the cited ADR.
 
-- Client erasure is not built; notes cannot be shredded.
+- Client erasure is not built; notes cannot be shredded. `client.erased_at` and `client_key.destroyed_at` are reserved; nothing writes them.
 - Enrolment links are shown once to the issuing admin, never emailed. `addPasskeyVerify` revokes no other passkey.
 - `NOTE_KEK` rotation re-wraps client keys, it does not re-key notes: an old KEK plus an old read still opens them. It lives in the same account as the data.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.

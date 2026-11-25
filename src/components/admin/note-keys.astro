@@ -21,7 +21,7 @@ const { csrf, status, rotating, perRun } = Astro.props;
   </h2>
   <p class="text-sm text-muted-foreground">
     Each client's notes are sealed under its own key, which is kept wrapped under the{' '}
-    <code>NOTE_KEK</code> secret. The runbook's rotate section replaces that secret.
+    <code>NOTE_KEK</code> secret. docs/ARCHITECTURE.md, Operate, says how to rotate that secret.
   </p>
   <p class="text-sm">
     {rotating

@@ -1,8 +1,8 @@
 // An estimate of the characters one backup would hold, read from the live tables, for the operator's watch query
-// in the runbook. It is one D1 statement and needs no backup. Each constant is the width of a backup
+// in docs/ARCHITECTURE.md. It is one D1 statement and needs no backup. Each constant is the width of a backup
 // line with every column null, measured with `encodeLine`, and each column adds its own length, so the figure
 // follows the real id and note lengths and lands within about 15% of what `ndjson()` counts. No imports but the
-// cap, so the runbook text can be checked against this file.
+// cap, so the operator can run it as-is.
 import { BACKUP_DUMP_CHARS } from '../lib/limits.ts';
 
 // Written with `char(34)`, the quote, and no quote of its own, so the statement sits inside single quotes in a
