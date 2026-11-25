@@ -20,6 +20,8 @@ import type { Scope } from './scope';
 import { archiveTaskCode, createTaskCode, renameTaskCode } from './task-codes';
 
 const kek = () => currentEnv().NOTE_KEK;
+// `addAll` appends `assignments.add`; `unlinkSso`'s event and the agents it ends are asserted in src/auth/sso-revoke.test.ts.
+const EXEMPT = new Set(['assignments.addAll', 'people.unlinkSso']);
 const REVOKES = [
   'people.revokeCredentials',
   'people.revokeSessions',
@@ -236,9 +238,7 @@ describe('every admin write is audited once', () => {
     const covered = new Set(cases.map((c) => c.action));
     const owned = /^(clients|projects|taskCodes|assignments|people)\./;
     const missing = Object.entries(AUDIT_OF)
-      .filter(
-        ([name, events]) => owned.test(name) && events !== 'none' && name !== 'assignments.addAll',
-      )
+      .filter(([name, events]) => owned.test(name) && events !== 'none' && !EXEMPT.has(name))
       .map(([name]) => name)
       .filter((name) => !covered.has(name));
     expect(missing).toEqual([]);

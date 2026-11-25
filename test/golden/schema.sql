@@ -146,6 +146,22 @@ CREATE TABLE import_batch (
   finished_at INTEGER
 , mapping_hash TEXT NOT NULL DEFAULT '') STRICT;
 
+-- table oidc_flow
+CREATE TABLE oidc_flow (
+  id_hash TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  purpose TEXT NOT NULL CHECK (purpose IN ('login', 'enrol', 'step_up', 'link')),
+  person_id TEXT REFERENCES person (id),
+  session_hash TEXT,
+  enrol_hash TEXT,
+  verifier TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  return_to TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+) STRICT;
+
 -- table person
 CREATE TABLE person (
   id TEXT PRIMARY KEY,
@@ -155,6 +171,19 @@ CREATE TABLE person (
   external_code TEXT,
   created_at INTEGER NOT NULL,
   offboarded_at INTEGER
+) STRICT;
+
+-- table person_identity
+CREATE TABLE person_identity (
+  id TEXT PRIMARY KEY,
+  person_id TEXT NOT NULL REFERENCES person (id),
+  provider TEXT NOT NULL,
+  issuer TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  email TEXT,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER,
+  revoked_at INTEGER
 ) STRICT;
 
 -- table person_role
@@ -285,8 +314,17 @@ CREATE INDEX credential_person ON credential (person_id);
 -- index enrolment_person
 CREATE INDEX enrolment_person ON enrolment (person_id);
 
+-- index oidc_flow_expires
+CREATE INDEX oidc_flow_expires ON oidc_flow (expires_at);
+
 -- index person_firm
 CREATE INDEX person_firm ON person (firm_id);
+
+-- index person_identity_live
+CREATE UNIQUE INDEX person_identity_live ON person_identity (issuer, subject) WHERE revoked_at IS NULL;
+
+-- index person_identity_one
+CREATE UNIQUE INDEX person_identity_one ON person_identity (person_id, issuer) WHERE revoked_at IS NULL;
 
 -- index project_number
 CREATE UNIQUE INDEX project_number ON project (number) WHERE number IS NOT NULL;
