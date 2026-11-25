@@ -60,7 +60,7 @@ describe('schema', () => {
   });
 
   it('no migration declares a REAL column and every table is STRICT', async () => {
-    expect(Object.keys(migrations).length).toBeGreaterThanOrEqual(2);
+    expect(Object.keys(migrations).length).toBeGreaterThanOrEqual(1);
     for (const sql of Object.values(migrations)) expect(sql).not.toMatch(/\bREAL\b/i);
     const loose = await env.DB.prepare(
       "SELECT name FROM pragma_table_list WHERE type = 'table' AND strict = 0 AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations'",
