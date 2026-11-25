@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('the home page offers the sign-in and recovery links @smoke', async ({ page }) => {
+test('the home page offers the sign-in and recovery links', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'tidwick' })).toBeVisible();
   await page.getByRole('link', { name: 'Sign in' }).click();

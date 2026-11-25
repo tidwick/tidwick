@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { finishEnrol, startEnrol, tokenOf } from './enrol';
 
-test('a person enrols a passkey, keeps the recovery codes, signs out and signs back in @smoke', async ({
+test('a person enrols a passkey, keeps the recovery codes, signs out and signs back in', async ({
   page,
 }, info) => {
   await startEnrol(page, tokenOf(info.project.name));
