@@ -1,5 +1,5 @@
 // A client's data keys for one request. A key is unwrapped on first use, under whichever KEK its row names, and
-// held only by the ring the caller made, so it lives no longer than the request (DESIGN: Notes). Only this file,
+// held only by the ring the caller made, so it lives no longer than the request. Only this file,
 // `key-rewrap.ts` and `src/lib/note-crypto.ts` see one.
 import { fail } from '../lib/errors';
 import { kekFor, unwrapClientKey, type NoteKeks } from '../lib/note-crypto';

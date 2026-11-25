@@ -1,4 +1,4 @@
-// The two CSV column mappings an adopter configures in settings (P32) and their zod schemas. The neutral samples
+// The two CSV column mappings an adopter configures in settings and their zod schemas. The neutral samples
 // used until one is saved are in `csv-samples.ts`.
 import { z } from 'astro/zod';
 

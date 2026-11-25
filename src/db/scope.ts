@@ -1,4 +1,4 @@
-// The caller's scope (P14). Only this file can build a Scope, so a scoped query cannot be called without one.
+// The caller's scope. Only this file can build a Scope, so a scoped query cannot be called without one.
 import { fail } from '../lib/errors';
 
 declare const brand: unique symbol;

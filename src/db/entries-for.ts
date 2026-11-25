@@ -1,7 +1,7 @@
 // An accounting admin's edits to another person's week, in any state and so through the lock. Each changed cell is
 // a compare-and-set on the hours and note ciphertext it read, followed in the same batch by one audit event with
 // those values before and after; a write landing in between makes the batch roll back with no event, and it is
-// tried once more on a fresh read (DESIGN: Submit, approve, lock).
+// tried once more on a fresh read.
 import { fail } from '../lib/errors';
 import { DAY_CAP } from '../lib/hours';
 import type { NoteKeks } from '../lib/note-crypto';

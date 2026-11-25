@@ -1,5 +1,5 @@
 // The week's submission states and the one table of the changes between them. Any pair not in the table is the
-// catalog's `bad_transition`; the route table decides who may send each event (DESIGN: Submit, approve, lock).
+// catalog's `bad_transition`; the route table decides who may send each event.
 import { fail } from './errors';
 import type { WeekState } from './week';
 

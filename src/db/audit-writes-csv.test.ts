@@ -1,5 +1,5 @@
 // One audit event per CSV Action that writes, none for the one that only reads; the cases audit.test.ts requires
-// for the `import` and `settings` Actions. Exports and reports are proven in src/actions/export.test.ts.
+// for the `import` and `settings` Actions. Exports and reports are proven in src/actions/export.app.test.ts.
 import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { IMPORT_MAPPING, PEOPLE, setupImport } from '../../test/helpers/import-setup';

@@ -1,4 +1,4 @@
-// The one module that reads bindings, variables and secrets (P10). Parsed once per env object.
+// The one module that reads bindings, variables and secrets. Parsed once per env object.
 import { env as workersEnv } from 'cloudflare:workers';
 import { fail } from './errors';
 import type { NoteKeks } from './note-crypto';
