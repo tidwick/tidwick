@@ -26,9 +26,7 @@ describe('SEC-09 the agent principal passes member rows and nothing above them',
     for (const [name, rule] of above) {
       expect(() => {
         authorize(rule, principal, [], NOW);
-      }, name).toThrow(
-        expect.objectContaining({ code: expect.stringMatching(/^(forbidden|step_up_required)$/) }),
-      );
+      }, name).toThrow(/Not allowed|passkey/);
     }
   });
 

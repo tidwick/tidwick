@@ -76,11 +76,8 @@ describe('the 2026 headers and versions', () => {
   it('refuses a missing or mismatched header with -32020 on 400, whichever one it is', async () => {
     const who = await agent();
     const call = rpc2026('tools/call', { name: 'get_week', arguments: { weekStart: WEEK } });
-    const wrong = (h: Record<string, string>, drop: string) => {
-      const next = { ...h };
-      delete next[drop];
-      return next;
-    };
+    const wrong = (h: Record<string, string>, drop: string) =>
+      Object.fromEntries(Object.entries(h).filter(([key]) => key !== drop));
     const cases: Record<string, string>[] = [
       wrong(call.headers, 'mcp-protocol-version'),
       wrong(call.headers, 'mcp-method'),
@@ -106,7 +103,10 @@ describe('the 2026 headers and versions', () => {
     expect(inBody.status).toBe(400);
     expect(error(inBody.body)).toMatchObject({
       code: -32022,
-      data: { requested: '2099-01-01', supported: expect.arrayContaining([MODERN, '2025-06-18']) },
+      data: {
+        requested: '2099-01-01',
+        supported: [MODERN, '2025-11-25', '2025-06-18', '2025-03-26'],
+      },
     });
     const inHeader = await mcp(who.token, rpc2025('tools/list'), {
       headers: { 'mcp-protocol-version': '1999-01-01' },

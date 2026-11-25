@@ -1,6 +1,6 @@
 // The /mcp gate through the built Worker: every way a bearer can be wrong, the scope each tool needs, the names a
 // model might try that are not tools, and that the person's own pages and Actions never take a bearer.
-import { env, exports } from 'cloudflare:workers';
+import { exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import {
   call2025,
@@ -11,7 +11,7 @@ import {
   type Agent,
   type AgentOptions,
 } from '../../test/helpers/agent';
-import { ADMIN, ACCOUNTING } from '../../test/helpers/auth';
+import { ADMIN, ACCOUNTING, offboard } from '../../test/helpers/auth';
 import { booking, WEEK } from '../../test/helpers/booking';
 import { caller, getPage, ORIGIN, rpc } from '../../test/helpers/callers';
 import { eventsAfter, headSeq } from '../../test/helpers/reference';
@@ -64,9 +64,7 @@ describe('a bearer that is not a live access token is a 401 with a challenge and
 
   it('an offboarded person’s token fails at the tool, with no data', async () => {
     const who = await agent();
-    await env.DB.prepare('UPDATE person SET offboarded_at = 1 WHERE id = ?1')
-      .bind(who.personId)
-      .run();
+    await offboard(who.personId);
     const response = await tool(who, 'get_week', { weekStart: WEEK });
     expect(response).toMatchObject({ isError: true, data: { error: 'forbidden' } });
   });
@@ -92,7 +90,7 @@ describe('the scope a tool needs', () => {
   });
 
   it('a grant with no scopes, or only an unknown one, can call nothing', async () => {
-    for (const scopes of [[], ['admin'], ['approve']]) {
+    for (const scopes of [[], ['root'], ['approve']]) {
       const who = await agent({ scopes });
       for (const name of Object.keys(TOOLS)) {
         expect((await mcp(who.token, call2025(name, ARGS[name]))).status, name).toBe(403);
