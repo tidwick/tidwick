@@ -1,5 +1,4 @@
-// The error catalog (P8): the only place an Error is constructed. Actions and routes throw these alone.
-// It imports nothing from Astro or the edge; the response builders are in src/middleware/error-responses.ts.
+// The error catalog (P8): the only source of error codes and messages. Actions and routes throw these alone.
 
 export const CATALOG = {
   missing_binding: {

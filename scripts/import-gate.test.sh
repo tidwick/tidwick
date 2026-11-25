@@ -29,4 +29,14 @@ probe src/db/leak.ts "import { env } from 'cloudflare:workers';"
 probe src/auth/leak.ts "import { errorPage } from '../middleware/error-responses';"
 probe src/backup/leak.ts "export { forAction } from '../actions/context';"
 probe src/lib/leak.ts "const page = await import('../pages/_csv');"
+probe src/lib/leak.ts "import { x } from '../components/Card';"
+probe src/lib/leak.ts "import x from '../layouts/Base';"
+probe src/lib/leak.ts "import { y } from '../worker';"
+probe src/db/leak.tsx "import { z } from '../pages/index';"
+probe src/lib/leak.astro "import { z } from '../middleware/auth';"
+probe src/db/leak.ts $'import {\n  forAction,\n} from \'../middleware/error-responses\';'
+probe src/lib/leak.ts $'export {\n  forAction } from \'../middleware/error-responses\';'
+probe src/lib/leak.ts $'const page = await import(\n  \'../pages/_csv\'\n);'
+probe src/lib/envx.ts "import { env } from 'cloudflare:workers';"
+probe src/lib/mail.ts "import { env } from 'cloudflare:workers';"
 echo "PASS lint-import-gate self-test"
