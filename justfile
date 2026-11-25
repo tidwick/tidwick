@@ -150,8 +150,8 @@ restore file identity persist=".wrangler/restore":
     persist="$(./scripts/restore-target.sh {{ quote(persist) }})"
     rm -rf "$persist" && mkdir -p -m 700 "$persist"
     node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$persist/restore.sql"
-    just db-migrate --persist-to "$persist" > "$persist/migrate.log" 2>&1 || { cat "$persist/migrate.log"; echo "FAIL restore: migrations did not apply to the fresh D1"; exit 1; }
-    npx --no-install wrangler d1 execute tidwick --local --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
+    just db-migrate --config test/wrangler.test.jsonc --persist-to "$persist" > "$persist/migrate.log" 2>&1 || { cat "$persist/migrate.log"; echo "FAIL restore: migrations did not apply to the fresh D1"; exit 1; }
+    npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
     echo "PASS restore: loaded into the local D1 at $persist"
 
 restore-drill: backup-fixture
