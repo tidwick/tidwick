@@ -46,6 +46,7 @@ const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
   'people.issueEnrolment': [OUT, NO, NO, OK, OK, NO, NO],
   'people.reenrol': [OUT, NO, NO, OK, OK, NO, NO],
   'people.unlock': [OUT, NO, NO, OK, OK, NO, NO],
+  'people.unlinkSso': [OUT, NO, NO, OK, OK, NO, NO],
   'people.setRoles': [OUT, NO, NO, OK, OK, NO, NO],
   'people.offboard': [OUT, NO, NO, OK, OK, NO, NO],
   'submission.submit': [OUT, OK, OK, OK, OK, NO, OK],

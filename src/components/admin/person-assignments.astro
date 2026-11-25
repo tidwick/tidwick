@@ -1,0 +1,81 @@
+---
+import { actions } from 'astro:actions';
+import type { PersonAssignment } from '../../db/people-access';
+import { Badge } from '../ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../ui/table';
+import Empty from './empty.astro';
+import PostForm from './post-form.astro';
+// The projects a person is assigned to, and for an active person the one-click assignment to every live project.
+interface Props {
+  csrf: string;
+  person: { id: string; name: string };
+  assigned: PersonAssignment[];
+  active: boolean;
+}
+const { csrf, person, assigned, active } = Astro.props;
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+---
+
+<section aria-labelledby="assign-h" class="grid gap-3">
+  <h2 id="assign-h" class="text-lg font-semibold">
+    Assignments
+  </h2>
+  {assigned.length === 0 ? (
+    <Empty title="Not assigned to any project">
+      Open a project and assign {person.name} there. A member sees only the projects they are
+      assigned to.
+    </Empty>
+  ) : (
+    <Table aria-label={`Projects ${person.name} is assigned to`}>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Project</TableHead>
+          <TableHead>Client</TableHead>
+          <TableHead>Assigned</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {assigned.map((a) => (
+          <TableRow>
+            <TableRowHead>
+              <a class="underline underline-offset-2" href={`/projects/${a.project_id}`}>
+                {a.project}
+              </a>
+              {a.number && (
+                <span class="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
+                  {a.number}
+                </span>
+              )}
+              {a.archived === 1 && (
+                <Badge variant="secondary" className="ml-2">
+                  Archived
+                </Badge>
+              )}
+            </TableRowHead>
+            <TableCell data-label="Client">{a.client}</TableCell>
+            <TableCell data-label="Assigned" className="tabular-nums text-muted-foreground">
+              {day(a.assigned_at)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )}
+  {active && (
+    <PostForm
+      action={actions.assignments.addAll}
+      csrf={csrf}
+      label="Assign to all live projects"
+      tone="plain"
+      fields={{ personId: person.id }}
+    />
+  )}
+</section>

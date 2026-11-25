@@ -1,0 +1,21 @@
+---
+import { SECONDARY } from './classes';
+import type { SsoLink } from './sso-links';
+// Buttons that are links, one per provider; nothing at all when there are none.
+interface Props {
+  links: SsoLink[];
+}
+const { links } = Astro.props;
+---
+
+{links.length > 0 && (
+  <ul class="grid gap-3" data-sso-links>
+    {links.map((l) => (
+      <li class="grid">
+        <a href={l.href} class:list={[SECONDARY, 'w-full']}>
+          {l.text}
+        </a>
+      </li>
+    ))}
+  </ul>
+)}

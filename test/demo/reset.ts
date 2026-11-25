@@ -23,6 +23,8 @@ export const DROP_ORDER = [
   'auth_challenge',
   'agent_token',
   'agent_grant',
+  'oidc_flow',
+  'person_identity',
   'session',
   'enrolment',
   'credential',

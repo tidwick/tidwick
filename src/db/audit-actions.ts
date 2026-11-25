@@ -23,6 +23,7 @@ export const AUDIT_EVENTS = [
   'people.setRoles',
   'people.offboard',
   'people.unlock',
+  'people.unlinkSso',
   'clients.create',
   'clients.update',
   'clients.archive',
@@ -54,6 +55,7 @@ const OFFBOARD: readonly AuditEvent[] = [
   'people.offboard',
   'agents.revoke',
   'people.revokeCredentials',
+  'people.unlinkSso',
   'people.revokeSessions',
   'people.revokeCodes',
   'people.revokeEnrolments',
@@ -62,6 +64,7 @@ const REENROL: readonly AuditEvent[] = [
   'people.reenrol',
   'agents.revoke',
   'people.revokeCredentials',
+  'people.unlinkSso',
   'people.revokeSessions',
   'people.revokeCodes',
   'people.revokeEnrolments',
@@ -117,6 +120,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'people.issueEnrolment': ['people.issueEnrolment', 'people.revokeEnrolments'],
   'people.reenrol': REENROL,
   'people.unlock': ['people.unlock'],
+  'people.unlinkSso': ['people.unlinkSso', 'agents.revoke'],
   'people.setRoles': ['people.setRoles'],
   'people.offboard': OFFBOARD,
   'settings.save': ['settings.save'],
@@ -137,10 +141,12 @@ export const AUDIT_OF_AGENT: Readonly<Record<string, readonly AuditEvent[] | 'no
   'submission.submit': ['submission.submit'],
 };
 
-/** The POST page routes that append an event, keyed by route pattern. */
+/** The page routes that append an event, keyed by route pattern: POST ones, and the SSO callback. */
 export const AUDIT_OF_PAGES: Readonly<Record<string, readonly AuditEvent[]>> = {
   '/export/[client].csv': ['export.clientCsv'],
   '/reports/[kind].csv': ['reports.download'],
+  // A GET: the provider's redirect finishes an enrolment, which an enrolment link's use audits. A sign-in and a step-up are no event, as with a passkey.
+  '/auth/sso/callback': ['auth.enrol', 'people.revokeEnrolments'],
 };
 
 /** Events written by code that is neither an Action nor a page: the first-run bootstrap and the operator rescue. */

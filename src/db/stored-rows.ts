@@ -3,6 +3,8 @@
 export type StoredTable =
   | 'audit_event'
   | 'credential'
+  | 'person_identity'
+  | 'oidc_flow'
   | 'enrolment'
   | 'recovery_code'
   | 'recovery_attempt'
@@ -14,6 +16,8 @@ export type StoredTable =
 const READ: Record<StoredTable, string> = {
   audit_event: 'SELECT * FROM audit_event ORDER BY seq',
   credential: 'SELECT * FROM credential',
+  person_identity: 'SELECT * FROM person_identity',
+  oidc_flow: 'SELECT * FROM oidc_flow',
   enrolment: 'SELECT * FROM enrolment',
   recovery_code: 'SELECT * FROM recovery_code',
   recovery_attempt: 'SELECT * FROM recovery_attempt',

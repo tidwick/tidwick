@@ -14,6 +14,36 @@ const DOM = ['src/**/*.dom.test.{ts,tsx}', 'test/**/*.dom.test.ts'];
 // Fresh dummies per run: no test reads a real secret, and none can depend on a fixed value. The backup
 // identity is a test-only binding so the backup tests can decrypt what the scheduled handler wrote.
 const backupIdentity = await generateX25519Identity();
+// Three tenants of one provider (the third is only ever down or misconfigured, so no test caches its metadata) and
+// Google (restricted to one Workspace domain), so a test can cross them; their secrets are fresh dummies too. The demo project sets none, which is how SSO is off by default.
+const ssoProviders = JSON.stringify([
+  {
+    id: 'tenant-a',
+    label: 'Tenant A',
+    issuer: 'https://idp-a.example/a/v2.0',
+    client_id: 'client-a',
+  },
+  {
+    id: 'tenant-b',
+    label: 'Tenant B',
+    issuer: 'https://idp-b.example/b/v2.0',
+    client_id: 'client-b',
+  },
+  {
+    id: 'tenant-c',
+    label: 'Tenant C',
+    issuer: 'https://idp-c.example/c/v2.0',
+    client_id: 'client-c',
+  },
+  { id: 'google', client_id: 'client-g', hd: 'practice.example' },
+]);
+const ssoSecrets = () => ({
+  SSO_SECRET_TENANT_A: randomBytes(24).toString('base64url'),
+  SSO_SECRET_TENANT_B: randomBytes(24).toString('base64url'),
+  SSO_SECRET_TENANT_C: randomBytes(24).toString('base64url'),
+  SSO_SECRET_GOOGLE: randomBytes(24).toString('base64url'),
+});
+
 const secrets = async () => ({
   SESSION_SECRET: randomBytes(32).toString('base64url'),
   NOTE_KEK: randomBytes(32).toString('base64'),
@@ -61,6 +91,8 @@ export default defineConfig({
                 // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
                 MCP: 'on',
                 MCP_NOTES: '',
+                SSO_PROVIDERS: ssoProviders,
+                ...ssoSecrets(),
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),
               },
             },

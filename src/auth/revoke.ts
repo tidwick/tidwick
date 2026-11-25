@@ -1,8 +1,9 @@
-// Revoking a person's access: every credential, session, unused recovery code, open link and agent grant, each audited.
+// Revoking a person's access: every credential, identity, session, unused recovery code, open link and agent grant, each audited.
 import { liveGrantIdsOf, revokeGrantsOf } from '../db/agent-grants';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
 import { activeCredentialsOf, revokeCredentialsOf } from '../db/credentials';
 import { closeEnrolmentsOf, openEnrolmentCount } from '../db/enrolments';
+import { liveIdentitiesOf, revokeIdentitiesOf } from '../db/identities';
 import { personById } from '../db/people';
 import { closeCodesOf, unusedCodeCount } from '../db/recovery-codes';
 import { requireAll, type Scope } from '../db/scope';
@@ -35,7 +36,32 @@ export async function recordGrantRevocation(
   );
 }
 
-/** Adds the four revocations to `batch`, each followed by an event that lands only if it changed what was read. */
+/**
+ * Adds a person's identities' revocation to `batch`, with a `people.unlinkSso` event only when there are identities
+ * to revoke, so a person who never used single sign-on adds no event.
+ */
+async function recordIdentityRevocation(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  now: number,
+): Promise<void> {
+  const identities = (await liveIdentitiesOf(db, personId)).map((i) => i.id);
+  if (identities.length === 0) return;
+  await batch.record(
+    revokeIdentitiesOf(db, personId, now),
+    {
+      at: now,
+      action: 'people.unlinkSso',
+      clientId: null,
+      target: `person:${personId}`,
+      before: { identities },
+    },
+    identities.length,
+  );
+}
+
+/** Adds every revocation to `batch`, each followed by an event that lands only if it changed what was read. */
 export async function recordRevocations(
   batch: AuditedBatch,
   db: D1Database,
@@ -67,6 +93,7 @@ export async function recordRevocations(
     { ...event, action: 'people.revokeEnrolments', before: { open: links } },
     links,
   );
+  await recordIdentityRevocation(batch, db, personId, now);
   await recordGrantRevocation(batch, db, personId, now);
 }
 

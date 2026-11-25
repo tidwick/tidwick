@@ -107,7 +107,7 @@ describe('SEC-15 nightly backup', () => {
       { queries: BACKUP_TABLES.length },
     );
     expect(run.status).toBe('failed');
-    expect(run.error).toMatch(/^query budget: \d+ statements needed, 19 allowed$/);
+    expect(run.error).toMatch(/^query budget: \d+ statements needed, 20 allowed$/);
     expect(await stored(objectKey(later))).toBeNull();
   });
 

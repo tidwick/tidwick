@@ -1,7 +1,7 @@
 ---
 import { Badge } from '../ui/badge';
 import type { Access } from '../../db/people-access';
-// How a person gets in, in one word: offboarded, signs in with a passkey, has a link waiting, or is not enrolled yet. Not enrolled is a heads-up, not a fault, so it takes the notice tone; the danger tone is kept for a fault.
+// How a person gets in, in one word: offboarded, signs in with a passkey or an identity provider, has a link waiting, or is not enrolled yet. Not enrolled is a heads-up, not a fault, so it takes the notice tone; the danger tone is kept for a fault.
 interface Props {
   access: Access;
   offboarded: boolean;
@@ -15,6 +15,8 @@ const { access, offboarded } = Astro.props;
   <Badge variant="outline">
     {access.passkeys === 1 ? '1 passkey' : `${String(access.passkeys)} passkeys`}
   </Badge>
+) : access.sso > 0 ? (
+  <Badge variant="outline">Single sign-on</Badge>
 ) : access.openLinks > 0 ? (
   <Badge variant="outline">Link waiting</Badge>
 ) : (

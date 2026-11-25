@@ -35,7 +35,8 @@ const HTML_ESCAPES: Record<string, string> = {
   '"': '&quot;',
   "'": '&#39;',
 };
-const escaped = (text: string): string => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
+export const escaped = (text: string): string =>
+  text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
 
 /** Where a refused page sends the person next, when that is not their account or the sign-in page. */
 export interface PageLink {

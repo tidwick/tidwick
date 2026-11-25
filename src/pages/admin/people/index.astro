@@ -157,7 +157,7 @@ const roleNames = (roles: string) =>
               className="max-md:justify-end max-md:before:content-none"
             >
               <AccessBadge
-                access={access.get(person.id) ?? { passkeys: 0, openLinks: 0 }}
+                access={access.get(person.id) ?? { passkeys: 0, sso: 0, openLinks: 0 }}
                 offboarded={person.offboarded_at !== null}
               />
             </TableCell>

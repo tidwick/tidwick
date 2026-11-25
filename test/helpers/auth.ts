@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { expect } from 'vitest';
 import { completeEnrolment, enrolOptions, issueEnrolment } from '../../src/auth/enrol';
 import { insertCredential } from '../../src/db/credentials';
+import { insertIdentity } from '../../src/db/identities';
 import { GRANTS, type Grant } from '../../src/db/roles';
 import { scopeFor, type Scope } from '../../src/db/scope';
 import { storedRows, type StoredTable } from '../../src/db/stored-rows';
@@ -51,6 +52,19 @@ export async function withPasskey(personId: string, given?: string): Promise<str
   const id = given ?? `passkey-${String(serial).padStart(4, '0')}`;
   const row = { id, personId, publicKey: new Uint8Array([1]), counter: 0, transports: [] };
   await insertCredential(env.DB, row, T0).run();
+  return id;
+}
+
+/** Links a person to an identity at an identity provider, as an enrolment would have; returns the identity's id. */
+export async function withIdentity(
+  personId: string,
+  issuer: string,
+  subject: string,
+  email: string | null = null,
+): Promise<string> {
+  const id = crypto.randomUUID();
+  const row = { id, personId, provider: 'tenant-a', issuer, subject, email };
+  await insertIdentity(env.DB, row, T0).run();
   return id;
 }
 

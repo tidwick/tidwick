@@ -26,10 +26,11 @@ describe('who can sign in, and what they are assigned to', () => {
       expiresAt: T0 - HOUR,
     }).run();
     const access = await accessByPerson(env.DB, T0);
-    expect(access.get(enrolled.id)).toEqual({ passkeys: 2, openLinks: 0 });
-    expect(access.get(waiting.id)).toEqual({ passkeys: 0, openLinks: 1 });
-    expect(access.get(bare.id) ?? { passkeys: 0, openLinks: 0 }).toEqual({
+    expect(access.get(enrolled.id)).toEqual({ passkeys: 2, sso: 0, openLinks: 0 });
+    expect(access.get(waiting.id)).toEqual({ passkeys: 0, sso: 0, openLinks: 1 });
+    expect(access.get(bare.id) ?? { passkeys: 0, sso: 0, openLinks: 0 }).toEqual({
       passkeys: 0,
+      sso: 0,
       openLinks: 0,
     });
   });

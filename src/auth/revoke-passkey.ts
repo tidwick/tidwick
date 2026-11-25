@@ -1,6 +1,9 @@
-// A person removing one of their own passkeys, audited, and with it every agent grant; the last passkey stays.
+// A person removing one of their own passkeys, audited, and with it every agent grant. Their last passkey goes only
+// if they keep a linked identity, and not at all if it makes them the last admin who can sign in (ADR 0003).
 import { auditedBatch, retryOnce } from '../db/audit';
+import { isLastAdmin } from '../db/admins';
 import { activeCredentialsOf, revokeCredential } from '../db/credentials';
+import { liveIdentitiesOf } from '../db/identities';
 import type { Scope } from '../db/scope';
 import { fail } from '../lib/errors';
 import { recordGrantRevocation } from './revoke';
@@ -15,7 +18,10 @@ export async function revokeOwnPasskey(
   await retryOnce(async () => {
     const live = (await activeCredentialsOf(db, personId)).map((c) => c.id);
     if (!live.includes(credentialId)) fail('not_found');
-    if (live.length < 2) fail('last_passkey');
+    if (live.length < 2) {
+      if ((await liveIdentitiesOf(db, personId)).length === 0) fail('last_method');
+      if (await isLastAdmin(db, personId)) fail('last_admin');
+    }
     const batch = await auditedBatch(scope, db);
     await batch.record(
       revokeCredential(db, personId, credentialId, now),

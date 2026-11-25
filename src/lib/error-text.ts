@@ -4,6 +4,8 @@
 // backup's Node drill runs it.
 
 const NAME = /^[A-Za-z]\w{0,39}$/;
+/** A provider's client secret: the name is built from an operator-chosen id of `[a-z0-9-]{1,24}`. */
+const SSO_SECRET = /^SSO_SECRET_[A-Z0-9_]{1,24}$/;
 /** The names `env.ts` parses; a `missing_binding` detail is logged only when it is one of them. */
 export const BINDING_NAMES: ReadonlySet<string> = new Set([
   'DB',
@@ -19,6 +21,7 @@ export const BINDING_NAMES: ReadonlySet<string> = new Set([
   'DEMO_LOGIN',
   'MCP',
   'MCP_NOTES',
+  'SSO_PROVIDERS',
   'BACKUP_RECIPIENT',
   'SESSION_SECRET',
   'NOTE_KEK',
@@ -37,7 +40,9 @@ export function errorText(error: unknown): string {
   const { code, detail } = error as { code?: unknown; detail?: unknown };
   if (name === 'AppError' && typeof code === 'string' && NAME.test(code)) {
     const named =
-      code === 'missing_binding' && typeof detail === 'string' && BINDING_NAMES.has(detail);
+      code === 'missing_binding' &&
+      typeof detail === 'string' &&
+      (BINDING_NAMES.has(detail) || SSO_SECRET.test(detail));
     return named ? `${code}: ${detail}` : code;
   }
   const known = FIXED.map((pattern) => pattern.exec(error.message)?.[0]).filter(

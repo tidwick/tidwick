@@ -19,8 +19,13 @@ export interface Session {
 }
 
 /** The attributes every tidwick cookie carries; `__Host-` requires Secure, Path=/ and no Domain. */
-export function hostCookie(name: string, value: string, maxAgeSeconds: number): string {
-  return `${name}=${value}; Path=/; Max-Age=${String(maxAgeSeconds)}; HttpOnly; Secure; SameSite=Strict`;
+export function hostCookie(
+  name: string,
+  value: string,
+  maxAgeSeconds: number,
+  sameSite: 'Strict' | 'Lax' = 'Strict',
+): string {
+  return `${name}=${value}; Path=/; Max-Age=${String(maxAgeSeconds)}; HttpOnly; Secure; SameSite=${sameSite}`;
 }
 
 export function sessionCookie(rawId: string, lifeMs = ABSOLUTE_MS): string {

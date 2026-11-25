@@ -2,7 +2,7 @@ Architecture decision records. An ADR records a decision costly to reverse that 
 
 - [0001](0001-cloudflare-astro-platform.md) Cloudflare only, Astro, one React island
 - [0002](0002-agpl-single-tenant.md) AGPL reference, single-tenant per firm
-- [0003](0003-passkey-auth-and-sessions.md) Passkey-only login and opaque sessions
+- [0003](0003-passkey-auth-and-sessions.md) Passkey and SSO login and opaque sessions
 - [0004](0004-authorization-table.md) One authorization table with step-up
 - [0005](0005-data-and-note-encryption.md) One segmented D1 store, sealed notes
 - [0006](0006-audit-log.md) Append-only, hash-chained audit log

@@ -4,7 +4,7 @@
 
 Weekly timesheet for professional-services firms on Cloudflare Workers, D1 and R2. AGPL-3.0 reference implementation: a technical person deploys it into the firm's own Cloudflare account; nobody hosts it. Version 0, author-tested only.
 
-Week grid, clients and projects, three roles, submit/approve/lock, audit log, CSV export and import, passkey login, per-client note encryption, nightly encrypted off-account backup.
+Week grid, clients and projects, three roles, submit/approve/lock, audit log, CSV export and import, passkey login and optional single sign-on (OpenID Connect), per-client note encryption, nightly encrypted off-account backup.
 
 ## Never
 

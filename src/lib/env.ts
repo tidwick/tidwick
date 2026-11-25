@@ -3,6 +3,7 @@ import { env as workersEnv } from 'cloudflare:workers';
 import { fail } from './errors';
 import type { NoteKeks } from './note-crypto';
 import { isAgeRecipient, isNoteKek, isSessionSecret } from './secrets';
+import { ssoProviders, type SsoProvider } from './sso-config';
 
 export interface Env {
   DB: D1Database;
@@ -26,6 +27,8 @@ export interface Env {
   MCP: boolean;
   /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
   MCP_NOTES: 'off' | 'read';
+  /** The identity providers `SSO_PROVIDERS` allows, each with its `SSO_SECRET_<ID>`; none turns every `/auth/sso/*` route into a 404. */
+  SSO: readonly SsoProvider[];
   BACKUP_RECIPIENT: string;
   SESSION_SECRET: string;
   NOTE_KEK: string;
@@ -77,6 +80,20 @@ function secret(source: Source, name: string, valid: (value: string) => boolean)
   const value = text(source, name);
   if (!valid(value)) fail('missing_binding', name);
   return value;
+}
+
+/** A var that may be unset or empty, which reads as null; set, it must be text. */
+function optionalText(source: Source, name: string): string | null {
+  const value = source[name];
+  if (value === undefined) return null;
+  if (typeof value !== 'string') fail('missing_binding', name);
+  return value.trim() === '' ? null : value;
+}
+
+/** `SSO_PROVIDERS` as text: a wrangler var written as a JSON array reaches the Worker as an array, so it is stringified. */
+function providersText(source: Source): string | null {
+  const value = source.SSO_PROVIDERS;
+  return Array.isArray(value) ? JSON.stringify(value) : optionalText(source, 'SSO_PROVIDERS');
 }
 
 /** A secret that may be unset or empty, which reads as null; set, it must have the shape `valid` names. */
@@ -133,6 +150,7 @@ function parse(source: Source): Env {
     DEMO_PASSWORD: demoPassword(source),
     MCP: choice(source, 'MCP', ['', 'on'], '') === 'on',
     MCP_NOTES: choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
+    SSO: ssoProviders(providersText(source), source),
     BACKUP_RECIPIENT: recipient(source, 'BACKUP_RECIPIENT'),
     SESSION_SECRET: secret(source, 'SESSION_SECRET', isSessionSecret),
     NOTE_KEK: secret(source, 'NOTE_KEK', isNoteKek),

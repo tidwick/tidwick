@@ -35,6 +35,7 @@ import peopleIssueEnrolment from './people/issueEnrolment';
 import peopleOffboard from './people/offboard';
 import peopleReenrol from './people/reenrol';
 import peopleSetRoles from './people/setRoles';
+import peopleUnlinkSso from './people/unlinkSso';
 import peopleUnlock from './people/unlock';
 import projectsArchive from './projects/archive';
 import projectsCreate from './projects/create';
@@ -101,6 +102,7 @@ export const server = {
     offboard: peopleOffboard,
     reenrol: peopleReenrol,
     setRoles: peopleSetRoles,
+    unlinkSso: peopleUnlinkSso,
     unlock: peopleUnlock,
   },
   projects: {

@@ -34,9 +34,9 @@ export const CATALOG = {
   archived: { status: 409, message: 'That is archived; restore it first' },
   last_admin: { status: 409, message: 'The last admin cannot lose or give up that access' },
   number_required: { status: 400, message: 'A project number is required (format YY-NNNN)' },
-  last_passkey: {
+  last_method: {
     status: 409,
-    message: 'That is your only passkey; add another before removing it',
+    message: 'That is your only passkey and nothing else signs you in; add another way in first',
   },
   chain_broken: { status: 500, message: 'The audit chain does not verify' },
   unauthenticated: { status: 401, message: 'Sign in first' },
@@ -55,6 +55,16 @@ export const CATALOG = {
   },
   passkey_failed: { status: 400, message: 'The passkey could not be checked; try again' },
   login_failed: { status: 401, message: 'That passkey is not recognised here' },
+  sso_failed: { status: 400, message: 'That sign-in did not complete; start again' },
+  sso_unavailable: {
+    status: 503,
+    message: 'That provider could not be reached; try again, or sign in with a passkey',
+  },
+  sso_unlinked: {
+    status: 403,
+    message: 'That account is not linked to anyone here; ask an admin for an enrolment link',
+  },
+  sso_taken: { status: 409, message: 'That account is already linked to a person here' },
   recovery_failed: {
     status: 401,
     message: 'Recovery did not work; check the email and code, or wait a few minutes',

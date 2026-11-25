@@ -6,23 +6,26 @@ import type { Scope } from './scope';
 export interface Access {
   /** Passkeys not revoked. */
   passkeys: number;
+  /** Identities at identity providers not revoked. */
+  sso: number;
   /** Enrolment links unused and unexpired. */
   openLinks: number;
 }
 
 const ACCESS = `SELECT p.id,
   (SELECT count(*) FROM credential c WHERE c.person_id = p.id AND c.revoked_at IS NULL) AS passkeys,
+  (SELECT count(*) FROM person_identity i WHERE i.person_id = p.id AND i.revoked_at IS NULL) AS sso,
   (SELECT count(*) FROM enrolment e WHERE e.person_id = p.id AND e.used_at IS NULL AND e.expires_at > ?1) AS open_links
 FROM person p`;
 
-/** Passkeys and open links for every person, by person id. */
+/** Passkeys, identities and open links for every person, by person id. */
 export async function accessByPerson(db: D1Database, now: number): Promise<Map<string, Access>> {
   const found = await db
     .prepare(ACCESS)
     .bind(now)
-    .all<{ id: string; passkeys: number; open_links: number }>();
+    .all<{ id: string; passkeys: number; sso: number; open_links: number }>();
   return new Map(
-    found.results.map((r) => [r.id, { passkeys: r.passkeys, openLinks: r.open_links }]),
+    found.results.map((r) => [r.id, { passkeys: r.passkeys, sso: r.sso, openLinks: r.open_links }]),
   );
 }
 

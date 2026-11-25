@@ -14,7 +14,8 @@ export type HashKind =
   | 'agent_code'
   | 'agent_access'
   | 'agent_refresh'
-  | 'agent_confirm';
+  | 'agent_confirm'
+  | 'sso_flow';
 
 export function toBase64Url(bytes: Uint8Array): string {
   let binary = '';

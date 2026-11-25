@@ -20,7 +20,7 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 
 - Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007).
 - Signed-in member: cross-client reads, role escalation, writes to a locked week. Closed by the routes table and `Scope` (ADR 0004, 0005, 0009).
-- Stolen session: step-up (a fresh passkey confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
+- Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
 - Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed).
 - Database writer: audit triggers and the chain catch edits unless the writer recomputes the chain (ADR 0006).
 - Backup holder: sees nothing without the offline age identity and `NOTE_KEK` (ADR 0008).
@@ -71,6 +71,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 - A domain. Set `ORIGIN`, `RP_ID`, `MAIL_FROM`, the D1 `database_id` and the route in `wrangler.jsonc`; leave `BACKUP_COPY` and `BACKUP_S3_REGION`.
 - Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
 - `deploy-secrets` takes the four `BACKUP_S3_*` values on standard input.
+- Single sign-on is optional and off until `SSO_PROVIDERS` is set: a JSON array (as a string, or as an array in `wrangler.jsonc`), one entry per provider tenant, `{"id","label","issuer","client_id"}` (`hd` limits Google to one Workspace domain; the Google preset is `{"id":"google","client_id":"..."}`). Each needs `wrangler secret put SSO_SECRET_<ID>` (id upper-cased, `-` as `_`). At the provider, register an app, add the redirect URI `<ORIGIN>/auth/sso/callback`, and use its tenant v2.0 issuer URL (Entra ID: the tenant's `https://<host>/<tenant-id>/v2.0`, never `/common`); a multi-tenant endpoint fails the exact issuer match. Diarise each secret's expiry. People are linked by an enrolment link; an admin unlinks at `/admin/people/<id>`. Deploy-to-Cloudflare leaves it off.
 - The demo is the Worker `tidwick-demo`. Before its first CI deploy run `just deploy-secrets demo`, and move `demo.tidwick.dev` off any older `tidwick` Worker.
 - Demo only: `/demo` signs in as one of four seeded personas with a shared `DEMO_PASSWORD` secret (set it with `wrangler secret put`; 16 or more characters), for two hours and with no passkey prompt. It answers only while `DEMO_LOGIN` and `DEMO_BANNER` are `on`, the password is set and the seed's `demo` setting exists, otherwise 404. A 04:00 cron wipes the database and loads the seed again; `just demo-reset remote` still applies schema changes (ADR 0003).
 - After the first admin enrols: set alert address, age limit, time zone at `/admin/settings`; confirm the first backup in both buckets; rehearse a restore.
@@ -78,11 +79,11 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 ## 10. Operate
 
 - `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (40 days).
-- `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys survive.
+- `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (35 days; 40 off-account). The Worker deletes none.
 - No admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
-- Offboarding revokes sessions, passkeys and codes and is audited.
+- Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Redeploy by merging your `wrangler.jsonc` edits into the new release.
 - Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.
 
@@ -95,6 +96,7 @@ Numbers live in code; see the cited ADR.
 - `NOTE_KEK` rotation re-wraps client keys, it does not re-key notes: an old KEK plus an old read still opens them. It lives in the same account as the data.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.
 - Add-row lists every live project to an admin or accounting admin; picking one assigns them through the audited assignment write. A member sees only assigned projects.
+- Single sign-on has no back-channel logout: disabling a person at the provider stops new sign-ins, and offboarding in tidwick ends their sessions. A provider that sends no `auth_time` cannot confirm a step-up: Entra ID needs the `auth_time` optional claim added to the ID token, and Google may not honour `prompt=login`, so an SSO-only person there may be unable to step up. A person who enrolled through a provider has no recovery codes until they make some on `/account`; until then an admin recovers them. At least one admin keeps a passkey, since an expired secret or provider outage must not lock the firm out.
 - An accounting admin can approve their own week (audited). Roles are not per client. Step-up lasts 15 minutes and includes sign-in.
 - Restoring revives access revoked after the backup was taken. A backup is encrypted, not authenticated.
 - The chain check is beaten by a writer who recomputes it; keep a head off-database (backup header, `/healthz`).

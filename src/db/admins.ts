@@ -8,6 +8,9 @@ export const OTHER_SIGNED_IN_ADMIN = `r.role = 'admin' AND r.person_id <> ?1
 AND EXISTS (SELECT 1 FROM person p WHERE p.id = r.person_id AND p.offboarded_at IS NULL)
 AND EXISTS (SELECT 1 FROM credential c WHERE c.person_id = r.person_id AND c.revoked_at IS NULL)`;
 
+/** The same for a statement whose person is ?2. */
+export const OTHER_SIGNED_IN_ADMIN_OF_2 = OTHER_SIGNED_IN_ADMIN.replaceAll('?1', '?2');
+
 const OTHER_ADMINS = `SELECT count(*) AS n FROM person_role r WHERE ${OTHER_SIGNED_IN_ADMIN}`;
 
 const OFFBOARD = `UPDATE person SET offboarded_at = ?2 WHERE id = ?1 AND offboarded_at IS NULL

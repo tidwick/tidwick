@@ -57,7 +57,7 @@ export async function recordEnrolment(
  * Adds the close of every link the person holds open to `batch`, audited against the count read before it, and
  * nothing when none is open. Two links issued at the same moment can both stay open; using either closes the other.
  */
-async function recordClosedLinks(
+export async function recordClosedLinks(
   batch: AuditedBatch,
   db: D1Database,
   personId: string,
