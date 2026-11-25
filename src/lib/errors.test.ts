@@ -70,9 +70,11 @@ describe('the catalog carries no secret out', () => {
     expect(errorText(new Error('D1_ERROR: day_cap: SQLITE_CONSTRAINT'))).toBe(
       'Error D1_ERROR day_cap',
     );
-    const parsed = [...(sources['./env.ts'] ?? '').matchAll(/\((?:source|s), '([A-Z_]+)'/g)].map(
-      (m) => m[1],
-    );
+    const parsed = [
+      ...`${sources['./env.ts'] ?? ''}${sources['./env-fields.ts'] ?? ''}`.matchAll(
+        /\((?:source|s), '([A-Z_]+)'/g,
+      ),
+    ].map((m) => m[1]);
     expect(parsed.length).toBeGreaterThanOrEqual(BINDING_NAMES.size);
     expect(new Set(parsed)).toEqual(BINDING_NAMES);
   });

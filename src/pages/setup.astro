@@ -1,0 +1,107 @@
+---
+// What an unconfigured, empty instance still needs, by name only (`src/middleware/setup.ts`). The three values
+// it can make are made in this browser, shown here and sent nowhere: there is no form and no field has a name.
+import { cloudflare } from '../../package.json';
+import Heading from '../components/auth/heading.astro';
+import { LINK, PRIMARY } from '../components/auth/classes';
+import { Input } from '../components/ui/input';
+import Auth from '../layouts/auth.astro';
+
+const { missing, flags } = Astro.locals.setup ?? { missing: [], flags: [] };
+const GENERATED = ['SESSION_SECRET', 'NOTE_KEK', 'BACKUP_RECIPIENT'] as const;
+const bindings: Record<string, { description: string }> = cloudflare.bindings;
+const rows = GENERATED.filter((name) => missing.includes(name)).map((name) => ({
+  name,
+  command: /`([^`]+)`/.exec(bindings[name]?.description ?? '')?.[1] ?? '',
+}));
+const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
+---
+
+<Auth title="Set up">
+  <section class="grid gap-block">
+    <Heading text="Set up this instance">
+      Nothing is configured yet. The values below are named, never shown; set them in Cloudflare,
+      then reload.
+    </Heading>
+    <ul class="grid gap-1 list-disc pl-5">
+      {missing.map((name) => (
+        <li>
+          <code class={CODE}>{name}</code>
+        </li>
+      ))}
+    </ul>
+    {flags.length > 0 && (
+      <ul class="grid gap-1 list-disc pl-5 text-sm">
+        {flags.map((line) => (
+          <li>{line}</li>
+        ))}
+        <li>
+          Secrets go in Workers &gt; Settings &gt; Variables and Secrets; variables in the clone's{' '}
+          <code class={CODE}>wrangler.jsonc</code>.
+        </li>
+      </ul>
+    )}
+    {rows.length > 0 && (
+      <div class="grid gap-block">
+        <button type="button" class={PRIMARY} data-generate>
+          Generate in this browser
+        </button>
+        {rows.map(({ name, command }) => (
+          <div class="grid gap-2">
+            <label for={`f-${name}`} class="font-medium">
+              {name}
+            </label>
+            <Input id={`f-${name}`} readOnly autoComplete="off" data-field={name} />
+            <p class="text-sm text-muted-foreground">
+              Or in a terminal: <code class={CODE}>{command}</code>
+            </p>
+          </div>
+        ))}
+        {rows.some((row) => row.name === 'BACKUP_RECIPIENT') && (
+          <p class="text-sm">
+            <a class={LINK} download="backup-key.txt" data-key-download hidden>
+              Download backup-key.txt
+            </a>
+            <span class="block text-muted-foreground">
+              Store it offline; without it no backup can be read. Only the age1 value above goes in
+              BACKUP_RECIPIENT.
+            </span>
+          </p>
+        )}
+      </div>
+    )}
+    <p class="text-sm">
+      Backups: in the dashboard, R2 &gt; tidwick-backups &gt; Settings &gt; Object lifecycle rules,
+      delete after 35 days; or
+      <code class={CODE}>
+        npx wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35
+      </code>
+      .
+    </p>
+    <noscript>
+      <p class="text-sm">Without scripts, use the terminal lines above.</p>
+    </noscript>
+  </section>
+</Auth>
+
+<script>
+  import { ageKey, noteKek, sessionSecret } from '../components/setup/keys';
+
+  const field = (name: string) =>
+    document.querySelector<HTMLInputElement>(`[data-field="${name}"]`);
+  document.querySelector('[data-generate]')?.addEventListener('click', async () => {
+    const set = (name: string, value: string) => {
+      const input = field(name);
+      if (input) input.value = value;
+    };
+    set('SESSION_SECRET', sessionSecret());
+    set('NOTE_KEK', noteKek());
+    const link = document.querySelector<HTMLAnchorElement>('[data-key-download]');
+    if (link) {
+      const { recipient, file } = await ageKey();
+      set('BACKUP_RECIPIENT', recipient);
+      link.href = URL.createObjectURL(new Blob([file], { type: 'text/plain' }));
+      link.hidden = false;
+    }
+  });
+</script>

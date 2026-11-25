@@ -37,6 +37,7 @@ export const PAGES: Readonly<Record<string, Partial<Record<Method, Rule>>>> = {
   '/auth/sso/step-up': get(MEMBER),
   '/demo': get(PUBLIC),
   '/healthz': get(PUBLIC),
+  '/setup': get(PUBLIC),
   '/account': get({ ...MEMBER, recovery: true }),
   '/mcp': { GET: PUBLIC, POST: PUBLIC },
   '/week/[...start]': get(MEMBER),

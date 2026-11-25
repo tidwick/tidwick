@@ -18,7 +18,7 @@ One Worker serves pages (Astro, server-rendered, Actions for forms) and the cron
 
 Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the browser's WebAuthn, and the firm's admins, who are the root of trust for people, roles and reference data. Everyone else and every input is untrusted. Security tests are titled `SEC-nn ...` and each has a negative case.
 
-- Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007).
+- Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007). `/setup` on an unconfigured, empty instance shows binding names only; keys are made in the browser and never sent.
 - Signed-in member: cross-client reads, role escalation, writes to a locked week. Closed by the routes table and `Scope` (ADR 0004, 0005, 0009).
 - Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
 - Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed).
@@ -30,7 +30,7 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 
 ![A request passes headers, the middleware chain and the routes table before an Action reaches D1 through a Scope.](arch/request.svg)
 
-Every response, assets included, passes `headers.ts`. Middleware order is errors, session, CSRF, routes table (`src/routes.ts`: path, method, role, step-up; unlisted means denied). An Action gets a `Scope` and only reads or writes rows through it. A mutation and its audit event share one D1 batch. Errors come from the catalog in `src/lib/errors.ts` and log only class and code (ADR 0004, 0007).
+Every response, assets included, passes `headers.ts`. Middleware order is errors, session, CSRF, routes table (`src/routes.ts`: path, method, role, step-up; unlisted means denied). `/setup` alone skips session and CSRF: its gate (`src/middleware/setup.ts`) checks its row, answers 404 once the env parses, and renders only on an empty database. An Action gets a `Scope` and only reads or writes rows through it. A mutation and its audit event share one D1 batch. Errors come from the catalog in `src/lib/errors.ts` and log only class and code (ADR 0004, 0007).
 
 ## 5. Data
 
@@ -50,25 +50,25 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 
 ## 8. Boundaries enforced by gates
 
-| Rule                                                                                                                | Gate                                                           |
-| ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| SQL only under `src/db/`                                                                                            | `just lint` (`guard/sql-boundary`)                             |
-| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                   | `just lint` (`guard/import-gate`)                              |
-| Roles only in `src/routes.ts` and `src/db/`                                                                         | `just lint` (`guard/role-boundary`)                            |
-| Test support, `systemScope` and `test/` never reach shipped source                                                  | `just lint` (`guard/test-support-gate`, `guard/test-boundary`) |
-| A shipped migration never changes                                                                                   | `just guard`                                                   |
-| Hours are integer hundredths                                                                                        | tests (`src/actions/entries.app.test.ts`)                      |
-| The audit log is append-only                                                                                        | `src/db/audit.test.ts`                                         |
-| Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                    | `src/db/scope-kind.test.ts`                                    |
-| Migrations only move forward                                                                                        | the migration gate (`just guard`)                              |
-| Security tests are `SEC-nn`, each with a negative case                                                              | review                                                         |
-| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                                   |
-| Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just guard`                                                   |
-| Source files <= 250 lines                                                                                           | `just guard`                                                   |
-| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                  | `just guard`                                                   |
-| Exact dependency pins; a new runtime dependency needs an ADR (0012)                                                 | `SEC-27 (src/lib/dependencies.test.ts)`; review                |
-| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                           | comment in `src/backup/export.ts`, restore drill               |
-| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code | review                                                         |
+| Rule                                                                                                                                           | Gate                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| SQL only under `src/db/`                                                                                                                       | `just lint` (`guard/sql-boundary`)                             |
+| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                                              | `just lint` (`guard/import-gate`)                              |
+| Roles only in `src/routes.ts` and `src/db/`                                                                                                    | `just lint` (`guard/role-boundary`)                            |
+| Test support, `systemScope` and `test/` never reach shipped source                                                                             | `just lint` (`guard/test-support-gate`, `guard/test-boundary`) |
+| A shipped migration never changes                                                                                                              | `just guard`                                                   |
+| Hours are integer hundredths                                                                                                                   | tests (`src/actions/entries.app.test.ts`)                      |
+| The audit log is append-only                                                                                                                   | `src/db/audit.test.ts`                                         |
+| Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                                               | `src/db/scope-kind.test.ts`                                    |
+| Migrations only move forward                                                                                                                   | the migration gate (`just guard`)                              |
+| Security tests are `SEC-nn`, each with a negative case                                                                                         | review                                                         |
+| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts` and the field parsers it calls (`env-fields.ts`, `sso-config.ts`) | review; grep                                                   |
+| Colours only as tokens in `src/styles/global.css`, contrast checked                                                                            | `just guard`                                                   |
+| Source files <= 250 lines                                                                                                                      | `just guard`                                                   |
+| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                                             | `just guard`                                                   |
+| Exact dependency pins; a new runtime dependency needs an ADR (0012)                                                                            | `SEC-27 (src/lib/dependencies.test.ts)`; review                |
+| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                                                      | comment in `src/backup/export.ts`, restore drill               |
+| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code                            | review                                                         |
 
 ## 9. Deploy
 
@@ -76,7 +76,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 
 - A Cloudflare account on the Workers Paid plan for the Worker, and a second account for backups, with its own bucket (a lock rule is required: a first-account takeover can otherwise overwrite the off-account copy; object lock shorter than its expiry, e.g. 35 days against 40) and an R2 token scoped to that one bucket.
 - A domain. Set `ORIGIN`, `RP_ID`, `MAIL_FROM` and the route in `wrangler.jsonc`; the D1 database is found by name, so there is no `database_id` to copy. Leave `BACKUP_COPY` and `BACKUP_S3_REGION`.
-- The Deploy to Cloudflare button clones the repository, builds on Node from `.node-version` (the one Node pin; mise reads it too), and runs `npm run deploy`: remote migrations by binding `DB`, then `wrangler deploy`. The Worker answers on workers.dev. Set `SESSION_SECRET`, `NOTE_KEK` and `BACKUP_RECIPIENT` under Settings, Variables and Secrets (the form describes each); until then every route fails closed. Add the 35-day expiry to `tidwick-backups` (`wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35`); the button does not.
+- The Deploy to Cloudflare button clones the repository, builds on Node from `.node-version` (the one Node pin; mise reads it too), and runs `npm run deploy`: remote migrations by binding `DB`, then `wrangler deploy`. The Worker answers on workers.dev. Set `SESSION_SECRET`, `NOTE_KEK` and `BACKUP_RECIPIENT` under Settings, Variables and Secrets (the form describes each); until then every route fails closed; on an empty database `/setup` lists what is missing and makes the three values in the browser (nothing is sent), and with any history it shows the same error. Add the 35-day expiry to `tidwick-backups` (`wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35`; `/setup` repeats it); the button does not.
 - Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
 - `deploy-secrets` takes the four `BACKUP_S3_*` values on standard input.
 - Single sign-on is optional and off until `SSO_PROVIDERS` is set: a JSON array (as a string, or as an array in `wrangler.jsonc`), one entry per provider tenant, `{"id","label","issuer","client_id"}` (`hd` limits Google to one Workspace domain; the Google preset is `{"id":"google","client_id":"..."}`). Each needs `wrangler secret put SSO_SECRET_<ID>` (id upper-cased, `-` as `_`). At the provider, register an app, add the redirect URI `<ORIGIN>/auth/sso/callback`, and use its tenant v2.0 issuer URL (Entra ID: the tenant's `https://<host>/<tenant-id>/v2.0`, never `/common`); a multi-tenant endpoint fails the exact issuer match. Diarise each secret's expiry. People are linked by an enrolment link; an admin unlinks at `/admin/people/<id>`. Deploy-to-Cloudflare leaves it off.

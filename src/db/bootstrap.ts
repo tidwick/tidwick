@@ -8,6 +8,7 @@
 import { eventHash, GENESIS } from '../lib/chain.ts';
 import type { Cell } from '../lib/backup-format.ts';
 import type { WrappedKey } from '../lib/note-crypto.ts';
+import { EMPTY } from './empty.ts';
 import { hex, literal } from './sql-text.ts';
 
 /** How long the first admin's enrolment link stays open; the same as every other enrolment link. */
@@ -24,9 +25,6 @@ export interface BootstrapInput {
   readonly enrolmentHash: string;
   readonly now: number;
 }
-
-const EMPTY = `NOT EXISTS (SELECT 1 FROM audit_event)
-AND NOT EXISTS (SELECT 1 FROM person_role WHERE role = 'admin')`;
 
 function q(value: Cell): string {
   return literal(value) ?? 'NULL';
