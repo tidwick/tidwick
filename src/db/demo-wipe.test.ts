@@ -72,7 +72,9 @@ describe('the nightly demo wipe', () => {
       n: number;
     }>();
     const live = await env.DB.prepare('SELECT count(*) AS n FROM session').first<{ n: number }>();
-    expect([log?.n, live?.n]).toEqual([0, 0]);
+    expect([log?.n, live?.n]).toEqual([1, 0]);
+    const first = await env.DB.prepare('SELECT seq, action, actor_id FROM audit_event').first();
+    expect(first).toEqual({ seq: 1, action: 'demo.reset', actor_id: null });
     expect((await checkChain(env.DB)).ok).toBe(true);
     await demoSignIn(OPEN, 'a-long-demo-password', DEMO_PERSONAS[0].key, NOW);
     await expect(env.DB.exec('DELETE FROM audit_event')).rejects.toThrow();
