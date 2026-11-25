@@ -1,4 +1,5 @@
 // Passkey credentials. A revoked credential or an offboarded person's credential never verifies.
+import { otherSignedInAdmin } from './admins';
 
 export interface CredentialRow {
   id: string;
@@ -32,10 +33,14 @@ const REVOKE_ALL =
 const LISTED = `SELECT id, created_at, last_used_at FROM credential
 WHERE person_id = ?1 AND revoked_at IS NULL ORDER BY created_at, id`;
 
-// Never takes a person's last live passkey, even against a concurrent removal.
+// Takes a person's last live passkey only when they keep a live identity and, for an admin, another admin holds a
+// passkey, even against a concurrent removal (ADR 0003).
 const REVOKE_ONE = `UPDATE credential SET revoked_at = ?3
 WHERE id = ?1 AND person_id = ?2 AND revoked_at IS NULL
-AND (SELECT COUNT(*) FROM credential WHERE person_id = ?2 AND revoked_at IS NULL) > 1`;
+AND ((SELECT COUNT(*) FROM credential WHERE person_id = ?2 AND revoked_at IS NULL) > 1
+  OR (EXISTS (SELECT 1 FROM person_identity WHERE person_id = ?2 AND revoked_at IS NULL)
+    AND (NOT EXISTS (SELECT 1 FROM person_role WHERE person_id = ?2 AND role = 'admin')
+      OR EXISTS (SELECT 1 FROM person_role r WHERE ${otherSignedInAdmin('?2')}))))`;
 
 export interface ListedCredential {
   id: string;
