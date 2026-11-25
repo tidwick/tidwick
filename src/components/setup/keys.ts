@@ -1,4 +1,4 @@
-// The three values the setup page makes in the browser: nothing here is sent anywhere, and the page has no form.
+// The values the setup page makes in the browser: nothing here is sent anywhere, and the generator has no form.
 // The shapes are the ones `src/lib/secrets.ts` accepts.
 import { generateX25519Identity, identityToRecipient } from 'age-encryption';
 

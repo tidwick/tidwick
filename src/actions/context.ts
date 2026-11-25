@@ -23,9 +23,9 @@ export async function act<T>(body: () => Promise<T>): Promise<T> {
 }
 
 /**
- * For the public auth Actions: counts the request against a per-IP limit, then returns what auth needs. The two
- * login calls count against `LOGIN_LIMIT`, which is larger so an office behind one address can sign in each
- * morning; recovery and enrolment count against `RATE_LIMIT` (ADR 0003).
+ * For the public auth Actions: counts the request against a per-IP limit, then returns what auth needs. The login
+ * calls and the first-admin claim count against `LOGIN_LIMIT`, which is larger so an office behind one address
+ * can sign in each morning; recovery and enrolment count against `RATE_LIMIT` (ADR 0003).
  */
 export async function throttled(
   context: ActionAPIContext,

@@ -17,18 +17,11 @@ const problem = result?.error
     ? 'Enter the setup token, your email, your name and your firm.'
     : result.error.message
   : '';
-const { missing, flags, claim, tokenSet } = Astro.locals.setup ?? {
-  missing: [],
-  flags: [],
-  claim: false,
-  tokenSet: false,
-};
+const { missing, flags, claim } = Astro.locals.setup ?? { missing: [], flags: [], claim: false };
 const ready = missing.length === 0;
 const GENERATED = ['SESSION_SECRET', 'NOTE_KEK', 'BACKUP_RECIPIENT'] as const;
 const bindings: Record<string, { description: string }> = cloudflare.bindings;
-const rows = (
-  ready ? (tokenSet ? [] : ['SETUP_TOKEN']) : GENERATED.filter((name) => missing.includes(name))
-).map((name) => ({
+const rows = GENERATED.filter((name) => missing.includes(name)).map((name) => ({
   name,
   command: /`([^`]+)`/.exec(bindings[name]?.description ?? '')?.[1] ?? '',
 }));
@@ -39,14 +32,12 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
   <section class="grid gap-block">
     {ready ? (
       <Heading text="Claim this instance">
-        {tokenSet
-          ? 'Create the first admin with the SETUP_TOKEN you set in Cloudflare.'
-          : 'Set SETUP_TOKEN to claim the first admin here, or run just first-admin.'}
+        Create the first admin with the SETUP_TOKEN you set in Cloudflare.
       </Heading>
     ) : (
       <Heading text="Set up this instance">
-        Nothing is configured yet. The values below are named, never shown; set them in Cloudflare,
-        then reload.
+        These values are not set yet. They are named, never shown; set them in Cloudflare, then
+        reload.
       </Heading>
     )}
     <ul class="grid gap-1 list-disc pl-5">
@@ -92,17 +83,15 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
         </p>
       </form>
     )}
-    {flags.length > 0 && (
-      <ul class="grid gap-1 list-disc pl-5 text-sm">
-        {flags.map((line) => (
-          <li>{line}</li>
-        ))}
-        <li>
-          Secrets go in Workers &gt; Settings &gt; Variables and Secrets; variables in the clone's{' '}
-          <code class={CODE}>wrangler.jsonc</code>.
-        </li>
-      </ul>
-    )}
+    <ul class="grid gap-1 list-disc pl-5 text-sm">
+      {flags.map((line) => (
+        <li>{line}</li>
+      ))}
+      <li>
+        Secrets go in Workers &gt; Settings &gt; Variables and Secrets; variables in the clone's{' '}
+        <code class={CODE}>wrangler.jsonc</code>.
+      </li>
+    </ul>
     {rows.length > 0 && (
       <div class="grid gap-block">
         <button type="button" class={PRIMARY} data-generate>
@@ -117,6 +106,11 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
             <p class="text-sm text-muted-foreground">
               Or in a terminal: <code class={CODE}>{command}</code>
             </p>
+            {name === 'NOTE_KEK' && (
+              <p class="text-sm text-muted-foreground">
+                Keep a copy offline; losing it loses every note.
+              </p>
+            )}
           </div>
         ))}
         {rows.some((row) => row.name === 'BACKUP_RECIPIENT') && (
@@ -157,12 +151,12 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
       if (input) input.value = value;
     };
     set('SESSION_SECRET', sessionSecret());
-    set('SETUP_TOKEN', sessionSecret());
     set('NOTE_KEK', noteKek());
     const link = document.querySelector<HTMLAnchorElement>('[data-key-download]');
     if (link) {
       const { recipient, file } = await ageKey();
       set('BACKUP_RECIPIENT', recipient);
+      if (link.href) URL.revokeObjectURL(link.href);
       link.href = URL.createObjectURL(new Blob([file], { type: 'text/plain' }));
       link.hidden = false;
     }

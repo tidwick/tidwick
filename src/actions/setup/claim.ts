@@ -11,7 +11,7 @@ export default defineAction({
   accept: 'form',
   input: z.object({
     ...csrfField,
-    token: z.string().max(512),
+    token: z.string().trim().max(512),
     email: z.string().trim().toLowerCase().max(254),
     name: text,
     firm: text,
