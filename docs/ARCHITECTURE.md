@@ -76,13 +76,36 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 
 - A Cloudflare account on the Workers Paid plan for the Worker, and a second account for backups, with its own bucket (a lock rule is required: a first-account takeover can otherwise overwrite the off-account copy; object lock shorter than its expiry, e.g. 35 days against 40) and an R2 token scoped to that one bucket.
 - A domain. Set `ORIGIN`, `RP_ID`, `MAIL_FROM` and the route in `wrangler.jsonc`; the D1 database is found by name, so there is no `database_id` to copy. Leave `BACKUP_COPY` and `BACKUP_S3_REGION`.
-- The Deploy to Cloudflare button clones the repository, builds on Node from `.node-version` (the one Node pin; mise reads it too), and runs `npm run deploy`: remote migrations by binding `DB`, then `wrangler deploy`. The Worker answers on workers.dev. Set `SESSION_SECRET`, `NOTE_KEK` and `BACKUP_RECIPIENT` under Settings, Variables and Secrets (the form describes each); until then every route fails closed; on an empty database `/setup` lists what is missing and makes the three values in the browser (nothing is sent), and with any history it shows the same error. Optionally set `SETUP_TOKEN` too (`openssl rand -base64 32`), open `/setup`, claim the first admin, enrol, then delete `SETUP_TOKEN`; `just first-admin` does the same from a terminal. Add the 35-day expiry to `tidwick-backups` (`wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35`; `/setup` repeats it); the button does not.
+- The Deploy to Cloudflare button: see "With the button" below. It leaves the 35-day expiry and the second-account copy to you.
 - Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
 - `deploy-secrets` takes the four `BACKUP_S3_*` values on standard input.
 - Single sign-on is optional and off until `SSO_PROVIDERS` is set: a JSON array (as a string, or as an array in `wrangler.jsonc`), one entry per provider tenant, `{"id","label","issuer","client_id"}` (`hd` limits Google to one Workspace domain; the Google preset is `{"id":"google","client_id":"..."}`). Each needs `wrangler secret put SSO_SECRET_<ID>` (id upper-cased, `-` as `_`). At the provider, register an app, add the redirect URI `<ORIGIN>/auth/sso/callback`, and use its tenant v2.0 issuer URL (Entra ID: the tenant's `https://<host>/<tenant-id>/v2.0`, never `/common`); a multi-tenant endpoint fails the exact issuer match. Diarise each secret's expiry. People are linked by an enrolment link; an admin unlinks at `/admin/people/<id>`. Deploy-to-Cloudflare leaves it off.
 - The demo is the Worker `tidwick-demo`. Before its first CI deploy run `just deploy-secrets demo`, and move `demo.tidwick.dev` off any older `tidwick` Worker.
 - Demo only: `/demo` signs in as one of four seeded personas with a shared `DEMO_PASSWORD` secret (set it with `wrangler secret put`; 16 or more characters), for two hours and with no passkey prompt. It answers only while `DEMO_LOGIN` and `DEMO_BANNER` are `on`, the password is set and the seed's `demo` setting exists, otherwise 404. A 04:00 cron wipes the database and loads the seed again; `just demo-reset remote` still applies schema changes (ADR 0003).
 - After the first admin enrols: delete `SETUP_TOKEN` if set; set alert address, age limit, time zone at `/admin/settings`; confirm the first backup in both buckets; rehearse a restore.
+
+### With the button
+
+The button clones `main`, so it deploys the last release. It builds on Node from `.node-version` and runs `npm run deploy` (remote migrations by binding `DB`, then `wrangler deploy`); the Worker answers on workers.dev.
+
+1. Press the button, accept the names, let the build finish.
+2. Open `/setup`. Until the secrets exist every route fails closed; on an empty database `/setup` lists what is missing, and with any history it shows the same error.
+3. Generate `SESSION_SECRET`, `NOTE_KEK` and the age key on `/setup` (nothing is sent) and keep the kit offline.
+4. Set `SESSION_SECRET`, `NOTE_KEK` and `BACKUP_RECIPIENT` under Settings, Variables and Secrets, and `SETUP_TOKEN` (`openssl rand -base64 32`).
+5. Reload `/setup`, claim the first admin with the token, enrol a passkey.
+6. Delete `SETUP_TOKEN`. Add the 35-day expiry to `tidwick-backups`; `/setup` repeats the command.
+7. Update by merging a release tag into the clone; migrations run on the next build.
+
+Lab checklist, run by hand each release, on a fresh account. Order: merge the release PR to `next`, fast-forward `main` (`git push origin origin/next:main`), run the lab, then tag. The button clones `main`, so the lab only sees the release after the fast-forward:
+
+- Real button from the README, build green.
+- `/setup` lists the missing values; claim the first admin.
+- Passkey enrolled and used on a phone.
+- Use it for a week: submit, approve, lock.
+- Export the CSV and open it.
+- MCP `tools/list` answers with a token.
+- `/healthz` is 200 the next day, after the 03:00 backup.
+- Restore drill: `just restore` a real backup into a local D1.
 
 ## 10. Operate
 
@@ -94,6 +117,8 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Redeploy by merging your `wrangler.jsonc` edits into the new release.
 - Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.
+
+Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just restore` decrypts it and rebuilds a SQLite database, the same path the restore drill in `just check` exercises on every change. Keep the age identity, export the CSV too, and run the Worker, or any SQLite reader, elsewhere.
 
 ## 11. Known limits
 

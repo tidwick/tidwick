@@ -226,6 +226,21 @@ first-admin email name firm env="" kit=".wrangler/kit":
     printf 'SESSION_SECRET=%s\nNOTE_KEK=%s\n' "$(cat {{ quote(kit) }}/session-secret)" "$(cat {{ quote(kit) }}/note-kek)" | just bootstrap {{ quote(email) }} {{ quote(name) }} {{ quote(firm) }}
     npx --no-install wrangler d1 execute "$db" --remote $flags --file .wrangler/bootstrap.sql
 
+# Bump the version on a branch, for a PR to next. Never pushes, tags or merges; it prints the rest.
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "{{ version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "FAIL release: pass X.Y.Z, not {{ version }}"; exit 1; }
+    branch="$(git branch --show-current)"
+    case "$branch" in main|next|"") echo "FAIL release: switch to a branch for the bump PR, not '$branch'"; exit 1;; esac
+    [ -z "$(git status --porcelain)" ] || { echo "FAIL release: the tree is not clean"; exit 1; }
+    npm version "{{ version }}" --no-git-tag-version >/dev/null
+    echo "PASS release: package.json and the lockfile say {{ version }}; commit them and open a PR to next; after the merge: fast-forward main, run the lab checklist in docs/ARCHITECTURE.md, Deploy, then tag"
+    echo "NEXT, by hand once the PR is merged (the lab runs between the two steps):"
+    echo "  git fetch origin && git push origin origin/next:main"
+    echo "  (run the lab checklist against main)"
+    echo "  git tag -a v{{ version }} -m v{{ version }} origin/next && git push origin v{{ version }}"
+
 # The checks ESLint cannot see (docs/ARCHITECTURE.md §8). Each prints one PASS or FAIL line.
 guard:
     #!/usr/bin/env bash

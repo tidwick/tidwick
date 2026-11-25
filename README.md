@@ -16,6 +16,12 @@ Week grid, clients and projects, three roles, submit/approve/lock, audit log, CS
 - Copying another product's assets, text or look.
 - Real data, secrets or a Cloudflare login in tests.
 
+## Deploy
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tidwick/tidwick)
+
+The steps after the button are in `docs/ARCHITECTURE.md`, Deploy.
+
 ## Run
 
 `mise install; eval "$(mise env)"; just install; just check; just seed; just dev` (no Cloudflare account needed)
