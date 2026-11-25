@@ -13,6 +13,9 @@ export const RPC = {
   unsupportedVersion: -32022,
 } as const;
 
+/** The route pattern of the one agent route. */
+export const MCP_PATTERN = '/mcp';
+
 export type RpcId = string | number | null;
 
 /** A JSON-RPC success; the id is the request's. */
@@ -62,8 +65,8 @@ export function toolRefusal(code: ErrorCode, detail?: string): ToolResult {
 }
 
 /**
- * A bearer refused, as RFC 6750 asks and RFC 6749 JSON: 401 `invalid_token` for a missing, unknown, expired or
- * revoked token, 403 `insufficient_scope` naming the scope the tool needs. A missing token carries no error code.
+ * A bearer refused, as JSON-RPC with RFC 6750's challenge in the header: 401 for a missing, unknown, expired or
+ * revoked token, 403 naming the scope the tool needs. `data.error` is the RFC 6750 code; a missing token carries none.
  */
 export function bearerRefusal(
   error: 'missing_token' | 'invalid_token' | 'insufficient_scope',
@@ -74,11 +77,13 @@ export function bearerRefusal(
   const challenge = ['Bearer realm="tidwick"'];
   if (error !== 'missing_token') challenge.push(`error="${error}"`);
   if (scope !== undefined) challenge.push(`scope="${scope}"`);
-  return Response.json(
-    {
-      error: error === 'missing_token' ? 'invalid_request' : error,
-      error_description: CATALOG[code].message,
-    },
-    { status: CATALOG[code].status, headers: { 'www-authenticate': challenge.join(', ') } },
+  const response = rpcError(
+    null,
+    RPC.invalidRequest,
+    CATALOG[code].message,
+    CATALOG[code].status,
+    scope === undefined ? { error } : { error, scope },
   );
+  response.headers.set('www-authenticate', challenge.join(', '));
+  return response;
 }

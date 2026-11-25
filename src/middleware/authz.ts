@@ -7,6 +7,7 @@ import { scopeFor } from '../db/scope';
 import { currentEnv } from '../lib/env';
 import { fail, isAppError } from '../lib/errors';
 import { errorPage, errorResponse } from './error-responses';
+import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
 export const RPC_PATTERN = '/_actions/[...path]';
@@ -59,6 +60,7 @@ export const authz: MiddlewareHandler = async (context, next) => {
     if (gated) context.locals.scope = await scopeFor(DB, session.personId);
   } catch (error) {
     if (!isAppError(error)) throw error;
+    if (context.routePattern === MCP_PATTERN) return rpcRefusal(error.code);
     return context.routePattern === RPC_PATTERN ? errorResponse(error.code) : errorPage(error.code);
   }
   return next();
