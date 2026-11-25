@@ -1,5 +1,5 @@
 // Passkey credentials. A revoked credential or an offboarded person's credential never verifies.
-import { otherSignedInAdmin } from './admins';
+import { OTHER_SIGNED_IN_ADMIN_OF_2 } from './admins';
 
 export interface CredentialRow {
   id: string;
@@ -40,7 +40,7 @@ WHERE id = ?1 AND person_id = ?2 AND revoked_at IS NULL
 AND ((SELECT COUNT(*) FROM credential WHERE person_id = ?2 AND revoked_at IS NULL) > 1
   OR (EXISTS (SELECT 1 FROM person_identity WHERE person_id = ?2 AND revoked_at IS NULL)
     AND (NOT EXISTS (SELECT 1 FROM person_role WHERE person_id = ?2 AND role = 'admin')
-      OR EXISTS (SELECT 1 FROM person_role r WHERE ${otherSignedInAdmin('?2')}))))`;
+      OR EXISTS (SELECT 1 FROM person_role r WHERE ${OTHER_SIGNED_IN_ADMIN_OF_2}))))`;
 
 export interface ListedCredential {
   id: string;

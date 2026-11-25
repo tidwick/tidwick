@@ -3,14 +3,13 @@
 // unrevoked passkey: a granted admin who never enrolled cannot sign in to issue anyone a link (ADR 0003).
 import { ADMIN_GRANT, grantsOf } from './roles';
 
-/** An admin other than the person bound to `person` (a parameter such as `?1`), not offboarded, with an unrevoked passkey; `r` is the grant row. */
-export const otherSignedInAdmin = (
-  person: string,
-): string => `r.role = 'admin' AND r.person_id <> ${person}
+/** An admin other than ?1, not offboarded, with an unrevoked passkey; `r` is the grant row. */
+export const OTHER_SIGNED_IN_ADMIN = `r.role = 'admin' AND r.person_id <> ?1
 AND EXISTS (SELECT 1 FROM person p WHERE p.id = r.person_id AND p.offboarded_at IS NULL)
 AND EXISTS (SELECT 1 FROM credential c WHERE c.person_id = r.person_id AND c.revoked_at IS NULL)`;
 
-export const OTHER_SIGNED_IN_ADMIN = otherSignedInAdmin('?1');
+/** The same for a statement whose person is ?2. */
+export const OTHER_SIGNED_IN_ADMIN_OF_2 = OTHER_SIGNED_IN_ADMIN.replaceAll('?1', '?2');
 
 const OTHER_ADMINS = `SELECT count(*) AS n FROM person_role r WHERE ${OTHER_SIGNED_IN_ADMIN}`;
 
