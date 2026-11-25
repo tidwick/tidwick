@@ -51,3 +51,15 @@ describe('SEC-11 the last admin keeps a passkey', () => {
     });
   });
 });
+
+describe('SEC-11 the statement alone keeps a person a way in', () => {
+  it('SEC-11 a person with one passkey loses it only while a live identity remains', async () => {
+    const bare = await addPerson([]);
+    const bareKey = await withPasskey(bare.id);
+    expect((await revokeCredential(env.DB, bare.id, bareKey, T0).run()).meta.changes).toBe(0);
+    const linked = await addPerson([]);
+    const linkedKey = await withPasskey(linked.id);
+    await withIdentity(linked.id, ISSUER, subject());
+    expect((await revokeCredential(env.DB, linked.id, linkedKey, T0).run()).meta.changes).toBe(1);
+  });
+});

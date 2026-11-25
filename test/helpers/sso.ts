@@ -43,8 +43,12 @@ export interface Started {
   flow: string | null;
 }
 
-export async function get(path: string, cookies: string[] = []): Promise<Response> {
-  const headers = new Headers();
+export async function get(
+  path: string,
+  cookies: string[] = [],
+  extra: Record<string, string> = {},
+): Promise<Response> {
+  const headers = new Headers(extra);
   if (cookies.length > 0) headers.set('cookie', cookies.join('; '));
   return exports.default.fetch(new Request(`${ORIGIN}${path}`, { headers, redirect: 'manual' }));
 }

@@ -36,6 +36,8 @@ export async function discover(
   if (cached && now - cached.at < CACHE_MS) return cached.server;
   const server = await fetched(provider.issuer);
   if (!server?.authorization_endpoint || !server.token_endpoint) fail('sso_unavailable');
+  // oauth4webapi compares issuers after URL normalisation; identities are keyed on the configured text, so it must match.
+  if (server.issuer !== provider.issuer) fail('sso_unavailable');
   discovered.set(provider.issuer, { server, at: now });
   return server;
 }
@@ -52,11 +54,19 @@ async function fetched(issuer: string): Promise<oauth.AuthorizationServer | null
   }
 }
 
-/** The address the browser is sent to; `fresh` asks the provider to authenticate again, not to reuse its own session. */
+/** The address the browser is sent to; `fresh` asks the provider to authenticate again, not to reuse its own session, and `chooseAccount` makes it show
+ * which account is being used. */
 export async function authorizationUrl(
   provider: SsoProvider,
   server: oauth.AuthorizationServer,
-  request: { redirectUri: string; state: string; nonce: string; verifier: string; fresh: boolean },
+  request: {
+    redirectUri: string;
+    state: string;
+    nonce: string;
+    verifier: string;
+    fresh: boolean;
+    chooseAccount: boolean;
+  },
 ): Promise<string> {
   const url = new URL(server.authorization_endpoint ?? '');
   const query = url.searchParams;
@@ -73,6 +83,8 @@ export async function authorizationUrl(
   if (request.fresh) {
     query.set('max_age', '0');
     query.set('prompt', 'login');
+  } else if (request.chooseAccount) {
+    query.set('prompt', 'select_account');
   }
   return url.href;
 }

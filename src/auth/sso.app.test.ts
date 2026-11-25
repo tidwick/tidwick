@@ -8,6 +8,7 @@ import type { MockIdp } from '../../test/helpers/mock-idp';
 import { eventsAfter, headSeq } from '../../test/helpers/reference';
 import {
   callback,
+  get,
   idpForConfigured,
   link,
   provider,
@@ -19,7 +20,7 @@ import {
 import { storedRows } from '../db/stored-rows';
 import { currentEnv } from '../lib/env';
 import { issueEnrolment } from './enrol';
-import { SESSION_COOKIE } from './session';
+import { newSession, SESSION_COOKIE } from './session';
 import { SSO_COOKIE } from './sso';
 
 let idp: MockIdp;
@@ -56,6 +57,7 @@ describe('SEC-38 signing in through an identity provider', () => {
     const begun = await start(`/auth/sso/enrol?provider=tenant-a&token=${token}`);
     expect(begun.response.status).toBe(302);
     expect(begun.location).toMatch(/^https:\/\/idp-a\.example\/a\/v2\.0\/authorize\?/);
+    expect(new URL(begun.location).searchParams.get('prompt')).toBe('select_account');
     const cookie = begun.response.headers.getSetCookie().find((c) => c.startsWith(SSO_COOKIE));
     expect(cookie).toMatch(/Path=\/; Max-Age=600; HttpOnly; Secure; SameSite=Lax$/);
 
@@ -166,11 +168,26 @@ describe('SEC-38 signing in through an identity provider', () => {
   });
 });
 
+describe('SEC-38 another site cannot start an enrolment', () => {
+  it('a start from a cross-site or same-site navigation is refused, and one from this origin goes on', async () => {
+    const { token } = await invited();
+    const path = `/auth/sso/enrol?provider=tenant-a&token=${token}`;
+    for (const site of ['cross-site', 'same-site']) {
+      const response = await get(path, [], { 'sec-fetch-site': site });
+      expect(response.status).toBe(400);
+      expect(setCookie(response, SSO_COOKIE)).toBe('');
+    }
+    expect((await get(path, [], { 'sec-fetch-site': 'same-origin' })).status).toBe(302);
+  });
+});
+
 describe('SEC-39 confirming again through the identity provider', () => {
   it('asks the provider to authenticate again and stamps only the session that asked, from a fresh auth_time', async () => {
     const who = await caller([], { stepUpAgo: 20 * MINUTE });
     await link(who.personId, 'tenant-a', 'step-1');
-    const before = (await storedFor('session', who.personId))[0]?.step_up_at as number;
+    const other = await newSession(env.DB, SESSION_SECRET, who.personId, Date.now() - 20 * MINUTE);
+    await other.statement.run();
+    const heldBefore = (await storedFor('session', who.personId)).map((row) => row.step_up_at);
     const begun = await start('/auth/sso/step-up?provider=tenant-a&return=%2Faccount', who);
     const q = new URL(begun.location).searchParams;
     expect([q.get('max_age'), q.get('prompt')]).toEqual(['0', 'login']);
@@ -178,9 +195,11 @@ describe('SEC-39 confirming again through the identity provider', () => {
     expect(done.status).toBe(200);
     expect(handoffTo(await done.text())).toBe('/account');
     expect(setCookie(done, SESSION_COOKIE)).toBeNull();
-    expect(((await storedFor('session', who.personId))[0]?.step_up_at as number) > before).toBe(
-      true,
-    );
+    const after = await storedFor('session', who.personId);
+    expect(after).toHaveLength(2);
+    const moved = after.filter((row, i) => row.step_up_at !== heldBefore[i]);
+    expect(moved).toHaveLength(1);
+    expect((moved[0]?.step_up_at as number) > Math.max(...(heldBefore as number[]))).toBe(true);
   });
 
   it('is refused for a person with no identity at that provider, and for no session at all', async () => {

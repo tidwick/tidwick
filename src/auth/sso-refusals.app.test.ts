@@ -2,12 +2,14 @@
 // flow, one case each, against the built Worker. A refusal leaves no session and no cookie behind.
 import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { caller } from '../../test/helpers/callers';
 import type { MockIdp, MockLogin } from '../../test/helpers/mock-idp';
 import {
   attempt,
   callback,
   idpForConfigured,
   LOGIN,
+  link,
   linked,
   nowSeconds,
   refused,
@@ -53,11 +55,26 @@ describe('SEC-40 the callback refuses what it cannot tie to the browser that beg
     const begun = await start(LOGIN);
     const back = idp.authorize(begun.location, { subject: 'c3' });
     expect((await callback(back, begun.flow)).status).toBe(200);
-    refused(await callback(back, begun.flow), 400);
+    // A fresh code under the same state: only the flow's own single use can refuse it, so the code is never traded.
+    const trades = idp.tokenRequests.length;
+    refused(await callback(idp.authorize(begun.location, { subject: 'c3' }), begun.flow), 400);
+    expect(idp.tokenRequests.length).toBe(trades);
     const old = await start(LOGIN);
     const hash = await keyedHash(SESSION_SECRET, 'sso_flow', old.flow ?? '');
     await expireFlow(env.DB, hash);
     refused(await callback(idp.authorize(old.location, { subject: 'c3' }), old.flow), 400);
+  });
+
+  it('a step-up flow works once too', async () => {
+    const who = await caller();
+    await link(who.personId, 'tenant-a', 'c4');
+    const begun = await start('/auth/sso/step-up?provider=tenant-a', who);
+    expect(
+      (await callback(idp.authorize(begun.location, { subject: 'c4' }), begun.flow)).status,
+    ).toBe(200);
+    const trades = idp.tokenRequests.length;
+    refused(await callback(idp.authorize(begun.location, { subject: 'c4' }), begun.flow), 400);
+    expect(idp.tokenRequests.length).toBe(trades);
   });
 
   it('an error from the provider fails', async () => {

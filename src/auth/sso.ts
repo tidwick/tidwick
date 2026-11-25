@@ -99,6 +99,7 @@ export async function startFlow(
     nonce,
     verifier,
     fresh: start.purpose === 'step_up',
+    chooseAccount: start.purpose === 'enrol',
   });
   return { location, cookie: ssoCookie(state) };
 }
