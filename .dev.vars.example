@@ -17,3 +17,7 @@ BACKUP_S3_SECRET=
 # DEMO_BANNER: "on" opens every page with a line saying it is a demo of invented data. Leave it empty (off) for
 # anything but a demo; wrangler.jsonc sets it only in the demo environment.
 DEMO_BANNER=
+# MCP: "on" opens /mcp for agent clients (Claude and others). Leave it empty (off) and every agent route is a 404.
+MCP=
+# MCP_NOTES: "read" lets an agent read note text, which then reaches its provider; empty (off) gives it has_note only.
+MCP_NOTES=
