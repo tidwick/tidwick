@@ -88,7 +88,7 @@ describe('the printed demo password', () => {
   });
 });
 
-describe('demo.signin', () => {
+describe('auth.demoSignin', () => {
   it('a wrong password opens no session and writes no audit row', async () => {
     const who = DEMO_PERSONAS[1];
     const before = [await sessions(who.id), await events()];
@@ -110,7 +110,7 @@ describe('demo.signin', () => {
       .first<{ expires_at: number; step_up_at: number }>();
     expect(row?.expires_at).toBe(NOW + DEMO_SESSION_MS);
     const event = await env.DB.prepare(
-      "SELECT actor_id, target, after_json FROM audit_event WHERE action = 'demo.signin'",
+      "SELECT actor_id, target, after_json FROM audit_event WHERE action = 'auth.demoSignin'",
     ).first<{ actor_id: string; target: string; after_json: string }>();
     expect(event?.actor_id).toBe(who.id);
     expect(JSON.parse(event?.after_json ?? '{}')).toEqual({ persona: 'approver' });

@@ -8,6 +8,7 @@ import { issueEnrolment } from '../auth/enrol';
 import { offboard } from '../auth/offboard';
 import { reenrol } from '../auth/revoke';
 import { currentEnv } from '../lib/env';
+import { AUDIT_OF } from './audit-actions';
 import { addAllAssignments, addAssignment, removeAssignment } from './assignments';
 import { archiveClient, createClient, renameClient } from './clients';
 import { listFirms } from './firms';
@@ -27,7 +28,7 @@ const REVOKES = [
 ];
 
 interface Case {
-  action: string;
+  action: keyof typeof AUDIT_OF;
   run: () => Promise<unknown>;
   target: RegExp;
   before: object | null;
@@ -57,7 +58,7 @@ beforeAll(async () => {
   const clientName = unique('Audited');
   const other = (await createClient(admin, env.DB, kek(), unique('Other'), T0)).id;
   const p = (
-    action: string,
+    action: keyof typeof AUDIT_OF,
     run: () => Promise<unknown>,
     before: object | null,
     after: object | null,
@@ -222,6 +223,10 @@ describe('every admin write is audited once', () => {
       const seq = await headSeq();
       await c.run();
       const events = await eventsAfter(seq);
+      const row = AUDIT_OF[c.action];
+      const declared: readonly string[] = row === undefined || row === 'none' ? [] : row;
+      for (const emitted of [c.action, ...(c.extra ?? [])])
+        expect(declared, c.action).toContain(emitted);
       const own = events.filter((e) => e.action === c.action);
       expect(own, c.action).toHaveLength(1);
       expect(events.map((e) => e.action).toSorted(), c.action).toEqual(
@@ -237,6 +242,18 @@ describe('every admin write is audited once', () => {
       if (c.after) expect(after, c.action).toMatchObject(c.after);
       else expect(after, c.action).toBeNull();
     }
+  });
+
+  it('every audited admin-data Action in the map has a case here', () => {
+    const covered = new Set(cases.map((c) => c.action));
+    const owned = /^(clients|projects|taskCodes|assignments|people)\./;
+    const missing = Object.entries(AUDIT_OF)
+      .filter(
+        ([name, events]) => owned.test(name) && events !== 'none' && name !== 'assignments.addAll',
+      )
+      .map(([name]) => name)
+      .filter((name) => !covered.has(name));
+    expect(missing).toEqual([]);
   });
 
   it('a write that fails leaves no event, and a refused duplicate leaves none either', async () => {

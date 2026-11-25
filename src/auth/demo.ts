@@ -33,7 +33,7 @@ export async function passwordMatches(given: string, expected: string): Promise<
 }
 
 /**
- * Opens a 2-hour session as `persona`, with the `demo.signin` event in the same batch, or returns null for a wrong
+ * Opens a 2-hour session as `persona`, with the `auth.demoSignin` event in the same batch, or returns null for a wrong
  * password. A closed gate is `not_found`, as for any route that is not there.
  */
 export async function demoSignIn(
@@ -53,7 +53,7 @@ export async function demoSignIn(
       await readHead(env.DB),
       {
         at: now,
-        action: 'demo.signin',
+        action: 'auth.demoSignin',
         clientId: null,
         target: `person:${who.id}`,
         after: { persona },
