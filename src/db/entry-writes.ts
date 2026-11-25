@@ -2,7 +2,7 @@
 // hours only by failing the `entry` trigger, a locked week writes nothing because every statement carries the
 // lock predicate, and a row outside the scope or on a project its owner is no longer assigned to writes nothing,
 // whatever grants the caller holds, because every statement carries the assignment predicate too (SEC-12). An
-// owner's own edits to an unlocked week are not audited.
+// owner's own edits to an unlocked week are not audited; an agent's are, as one event per save (entry-audit.ts).
 import { fail } from '../lib/errors';
 import { DAY_CAP } from '../lib/hours';
 import { newId } from '../lib/ids';
@@ -11,6 +11,7 @@ import { DAY_NAMES, DAYS_IN_WEEK, isBlank, isEditable, type Cell } from '../lib/
 import type { CellEdit } from '../lib/week-form';
 import { retryOnce } from './audit';
 import { keyRing, type KeyRing } from './client-keys';
+import { auditedCells, type Planned } from './entry-audit';
 import type { Scope } from './scope';
 import { openCell, readCells, readRows, weekState, type CellRecord } from './week-view';
 
@@ -40,15 +41,6 @@ WHERE id = ?1 AND row_id = ?2 AND ${WEEK_OPEN('entry.row_id')} AND ${ROW_ASSIGNE
 const DAY_SUMS = `SELECT e.dow, sum(e.hundredths) AS total
 FROM entry e JOIN week_row r ON r.client_id = e.client_id AND r.id = e.row_id
 WHERE r.person_id = ?1 AND r.week_start = ?2 GROUP BY e.dow`;
-
-interface Planned {
-  rowId: string;
-  statement: D1PreparedStatement;
-  /** Hours added to the day. The batch applies the most negative first, so no step passes the cap. */
-  delta: number;
-  /** An insert or update changes one row; zero means the lock predicate refused it. */
-  writes: boolean;
-}
 
 /** Day totals of the person's whole week, rows outside the scope included, so the cap counts every hour. */
 export async function bookedByDay(
@@ -81,22 +73,41 @@ async function planCell(
     const current = await openCell(before, ring);
     if (current.hundredths === next.hundredths && current.note === next.note) return null;
     const delta = next.hundredths - before.hundredths;
+    const shown = {
+      rowId: edit.rowId,
+      clientId,
+      dow: edit.dow,
+      delta,
+      from: before.hundredths,
+      to: next.hundredths,
+      noteChanged: current.note !== next.note,
+    };
     if (isBlank(next)) {
       const statement = db.prepare(DELETE).bind(before.id, edit.rowId);
-      return { rowId: edit.rowId, statement, delta, writes: false };
+      return { ...shown, statement, writes: false };
     }
     const sealed = await seal(ring, clientId, before.id, next.note);
     const statement = db
       .prepare(UPDATE)
       .bind(before.id, next.hundredths, ...sealed, now, edit.rowId);
-    return { rowId: edit.rowId, statement, delta, writes: true };
+    return { ...shown, statement, writes: true };
   }
   const id = newId();
   const sealed = await seal(ring, clientId, id, next.note);
   const statement = db
     .prepare(INSERT)
     .bind(id, edit.dow, next.hundredths, ...sealed, now, edit.rowId, personId);
-  return { rowId: edit.rowId, statement, delta: next.hundredths, writes: true };
+  return {
+    rowId: edit.rowId,
+    clientId,
+    dow: edit.dow,
+    statement,
+    delta: next.hundredths,
+    writes: true,
+    from: 0,
+    to: next.hundredths,
+    noteChanged: next.note !== '',
+  };
 }
 
 /** The person's rows in the week whose project they are no longer assigned to. */
@@ -178,7 +189,7 @@ export async function saveCells(
     const over = days.findIndex((total) => total > DAY_CAP);
     if (over >= 0) fail('day_cap', DAY_NAMES[over]);
     planned.sort((a, b) => a.delta - b.delta);
-    await apply(scope, db, personId, weekStart, planned);
+    await apply(scope, db, personId, weekStart, planned, now);
   });
 }
 
@@ -192,11 +203,15 @@ async function apply(
   personId: string,
   weekStart: string,
   planned: readonly Planned[],
+  now: number,
 ): Promise<void> {
   if (planned.length === 0) return;
   let results: D1Result[];
   try {
-    results = await db.batch(planned.map((p) => p.statement));
+    results =
+      scope.kind === 'agent'
+        ? await auditedCells(scope, db, personId, weekStart, planned, now)
+        : await db.batch(planned.map((p) => p.statement));
   } catch (error) {
     if (error instanceof Error && error.message.includes('day_cap')) fail('day_cap');
     throw error;

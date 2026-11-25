@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AUDIT_EVENTS,
   AUDIT_OF,
+  AUDIT_OF_AGENT,
   AUDIT_OF_PAGES,
   NON_ACTION_SOURCES,
   type AuditEvent,
@@ -62,6 +63,9 @@ describe('audit map', () => {
       if (events !== 'none') for (const e of events) reachable.add(e);
     }
     for (const events of Object.values(AUDIT_OF_PAGES)) for (const e of events) reachable.add(e);
+    for (const events of Object.values(AUDIT_OF_AGENT)) {
+      if (events !== 'none') for (const e of events) reachable.add(e);
+    }
     expect(AUDIT_EVENTS.filter((e) => !reachable.has(e))).toEqual([]);
   });
 });

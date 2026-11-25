@@ -9,6 +9,18 @@ interface MemberScope {
   readonly projectIds: readonly string[];
 }
 
+/**
+ * An MCP client acting as one person, always with member-level reach whatever roles the person holds: the assigned
+ * projects and nothing else. The grant and client ride along so every audited write is marked as the agent's.
+ */
+interface AgentScope {
+  readonly kind: 'agent';
+  readonly actorId: string;
+  readonly projectIds: readonly string[];
+  readonly grantId: string;
+  readonly client: string;
+}
+
 /** Every client's rows, explicitly: the actor is the person every write under it is audited as, null for Cron. */
 interface AllScope {
   readonly kind: 'all';
@@ -21,9 +33,11 @@ interface CeremonyScope {
   readonly actorId: string | null;
 }
 
-export type Scope = (MemberScope | AllScope | CeremonyScope) & { readonly [brand]: 'Scope' };
+type Unbranded = MemberScope | AgentScope | AllScope | CeremonyScope;
 
-const sealed = (scope: MemberScope | AllScope | CeremonyScope): Scope => scope as Scope;
+export type Scope = Unbranded & { readonly [brand]: 'Scope' };
+
+const sealed = (scope: Unbranded): Scope => scope as Scope;
 
 interface ScopeRow {
   offboarded_at: number | null;
@@ -49,6 +63,26 @@ export async function scopeFor(db: D1Database, personId: string): Promise<Scope>
 }
 
 /**
+ * The scope of an agent grant, built on every call so a role or assignment change applies at once. Only the
+ * `/mcp` route calls it. An unknown or offboarded person is forbidden; an admin's agent still sees assigned projects only.
+ */
+export async function agentScopeFor(
+  db: D1Database,
+  grant: { id: string; person_id: string; client_name: string },
+): Promise<Scope> {
+  const row = await db.prepare(SCOPE_OF_PERSON).bind(grant.person_id).first<ScopeRow>();
+  if (!row || row.offboarded_at !== null) fail('forbidden', 'no active person');
+  const projectIds = (JSON.parse(row.project_ids) as string[]).toSorted();
+  return sealed({
+    kind: 'agent',
+    actorId: grant.person_id,
+    projectIds,
+    grantId: grant.id,
+    client: grant.client_name,
+  });
+}
+
+/**
  * Every client's rows with no actor, for tests that write with no person behind them. No production code
  * calls it: the backup and the 09:00 check read with no Scope at all (ADR 0008).
  */
@@ -67,7 +101,7 @@ export function ceremonyScope(actorId: string | null): Scope {
 /** The assigned project ids as one JSON parameter for `json_each`, or null only when the scope holds every client. */
 export function projectsParam(scope: Scope): string | null {
   if (scope.kind === 'all') return null;
-  return JSON.stringify(scope.kind === 'member' ? scope.projectIds : []);
+  return JSON.stringify(scope.kind === 'member' || scope.kind === 'agent' ? scope.projectIds : []);
 }
 
 /** Only an all-clients scope reads another person's rows; any other person is a scoped miss and returns 404. */

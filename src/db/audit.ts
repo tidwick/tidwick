@@ -41,6 +41,14 @@ function json(value: unknown): string | null {
   return value === undefined || value === null ? null : JSON.stringify(value);
 }
 
+/** An agent's write carries `via` inside the hashed `after`, so no event it causes can be told from a person's own. */
+function afterOf(scope: Scope, after: unknown): unknown {
+  if (scope.kind !== 'agent') return after;
+  const via = { kind: 'agent', grant: scope.grantId, client: scope.client };
+  const body = typeof after === 'object' && after !== null && !Array.isArray(after) ? after : {};
+  return { ...body, via };
+}
+
 /** The newest event's seq and hash, or seq 0 and the genesis hash for an empty log. */
 export async function readHead(db: D1Database): Promise<Head> {
   return (await db.prepare(HEAD).first<Head>()) ?? { seq: 0, hash: GENESIS };
@@ -66,7 +74,7 @@ export async function auditStatement(
     client_id: input.clientId,
     target: input.target,
     before_json: json(input.before),
-    after_json: json(input.after),
+    after_json: json(afterOf(scope, input.after)),
     prev_hash: head.hash,
     hash: '',
   };
@@ -126,7 +134,8 @@ export async function checkChain(db: D1Database, maxQueries = Infinity): Promise
 
 /**
  * A batch whose every audited statement is followed by its event: `record` pairs a change with the event and
- * the row count it must have changed, `also` adds an unaudited statement, `run` sends them as one batch.
+ * the row count it must have changed, `also` adds an unaudited statement, `run` sends them as one batch and
+ * returns each statement's result in the order added, the events included.
  */
 export interface AuditedBatch {
   record(
@@ -135,7 +144,7 @@ export interface AuditedBatch {
     expectedChanges: number | null,
   ): Promise<void>;
   also(statement: D1PreparedStatement): void;
-  run(): Promise<void>;
+  run(): Promise<D1Result[]>;
 }
 
 export async function auditedBatch(scope: Scope, db: D1Database): Promise<AuditedBatch> {
@@ -150,8 +159,8 @@ export async function auditedBatch(scope: Scope, db: D1Database): Promise<Audite
     also(statement) {
       statements.push(statement);
     },
-    async run() {
-      await db.batch(statements);
+    run() {
+      return db.batch(statements);
     },
   };
 }
