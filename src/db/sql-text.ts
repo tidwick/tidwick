@@ -8,7 +8,6 @@ export function literal(cell: Cell): string | null {
   if (cell === null) return 'NULL';
   if (typeof cell === 'number') return Number.isSafeInteger(cell) ? String(cell) : null;
   if (typeof cell === 'object') return `X'${cell.x}'`;
-  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f]/.test(cell)) {
     const bytes = new TextEncoder().encode(cell);
     return `CAST(X'${hex(bytes)}' AS TEXT)`;

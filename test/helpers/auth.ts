@@ -10,7 +10,7 @@ import { storedRows, type StoredTable } from '../../src/db/stored-rows';
 import { authEnv, type AuthEnv } from '../../src/lib/env';
 import { createSoftwareAuthenticator, type SoftwareAuthenticator } from './software-authenticator';
 
-/** The two grants by name, so no test file writes a role literal (`just lint-role-boundary`). */
+/** The two grants by name, so no test file writes a role literal (`guard/role-boundary` in eslint.config.mjs). */
 export const [ACCOUNTING, ADMIN] = GRANTS;
 
 export const T0 = Date.UTC(2026, 0, 5, 9, 0, 0);

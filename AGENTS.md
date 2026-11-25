@@ -27,7 +27,7 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 
 - No new docs. Amend `docs/ARCHITECTURE.md` (terse, SVG over prose) when a boundary, flow or limit changes, or add an ADR only for a decision costly to reverse that code cannot state.
 - A rule that must hold lives in a test, a lint, or a comment at the code site, never only in prose.
-- No per-directory READMEs, runbooks, changelog prose or session logs (`just docs-bar`).
+- No per-directory READMEs, runbooks, changelog prose or session logs (`just guard`).
 
 ## Commit
 

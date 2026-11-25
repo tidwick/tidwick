@@ -22,7 +22,6 @@ for (const [label, value] of [
   ['name', name],
   ['firm', firm],
 ] as const) {
-  // eslint-disable-next-line no-control-regex
   if (value.trim() === '' || value.length > 200 || /[\u0000-\u001f\u007f]/.test(value)) {
     stop(`the ${label} must be 1 to 200 printable characters`);
   }

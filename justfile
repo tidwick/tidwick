@@ -158,33 +158,6 @@ restore-drill: backup-fixture
     just restore test/fixtures/backup.age test/fixtures/backup-key.txt
     node scripts/restore-drill.ts .wrangler/drill/source .wrangler/restore
 
-lint-sql-boundary:
-    ./scripts/sql-boundary.test.sh
-    ./scripts/sql-boundary.sh
-
-lint-test-support-gate:
-    ./scripts/test-support-gate.test.sh
-    ./scripts/test-support-gate.sh
-
-migration-manifest:
-    ./scripts/migration-manifest.test.sh
-    [ -z "${CI:-}" ] || git fetch --depth=1 origin next:refs/remotes/origin/next
-    ./scripts/migration-manifest.sh
-
-lint-import-gate:
-    ./scripts/import-gate.test.sh
-    ./scripts/import-gate.sh
-
-lint-role-boundary:
-    ./scripts/role-boundary.test.sh
-    ./scripts/role-boundary.sh
-
-restore-target:
-    ./scripts/restore-target.test.sh
-
-restore-errors:
-    ./scripts/restore-errors.test.sh
-
 # Deploy, in order: deploy-init, edit wrangler.jsonc (ARCHITECTURE, Deploy), deploy-keys, deploy, deploy-secrets,
 # deploy-check, first-admin. `env` is "" for the real deployment or "demo" for wrangler.jsonc env.demo. Nothing here
 # prints a secret value. Never run these from a working session against a live account.
@@ -263,26 +236,30 @@ first-admin email name firm env="" kit=".wrangler/kit":
     printf 'SESSION_SECRET=%s\nNOTE_KEK=%s\n' "$(cat {{ quote(kit) }}/session-secret)" "$(cat {{ quote(kit) }}/note-kek)" | just bootstrap {{ quote(email) }} {{ quote(name) }} {{ quote(firm) }}
     npx --no-install wrangler d1 execute "$db" --remote $flags --file .wrangler/bootstrap.sql
 
-# The doc bar as a gate: markdown lives only in the forge face, the agent entry, ARCHITECTURE, the ADRs and the pull request template.
-docs-bar:
+# The checks ESLint cannot see (docs/ARCHITECTURE.md §8). Each prints one PASS or FAIL line.
+guard:
     #!/usr/bin/env bash
     set -euo pipefail
     extra="$(git ls-files '*.md' | grep -Ev '^(README|CONTRIBUTING|AGENTS|CLAUDE|LICENSE)\.md$|^docs/ARCHITECTURE\.md$|^docs/adr/|^\.github/pull_request_template\.md$' || true)"
     [ -z "$extra" ] || { echo "FAIL docs-bar: $extra; fold it into docs/ARCHITECTURE.md or an ADR and delete it"; exit 1; }
     echo "PASS docs-bar"
-
-colour-literals:
+    # A shipped migration never changes. CI compares with the commit a pull request merges into or a push follows
+    # (a tag, schedule or dispatch: next); a laptop compares with origin/next.
+    base=origin/next
+    if [ -n "${GITHUB_EVENT_PATH:-}" ]; then
+      git fetch -q --depth=1 origin "$(node -p 'const e = require(process.env.GITHUB_EVENT_PATH); e.pull_request?.base.sha ?? (/^0*$/.test(e.before ?? "") ? "next" : e.before)')"
+      base=FETCH_HEAD
+    fi
+    changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
+    [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
+    echo "PASS migrations"
+    ./scripts/restore-target.test.sh
+    ./scripts/restore-errors.test.sh
+    ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh
     ./scripts/colour-literals.sh
-
-size:
-    ./scripts/size-guard.sh
-
-contrast:
     ./scripts/contrast.test.sh
     node scripts/contrast.ts
-
-guard: migration-manifest lint-sql-boundary lint-test-support-gate lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
 
 audit:
     npm audit --audit-level=high

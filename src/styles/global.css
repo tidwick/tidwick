@@ -57,12 +57,12 @@
 }
 
 /*
- * The visual tokens, all of them here and nowhere else (colour literals are checked by `just colour-literals`).
+ * The visual tokens, all of them here and nowhere else (colour literals are checked by `just guard`).
  *   Palette:  neutral ground and ink, one blue accent (`primary`, `ring`), `danger` for refusals and destructive
  *             actions, `notice` for a heads-up that is not an error, `control` for the border of a form control.
  *   Spacing:  five named steps (`gutter`, `field`, `block`, `section`, `page`) used as `px-gutter`, `gap-block`, ...
  *   Radius:   `--radius` and the steps `sm` to `4xl` derived from it above.
- * Every text and control pair is held to WCAG AA in both themes by `just contrast`.
+ * Every text and control pair is held to WCAG AA in both themes by `just guard`.
  */
 
 :root {
