@@ -30,8 +30,7 @@ export async function claimFirstAdmin(
     keyedHash(deps.secret, 'setup', deps.setupToken),
   ]);
   if (!sameText(given, expected)) fail('setup_failed');
-  const refusal = bootstrapRefusal(who.email, who.name, who.firm);
-  if (refusal !== null) fail('invalid_input', refusal);
+  if (bootstrapRefusal(who.email, who.name, who.firm) !== null) fail('invalid_input');
   const clientId = newId();
   const token = randomToken();
   const claimed = await claimInstance(ceremonyScope(null), deps.db, {
