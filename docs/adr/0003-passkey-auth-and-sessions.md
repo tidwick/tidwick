@@ -1,6 +1,6 @@
 # 0003 Passkey and SSO login and opaque sessions
 
-Date: 2026-11-22, revised 2026-11-24
+Date: 2026-11-22, revised 2026-11-25
 Status: Accepted
 
 ## Context
@@ -18,12 +18,13 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 - Enrolment and recovery codes are hashed and single-use.
 - Lockout applies to recovery only, never to a passkey or SSO login.
 - Sessions are opaque random tokens, stored HMAC-hashed, carried in a `__Host-` cookie.
-- The first admin is created by a local script; rescue is an operator recipe run with deploy credentials.
+- The first admin is created by a local script (`just first-admin`), or once from `/setup` on an empty database with a one-time `SETUP_TOKEN` secret, compared in constant time, which the deployer deletes after; rescue is an operator recipe run with deploy credentials.
 - The last admin with a passkey cannot be removed or demoted, so losing a provider never locks the firm out.
-- Public auth calls are rate-limited per IP by the binding, logins and SSO in their own bucket so recovery floods cannot starve them.
+- Public auth calls are rate-limited per IP by the binding, logins, SSO and the setup claim in their own bucket so recovery floods cannot starve them.
 
 ## Consequences
 
+- A `SETUP_TOKEN` left set opens nothing once any audit event or admin exists.
 - A lost device is recovered by code or by an admin, never by email.
 - Sessions can be revoked server-side by deleting a row.
 - Disabling a person at the identity provider stops new SSO sign-ins only. Offboarding in tidwick ends their sessions and unlinks their identities.

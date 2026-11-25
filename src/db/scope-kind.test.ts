@@ -8,13 +8,14 @@ import { reenrol } from '../auth/revoke';
 import { unlockRecovery } from '../auth/lockout';
 import { currentEnv } from '../lib/env';
 import { addAllAssignments, addAssignment, removeAssignment } from './assignments';
+import { claimInstance, type BootstrapInput } from './bootstrap';
 import { archiveClient, createClient, renameClient } from './clients';
 import { listPeople, personDetail } from './people';
 import { createPerson } from './person-create';
 import { setProjectTasks } from './project-tasks';
 import { archiveProject, createProject, updateProject } from './projects';
 import { setGrants } from './role-grants';
-import { requireAll, scopeFor, systemScope, type Scope } from './scope';
+import { ceremonyScope, requireAll, scopeFor, systemScope, type Scope } from './scope';
 import { archiveTaskCode, createTaskCode, renameTaskCode } from './task-codes';
 
 const MEMBER = SEED_IDS.person(3);
@@ -26,6 +27,18 @@ beforeAll(async () => {
   await loadSeed(env.DB, currentEnv().NOTE_KEK);
   member = await scopeFor(env.DB, MEMBER);
 });
+
+const CLAIM: BootstrapInput = {
+  email: 'a@example.test',
+  name: 'n',
+  firm: 'f',
+  personId: 'p',
+  firmId: 'f',
+  clientId: 'c',
+  key: { wrapped: new Uint8Array(1), iv: new Uint8Array(1), kekId: 'k' },
+  enrolmentHash: 'h',
+  now: NOW,
+};
 
 const kek = () => currentEnv().NOTE_KEK;
 
@@ -73,6 +86,7 @@ describe('the domain refuses privileged calls by scope kind', () => {
       () => unlockRecovery(member, db, 'secret', ID, NOW),
       () => listPeople(member, db),
       () => personDetail(member, db, ID),
+      () => claimInstance(member, db, CLAIM),
     ];
     for (const [i, call] of calls.entries()) {
       await expect(call(), `call ${String(i)}`).rejects.toMatchObject({ code: 'forbidden' });
@@ -95,5 +109,13 @@ describe('the domain refuses privileged calls by scope kind', () => {
   it('an all-clients scope reads people', async () => {
     expect((await listPeople(systemScope(), env.DB)).length).toBeGreaterThan(0);
     expect((await personDetail(systemScope(), env.DB, MEMBER))?.id).toBe(MEMBER);
+  });
+
+  it('only a ceremony scope with no actor may claim: an all-clients scope and a person’s ceremony scope are refused', async () => {
+    for (const scope of [systemScope(), ceremonyScope(MEMBER)]) {
+      await expect(claimInstance(scope, env.DB, CLAIM)).rejects.toMatchObject({
+        code: 'forbidden',
+      });
+    }
   });
 });

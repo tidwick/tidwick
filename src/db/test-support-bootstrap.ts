@@ -38,6 +38,16 @@ export async function rowCounts(db: D1Database): Promise<Record<string, number>>
   return counts;
 }
 
+/** Every audit event's seq, action and actor, in order. */
+export async function auditEvents(
+  db: D1Database,
+): Promise<{ seq: number; action: string; actor_id: string | null }[]> {
+  const rows = await db
+    .prepare('SELECT seq, action, actor_id FROM audit_event ORDER BY seq')
+    .all<{ seq: number; action: string; actor_id: string | null }>();
+  return rows.results;
+}
+
 export async function adminGrants(db: D1Database): Promise<number> {
   const row = await db
     .prepare("SELECT count(*) AS n FROM person_role WHERE role = 'admin'")

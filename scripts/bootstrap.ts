@@ -3,7 +3,7 @@
 // `wrangler secret put`. Usage: node scripts/bootstrap.ts <email> <name> <firm> <out sql>
 import { readFileSync, writeFileSync } from 'node:fs';
 import { keyedHash, randomToken } from '../src/auth/tokens.ts';
-import { bootstrapSql } from '../src/db/bootstrap.ts';
+import { bootstrapRefusal, bootstrapSql } from '../src/db/bootstrap.ts';
 import { newId } from '../src/lib/ids.ts';
 import { newClientKey } from '../src/lib/note-crypto.ts';
 import { isNoteKek, isSessionSecret } from '../src/lib/secrets.ts';
@@ -17,15 +17,8 @@ const [email, name, firm, out] = process.argv.slice(2);
 if (email === undefined || name === undefined || firm === undefined || out === undefined) {
   stop('usage: just bootstrap <email> <name> <firm>, with the two secrets on standard input');
 }
-if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) stop(`"${email}" is not an email address`);
-for (const [label, value] of [
-  ['name', name],
-  ['firm', firm],
-] as const) {
-  if (value.trim() === '' || value.length > 200 || /[\u0000-\u001f\u007f]/.test(value)) {
-    stop(`the ${label} must be 1 to 200 printable characters`);
-  }
-}
+const refusal = bootstrapRefusal(email, name, firm);
+if (refusal !== null) stop(refusal);
 
 const secrets = new Map(
   readFileSync(0, 'utf8')

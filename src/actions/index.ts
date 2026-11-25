@@ -43,6 +43,7 @@ import projectsSetTasks from './projects/setTasks';
 import projectsUpdate from './projects/update';
 import settingsSave from './settings/save';
 import settingsSaveCsv from './settings/saveCsv';
+import setupClaim from './setup/claim';
 import submissionApprove from './submission/approve';
 import submissionReturn from './submission/return';
 import submissionSubmit from './submission/submit';
@@ -114,6 +115,9 @@ export const server = {
   settings: {
     save: settingsSave,
     saveCsv: settingsSaveCsv,
+  },
+  setup: {
+    claim: setupClaim,
   },
   submission: {
     approve: submissionApprove,

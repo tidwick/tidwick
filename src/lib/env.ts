@@ -10,6 +10,7 @@ import {
   optionalSecret,
   origin,
   providersText,
+  setupToken,
   recipient,
   secret,
   text,
@@ -50,6 +51,8 @@ export interface Env {
   NOTE_KEK: string;
   /** The KEK a rotation retires, set only until `keys.rewrap` has moved every key off it; null when unset. */
   NOTE_KEK_PREVIOUS: string | null;
+  /** The one-time secret that lets `/setup` create the first admin on an empty database; null when unset or under 43 characters, which turns the claim off. */
+  SETUP_TOKEN: string | null;
 }
 
 /** With `gaps`, a refused field is recorded by name and read as undefined, so one pass names every gap; without, the first throws. */
@@ -84,6 +87,7 @@ function parse(source: Source, gaps?: string[]): Env {
     SESSION_SECRET: field(() => secret(source, 'SESSION_SECRET', isSessionSecret)),
     NOTE_KEK: field(() => secret(source, 'NOTE_KEK', isNoteKek)),
     NOTE_KEK_PREVIOUS: field(() => optionalSecret(source, 'NOTE_KEK_PREVIOUS', isNoteKek)),
+    SETUP_TOKEN: setupToken(source),
   };
 }
 

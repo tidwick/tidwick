@@ -65,6 +65,7 @@ export const ACTIONS: Readonly<Record<string, Rule>> = {
   'auth.enrolOptions': PUBLIC,
   'auth.enrolVerify': PUBLIC,
   'auth.recover': PUBLIC,
+  'setup.claim': PUBLIC,
   'auth.demoSignin': PUBLIC,
   'auth.addPasskeyOptions': { ...MEMBER_STEP_UP, recovery: true },
   'auth.addPasskeyVerify': { ...MEMBER_STEP_UP, recovery: true },

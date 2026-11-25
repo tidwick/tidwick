@@ -62,7 +62,7 @@ export default defineConfig(
   { files: ['**/*.mjs', '**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
   // The browser globals this file declares in its own header comment.
   { files: ['src/theme/theme.js'], linterOptions: { noInlineConfig: false } },
-  { files: ['scripts/bootstrap.ts', 'src/db/sql-text.ts'], rules: { 'no-control-regex': 'off' } },
+  { files: ['scripts/bootstrap.ts', 'src/db/bootstrap.ts', 'src/db/sql-text.ts'], rules: { 'no-control-regex': 'off' } },
   { plugins: { guard } },
   {
     files: ['{src,test,scripts,e2e}/**'],

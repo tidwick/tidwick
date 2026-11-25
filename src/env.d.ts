@@ -10,7 +10,7 @@ declare namespace App {
     scope: import('./db/scope').Scope | null;
     /** The caller's grants, read once by `src/middleware/authz.ts` on every non-public row; empty otherwise. */
     grants: readonly import('./db/roles').Grant[];
-    /** Set only by `src/middleware/setup.ts` on `/setup`, for an unconfigured instance with an empty database. */
+    /** Set only by `src/middleware/setup.ts` on `/setup`, for an instance with an empty database: the missing names, or the claim. */
     setup?: import('./middleware/setup').SetupReport;
   }
 }
