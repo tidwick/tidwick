@@ -12,6 +12,7 @@ const NAMES = [
   'role-boundary',
   'import-gate',
   'test-support-gate',
+  'cron-scope-gate',
   'test-boundary',
 ];
 const guard = { rules: Object.fromEntries(NAMES.map((name) => [name, syntax])) };
@@ -28,6 +29,8 @@ const ROLE =
   'A role name outside src/routes.ts and src/db/: add a row to src/routes.ts or use GRANTS from src/db/roles.ts';
 const SHIPS =
   'Production source reaches test support or systemScope: keep it in a *.test.ts file or src/db/test-support*.ts';
+const CRON =
+  'cronScope is the demo wipe\'s all-clients scope: only src/db/demo-wipe.ts may use it, so take the narrowest Scope your path has';
 const EDGE =
   '/^(astro|cloudflare):|[/](actions|middleware|pages|components|layouts|mcp|worker)([/]|$)/';
 const edge = (not = '') => [
@@ -101,6 +104,14 @@ export default defineConfig(
         { selector: 'Literal[value=/test-support|systemScope/]', message: SHIPS },
         { selector: 'TemplateElement[value.raw=/test-support|systemScope/]', message: SHIPS },
       ],
+    },
+  },
+  {
+    // cronScope() equals systemScope(), so it is pinned to the one scheduled path that needs every client.
+    files: ['src/**'],
+    ignores: ['src/db/scope.ts', 'src/db/demo-wipe.ts'],
+    rules: {
+      'guard/cron-scope-gate': ['error', { selector: 'Identifier[name=cronScope]', message: CRON }],
     },
   },
   {

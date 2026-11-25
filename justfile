@@ -239,7 +239,7 @@ release version:
     echo "NEXT, by hand once the PR is merged (the lab runs between the two steps):"
     echo "  git fetch origin && git push origin origin/next:main"
     echo "  (run the lab checklist against main)"
-    echo "  git tag -a v{{ version }} -m v{{ version }} origin/next && git push origin v{{ version }}"
+    echo "  git fetch origin && git tag -a v{{ version }} -m v{{ version }} origin/main && git push origin v{{ version }}"
 
 # The checks ESLint cannot see (docs/ARCHITECTURE.md §8). Each prints one PASS or FAIL line.
 guard:

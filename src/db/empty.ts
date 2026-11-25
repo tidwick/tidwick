@@ -1,5 +1,5 @@
 // Whether this database has an owner yet: no audit event and no admin grant. The bootstrap file guards every
-// statement with it (SEC-29), and the setup page shows itself only while it holds.
+// statement with it (SEC-29), and the first-admin claim is refused unless it holds.
 
 export const EMPTY = `NOT EXISTS (SELECT 1 FROM audit_event)
 AND NOT EXISTS (SELECT 1 FROM person_role WHERE role = 'admin')`;
