@@ -1,0 +1,53 @@
+---
+import { actions } from 'astro:actions';
+import type { IdentityRow } from '../../db/identities';
+import { currentEnv } from '../../lib/env';
+import PostForm from './post-form.astro';
+// How a person signs in: their passkeys, and each account linked at an identity provider with a way to unlink it.
+// The label is the operator's button text for that issuer; a provider since removed from the config shows its id.
+interface Props {
+  csrf: string;
+  person: { id: string; name: string };
+  passkeys: number;
+  identities: IdentityRow[];
+}
+const { csrf, person, passkeys, identities } = Astro.props;
+const labels = new Map(currentEnv().SSO.map((p) => [p.issuer, p.label]));
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+---
+
+<section aria-labelledby="methods-h" class="grid max-w-xl gap-3">
+  <h2 id="methods-h" class="text-lg font-semibold">
+    Sign-in methods
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    {passkeys === 1 ? '1 passkey' : `${String(passkeys)} passkeys`}. An account linked at an
+    identity provider signs in without a passkey; at least one admin always keeps a passkey.
+  </p>
+  {identities.length === 0 ? (
+    <p class="text-sm">No linked identity provider accounts.</p>
+  ) : (
+    <ul class="divide-y divide-border rounded-md border border-border">
+      {identities.map((i) => (
+        <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div class="text-sm">
+            <p class="font-medium">{labels.get(i.issuer) ?? i.provider}</p>
+            <p class="break-all text-muted-foreground">
+              {i.email ?? 'No email on file'} · linked {day(i.created_at)} ·{' '}
+              {i.last_used_at === null ? 'never used' : `last used ${day(i.last_used_at)}`}
+            </p>
+          </div>
+          <PostForm
+            action={actions.people.unlinkSso}
+            csrf={csrf}
+            label="Unlink"
+            tone="danger"
+            compact
+            named={`Unlink ${labels.get(i.issuer) ?? i.provider} from ${person.name}`}
+            fields={{ id: person.id, identity: i.id }}
+          />
+        </li>
+      ))}
+    </ul>
+  )}
+</section>

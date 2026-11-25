@@ -1,10 +1,13 @@
 ---
 import Heading from '../../components/auth/heading.astro';
 import { PRIMARY, SECONDARY } from '../../components/auth/classes';
+import SsoLinks from '../../components/auth/sso-links.astro';
+import { enrolLinks } from '../../components/auth/sso-links';
 import Status from '../../components/auth/status.astro';
 import Auth from '../../layouts/auth.astro';
 
 const token = Astro.params.token ?? '';
+const sso = enrolLinks(token);
 ---
 
 <Auth title="Set up your passkey">
@@ -23,6 +26,14 @@ const token = Astro.params.token ?? '';
       Create a passkey
     </button>
     <Status />
+    {sso.length > 0 && (
+      <div class="mt-4 grid gap-3">
+        <p class="text-sm text-muted-foreground">
+          Or link an account at your identity provider instead of a passkey.
+        </p>
+        <SsoLinks links={sso} />
+      </div>
+    )}
     <noscript>
       <p role="alert" class="mt-4 text-sm font-medium text-danger">
         Creating a passkey needs JavaScript. Turn it on for this site and reload.
