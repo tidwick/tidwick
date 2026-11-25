@@ -9,9 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
     "astro": "astro",
     "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
