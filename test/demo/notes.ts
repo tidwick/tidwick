@@ -49,8 +49,3 @@ export function noteFor(task: TaskCode, k: number): string | null {
   const pool = NOTES[task];
   return pool[k % pool.length] ?? null;
 }
-
-/** Every note the demo can write, for the vendor name scan. */
-export function notePool(): string[] {
-  return Object.values(NOTES).flat();
-}

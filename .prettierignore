@@ -2,7 +2,6 @@ dist
 .astro
 node_modules
 package-lock.json
-src/components/ui
 playwright-report
 test-results
 test/golden/mcp-tools.json
