@@ -21,7 +21,7 @@ function complete(): Record<string, unknown> {
 }
 
 /** Vars a local run may set in .dev.vars that wrangler.jsonc sets only for the demo environment. */
-const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES'];
+const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES', 'SSO_PROVIDERS'];
 
 function caught(source: object): AppError {
   try {
@@ -146,6 +146,15 @@ describe('typed env', () => {
     expect(readEnv({ ...complete(), MCP_NOTES: 'read' }).MCP_NOTES).toBe('read');
     for (const MCP_NOTES of ['on', 'READ', 'write'])
       expect(caught({ ...complete(), MCP_NOTES }).detail).toBe('MCP_NOTES');
+  });
+
+  it('SSO is off by default and, when set, needs each provider’s secret', () => {
+    expect(readEnv(complete()).SSO).toEqual([]);
+    expect(readEnv({ ...complete(), SSO_PROVIDERS: '' }).SSO).toEqual([]);
+    const providers = JSON.stringify([{ id: 'google', client_id: 'cg' }]);
+    expect(caught({ ...complete(), SSO_PROVIDERS: providers }).detail).toBe('SSO_SECRET_GOOGLE');
+    const on = readEnv({ ...complete(), SSO_PROVIDERS: providers, SSO_SECRET_GOOGLE: 's' });
+    expect(on.SSO.map((p) => p.id)).toEqual(['google']);
   });
 
   it('.dev.vars.example names every secret the env and the backup read that wrangler.jsonc does not set, each with no value', () => {

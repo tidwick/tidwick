@@ -21,3 +21,7 @@ DEMO_BANNER=
 MCP=
 # MCP_NOTES: "read" lets an agent read note text, which then reaches its provider; empty (off) gives it has_note only.
 MCP_NOTES=
+# SSO_PROVIDERS: a JSON array of identity providers to sign in with besides passkeys, one entry per tenant, each
+# {"id","label","issuer","client_id"} (the Google preset is {"id":"google","client_id":"..."}); each needs a secret
+# SSO_SECRET_<ID> (id upper-cased, "-" as "_"). Empty (off) and every /auth/sso route is a 404.
+SSO_PROVIDERS=

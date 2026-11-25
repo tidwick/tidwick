@@ -82,6 +82,14 @@ function secret(source: Source, name: string, valid: (value: string) => boolean)
   return value;
 }
 
+/** A var that may be unset or empty, which reads as null; set, it must be text. */
+function optionalText(source: Source, name: string): string | null {
+  const value = source[name];
+  if (value === undefined) return null;
+  if (typeof value !== 'string') fail('missing_binding', name);
+  return value.trim() === '' ? null : value;
+}
+
 /** A secret that may be unset or empty, which reads as null; set, it must have the shape `valid` names. */
 function optionalSecret(
   source: Source,
@@ -136,7 +144,7 @@ function parse(source: Source): Env {
     DEMO_PASSWORD: demoPassword(source),
     MCP: choice(source, 'MCP', ['', 'on'], '') === 'on',
     MCP_NOTES: choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
-    SSO: ssoProviders(source),
+    SSO: ssoProviders(optionalText(source, 'SSO_PROVIDERS'), source),
     BACKUP_RECIPIENT: recipient(source, 'BACKUP_RECIPIENT'),
     SESSION_SECRET: secret(source, 'SESSION_SECRET', isSessionSecret),
     NOTE_KEK: secret(source, 'NOTE_KEK', isNoteKek),

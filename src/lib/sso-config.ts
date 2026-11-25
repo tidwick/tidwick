@@ -64,13 +64,18 @@ function provider(entry: unknown, source: Record<string, unknown>): SsoProvider 
   return { id, label, issuer: httpsIssuer(issuer), clientId, clientSecret: secret, hd };
 }
 
-/** The allowed providers; an unset or empty `SSO_PROVIDERS` is none. Any malformed, repeated or secretless entry fails by name. */
-export function ssoProviders(source: Record<string, unknown>): readonly SsoProvider[] {
-  const raw = source['SSO_PROVIDERS'];
-  if (raw === undefined || (typeof raw === 'string' && raw.trim() === '')) return [];
+/**
+ * The allowed providers from the raw `SSO_PROVIDERS` text (null when unset or empty, which is none) and the source of
+ * the `SSO_SECRET_<ID>` values. Any malformed, repeated or secretless entry fails by name.
+ */
+export function ssoProviders(
+  raw: string | null,
+  source: Record<string, unknown>,
+): readonly SsoProvider[] {
+  if (raw === null) return [];
   let parsed: unknown;
   try {
-    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    parsed = JSON.parse(raw);
   } catch {
     fail('missing_binding', 'SSO_PROVIDERS');
   }
