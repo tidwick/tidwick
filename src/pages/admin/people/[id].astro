@@ -18,7 +18,7 @@ import {
 import { accessByPerson, assignmentsOf } from '../../../db/people-access';
 import { GRANTS } from '../../../db/roles';
 import { personDetail } from '../../../db/people';
-import { errorPage } from '../../../lib/errors';
+import { errorPage } from '../../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
 
 const ctx = await pageContext(Astro);

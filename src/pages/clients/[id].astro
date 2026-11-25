@@ -16,7 +16,7 @@ import {
 } from '../../components/ui/table';
 import { clientById } from '../../db/clients';
 import { listProjects } from '../../db/projects';
-import { errorPage } from '../../lib/errors';
+import { errorPage } from '../../middleware/error-responses';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
 const ctx = await pageContext(Astro);

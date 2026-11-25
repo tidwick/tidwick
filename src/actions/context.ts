@@ -6,7 +6,8 @@ import { cookieValue, type Session } from '../auth/session';
 import { authEnv, currentEnv, type AuthEnv } from '../lib/env';
 import type { Scope } from '../db/scope';
 import { errorText } from '../lib/error-text';
-import { fail, forAction, isAppError } from '../lib/errors';
+import { fail, isAppError } from '../lib/errors';
+import { forAction } from '../middleware/error-responses';
 
 /**
  * Runs an Action body; a catalog error leaves as Astro's ActionError with the catalog status and message, and any

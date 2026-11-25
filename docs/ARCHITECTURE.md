@@ -53,6 +53,7 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 | Rule                                                                                                                | Gate                                             |
 | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | SQL only under `src/db/`                                                                                            | `just lint-sql-boundary`                         |
+| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                   | `just lint-import-gate`                          |
 | Roles only in `src/routes.ts` and `src/db/`                                                                         | `just lint-role-boundary`                        |
 | Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                     |
 | Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just colour-literals`, `just contrast`          |

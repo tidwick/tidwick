@@ -2,7 +2,8 @@
 // default 500, and the log gets only `errorText()`, so no message, stack or value reaches either.
 import type { MiddlewareHandler } from 'astro';
 import { errorText } from '../lib/error-text';
-import { errorPage, errorResponse, isAppError } from '../lib/errors';
+import { isAppError } from '../lib/errors';
+import { errorPage, errorResponse } from './error-responses';
 import { RPC_PATTERN } from './authz';
 
 export const errors: MiddlewareHandler = async (context, next) => {

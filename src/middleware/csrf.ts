@@ -5,7 +5,7 @@ import type { MiddlewareHandler } from 'astro';
 import type { Session } from '../auth/session';
 import { csrfToken, sameText } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
-import { errorPage, errorResponse } from '../lib/errors';
+import { errorPage, errorResponse } from './error-responses';
 import { MAX_POST_BYTES } from '../lib/limits';
 import { RPC_PATTERN } from './authz';
 
