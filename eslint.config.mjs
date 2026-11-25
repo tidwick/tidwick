@@ -5,14 +5,7 @@ import astro from 'eslint-plugin-astro';
 
 export default defineConfig(
   {
-    ignores: [
-      'dist',
-      '.astro',
-      '.wrangler',
-      'node_modules',
-      'worker-configuration.d.ts',
-      'src/components/ui',
-    ],
+    ignores: ['dist', '.astro', '.wrangler', 'node_modules', 'worker-configuration.d.ts'],
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

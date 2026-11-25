@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Proves colour-literals.sh: a copy of src/ passes, and the same copy fails, naming the file, once each kind of raw
-# colour is planted outside the tokens; the stylesheet and the component library stay free to hold them.
+# colour is planted outside the tokens; the stylesheet stays free to hold them.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
@@ -32,12 +32,12 @@ if ! "$repo/scripts/colour-literals.sh" "$work" > "$work/anchor.log"; then
   echo "FAIL colour-literals self-test: an in-page anchor was read as a hex colour; tighten the hex pattern in scripts/colour-literals.sh"
   exit 1
 fi
+plant components/ui/leak.tsx "export const edge = '#1a2b3c';" "a hex in the component library"
 plant styles/extra.css ".x { color: #123456; }" "a hex in a second stylesheet"
 printf '.x { color: #123456; }\n' >> "$work/src/styles/global.css"
-printf '.x { color: rgb(1 2 3); }\n' >> "$work/src/components/ui/button.tsx"
 if ! "$repo/scripts/colour-literals.sh" "$work" > "$work/exempt.log"; then
   cat "$work/exempt.log"
-  echo "FAIL colour-literals self-test: the stylesheet or the component library was refused; keep them exempt in scripts/colour-literals.sh"
+  echo "FAIL colour-literals self-test: the stylesheet was refused; keep it exempt in scripts/colour-literals.sh"
   exit 1
 fi
 echo "PASS colour-literals self-test"

@@ -15,7 +15,6 @@
     "jsxImportSource": "react",
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["@cloudflare/vitest-plugin/types"],
-    "paths": { "@/*": ["./src/*"] }
+    "types": ["@cloudflare/vitest-plugin/types"]
   }
 }

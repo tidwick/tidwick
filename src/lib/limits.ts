@@ -3,9 +3,6 @@
 /** D1 on Workers Paid allows this many queries per invocation (the Deploy prerequisites name that plan). */
 export const D1_QUERIES_PER_INVOCATION = 1000;
 
-/** D1 allows this many bound parameters in one statement. */
-export const D1_PARAMS_PER_STATEMENT = 100;
-
 /** Rows one person may hold in one week, so a save writes at most seven cells per row inside the query budget. */
 export const MAX_WEEK_ROWS = 50;
 

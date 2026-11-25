@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 
 // Rendered on the server with no hydration: it stays hidden until the theme script (src/theme/theme.js) runs, since
 // with no script there is nothing for it to do, and that script handles its click and keeps `aria-pressed` true
