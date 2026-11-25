@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import pkg from '../../package.json';
 
 const files = import.meta.glob<string>(
-  ['../../justfile', '../../package-lock.json', '../../.github/workflows/ci.yml'],
+  ['../../justfile', '../../package-lock.json', '../../.github/workflows/*.yml'],
   {
     query: '?raw',
     import: 'default',
@@ -60,8 +60,8 @@ function undecidedScripts(
   return [...new Set(names)].filter((name) => !decided.has(name)).toSorted();
 }
 
-/** What a workflow does beyond checking out without a stored token and running `just ci` (P2, P3). */
-function workflowProblems(yaml: string): string[] {
+/** What a workflow must do: pin each action by SHA and check out without a stored token (P2, P3). */
+function pinProblems(yaml: string): string[] {
   const problems: string[] = [];
   for (const [, action = ''] of yaml.matchAll(/uses:\s*(\S+)/g)) {
     if (!/@[0-9a-f]{40}$/.test(action)) problems.push(`${action} is not pinned by commit SHA`);
@@ -72,6 +72,11 @@ function workflowProblems(yaml: string): string[] {
     )
   )
     problems.push('the checkout leaves its token in .git/config');
+  return problems;
+}
+
+/** The run steps a workflow may have beyond just recipes (P3). */
+function unlistedRuns(yaml: string): string[] {
   const runs = [...yaml.matchAll(/^\s+(?:- )?run:\s*(.*)$/gm)].map((m) => m[1]);
   const allowed = [
     'just ci',
@@ -83,9 +88,7 @@ function workflowProblems(yaml: string): string[] {
     'just playwright-version',
     'npx --no-install playwright install --with-deps chromium',
   ];
-  if (runs.some((run) => !allowed.includes(run ?? '')))
-    problems.push('runs more than just recipes');
-  return problems;
+  return runs.some((run) => !allowed.includes(run ?? '')) ? ['runs more than just recipes'] : [];
 }
 
 describe('dependencies', () => {
@@ -143,8 +146,11 @@ describe('dependencies', () => {
     expect(undecidedScripts(undefined, mutant)).toEqual(['@s/b', 'a', 'c']);
   });
 
-  it('SEC-27 CI checks out without keeping its token, pins each action by SHA, and runs only just recipes', () => {
-    expect(workflowProblems(files['../../.github/workflows/ci.yml'] ?? '')).toEqual([]);
+  it('SEC-27 every workflow checks out without keeping its token and pins each action by SHA; CI runs only just recipes', () => {
+    const workflows = Object.entries(files).filter(([path]) => path.includes('/workflows/'));
+    expect(workflows.length).toBeGreaterThanOrEqual(2);
+    for (const [path, yaml] of workflows) expect(pinProblems(yaml), path).toEqual([]);
+    expect(unlistedRuns(files['../../.github/workflows/ci.yml'] ?? '')).toEqual([]);
     const mutant = [
       '    steps:',
       '      - uses: actions/checkout@v4',
@@ -154,10 +160,10 @@ describe('dependencies', () => {
       '      - run: just ci',
       '',
     ].join('\n');
-    expect(workflowProblems(mutant)).toEqual([
+    expect(pinProblems(mutant)).toEqual([
       'actions/checkout@v4 is not pinned by commit SHA',
       'the checkout leaves its token in .git/config',
-      'runs more than just recipes',
     ]);
+    expect(unlistedRuns(mutant)).toEqual(['runs more than just recipes']);
   });
 });

@@ -5,7 +5,7 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 
 ## Commands
 
-- `eval "$(mise env)"` first in a non-interactive shell. Tools are pinned in `mise.toml` and `package.json` (exact versions, no ranges).
+- `eval "$(mise env)"` first in a non-interactive shell. Tools are pinned in `mise.toml`, `.node-version` and `package.json` (exact versions, no ranges).
 - `just check` is the one gate (typecheck, lint, fmt, build, test, migrate, restore drill, guard). `just ci` = what CI runs. Needs no Cloudflare account.
 - One test file: `just test src/lib/week.test.ts` (builds first; app and demo tests need it). A file's suffix picks its project: `.app.test.ts`, `.demo.test.ts`, `.dom.test.ts[x]`, else unit.
 - `just dev`, `just seed`, `just dev-session <who>`, `just golden` (rewrite goldens, review the diff), `just fmt`. `just --list` has the rest.

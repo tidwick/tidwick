@@ -9,7 +9,7 @@ A contributor, CI and an agent must agree on what green means. Tests should run 
 
 ## Decision
 
-- Tools are pinned in mise and exact in `package.json`.
+- Tools are pinned in mise, `.node-version` and exact in `package.json`.
 - `just check` is the gate and `just ci` is what CI runs.
 - Package manager is npm.
 - Tests run in the Workers pool; a jsdom project covers the named DOM tests.
