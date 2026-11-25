@@ -1,12 +1,13 @@
 // Every tool passes `gateTool`, and `gateTool` judges the route-table row its TOOLS entry names: swap that row for an
 // admin one and the tool is refused. A tool wired around the gate has no entry here and fails the source check.
 import { describe, expect, it } from 'vitest';
+import { ADMIN_GRANT } from '../db/roles';
 import { ACTIONS, PAGES, TOOLS, type Rule } from '../routes';
 import dispatchSource from './dispatch.ts?raw';
 import { gateTool } from './dispatch';
 
 const NOW = Date.now();
-const ADMIN_ROW: Rule = { roles: ['admin'], stepUp: false, recovery: false };
+const ADMIN_ROW: Rule = { roles: [ADMIN_GRANT], stepUp: false, recovery: false };
 const names = Object.keys(TOOLS) as (keyof typeof TOOLS)[];
 
 describe('gateTool', () => {
