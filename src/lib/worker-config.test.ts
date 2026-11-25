@@ -46,3 +46,30 @@ describe('cron triggers', () => {
     ]);
   });
 });
+
+describe('deployable default', () => {
+  const parsed = (text: string): Record<string, unknown> =>
+    JSON.parse(text.replace(/,(\s*[}\]])/g, '$1')) as Record<string, unknown>;
+  const text = files['../../wrangler.jsonc'] ?? '';
+  const dbs = (c: Record<string, unknown>): Record<string, unknown>[] =>
+    (c['d1_databases'] ?? []) as Record<string, unknown>[];
+
+  it('answers on workers.dev, with no database id of ours at the top level, while the demo stays off workers.dev', () => {
+    const main = parsed(text);
+    expect(main['workers_dev']).toBe(true);
+    expect(dbs(main).every((d) => !('database_id' in d))).toBe(true);
+    const demo = (main['env'] as Record<string, Record<string, unknown>>)['demo'];
+    expect(demo?.['workers_dev']).toBe(false);
+    expect(dbs(demo ?? {})[0]?.['database_id']).toBeTruthy();
+    expect(
+      dbs(
+        parsed(
+          text.replace(
+            '"database_name": "tidwick",',
+            '"database_name": "tidwick", "database_id": "x",',
+          ),
+        ),
+      )[0],
+    ).toHaveProperty('database_id');
+  });
+});
