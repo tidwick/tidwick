@@ -1,8 +1,9 @@
-// A person removing one of their own passkeys, audited; the last one stays.
+// A person removing one of their own passkeys, audited, and with it every agent grant; the last passkey stays.
 import { auditedBatch, retryOnce } from '../db/audit';
 import { activeCredentialsOf, revokeCredential } from '../db/credentials';
 import type { Scope } from '../db/scope';
 import { fail } from '../lib/errors';
+import { recordGrantRevocation } from './revoke';
 
 export async function revokeOwnPasskey(
   scope: Scope,
@@ -27,6 +28,7 @@ export async function revokeOwnPasskey(
       },
       1,
     );
+    await recordGrantRevocation(batch, db, personId, now);
     await batch.run();
   });
 }

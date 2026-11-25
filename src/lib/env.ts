@@ -22,6 +22,10 @@ export interface Env {
   DEMO_LOGIN: boolean;
   /** The demo sign-in's shared password, or null when unset or shorter than 16 characters, which closes it. */
   DEMO_PASSWORD: string | null;
+  /** True only when `MCP` is `on`: `/mcp` and the agent routes answer; otherwise every one of them is a 404. Off by default. */
+  MCP: boolean;
+  /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
+  MCP_NOTES: 'off' | 'read';
   BACKUP_RECIPIENT: string;
   SESSION_SECRET: string;
   NOTE_KEK: string;
@@ -127,6 +131,8 @@ function parse(source: Source): Env {
     DEMO_BANNER: choice(source, 'DEMO_BANNER', ['', 'on'], '') === 'on',
     DEMO_LOGIN: choice(source, 'DEMO_LOGIN', ['', 'on'], '') === 'on',
     DEMO_PASSWORD: demoPassword(source),
+    MCP: choice(source, 'MCP', ['', 'on'], '') === 'on',
+    MCP_NOTES: choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
     BACKUP_RECIPIENT: recipient(source, 'BACKUP_RECIPIENT'),
     SESSION_SECRET: secret(source, 'SESSION_SECRET', isSessionSecret),
     NOTE_KEK: secret(source, 'NOTE_KEK', isNoteKek),

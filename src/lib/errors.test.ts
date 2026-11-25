@@ -103,6 +103,9 @@ const REVIEWED = new Set([
   'String(held)',
   'String(cap.rows)',
   'row.client_id',
+  // An agent's input problems: schema paths and the messages our own schemas and `readCells` write.
+  "issues.map((i) => `${pathText(i.path)}: ${i.message}`).join('; ')",
+  "problems.join('; ')",
 ]);
 
 /** The second argument of each `fail(code, detail)` call in `text`. */

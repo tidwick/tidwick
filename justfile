@@ -18,6 +18,9 @@ dev-vars:
 dev-session who:
     @node test/local/dev-session.ts {{ quote(who) }}
 
+dev-agent-token who:
+    @node test/local/dev-agent-token.ts {{ quote(who) }}
+
 dev-smoke who="grid-phone":
     #!/usr/bin/env bash
     set -euo pipefail

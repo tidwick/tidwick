@@ -26,6 +26,7 @@ export async function dummyVars(): Promise<string> {
     `SESSION_SECRET=${randomBytes(32).toString('base64url')}`,
     `NOTE_KEK=${randomBytes(32).toString('base64')}`,
     `BACKUP_RECIPIENT=${recipient}`,
+    'MCP=on',
     '',
   ].join('\n');
 }
@@ -72,4 +73,30 @@ export async function localSession(
     `SELECT '${idHash}', id, ${at}, ${at}, ${String(expiresAt)}, ${at}, 0 FROM person ` +
     `WHERE email = '${email.replaceAll("'", "''")}' AND offboarded_at IS NULL RETURNING person_id;`;
   return { sql, cookie: `${LOCAL_SESSION_COOKIE}=${rawId}` };
+}
+
+/** A local agent token lasts one working day; production's lasts an hour and is refreshed. */
+export const LOCAL_AGENT_MS = LOCAL_SESSION_MS;
+
+/**
+ * The two inserts for a local agent grant of an active person by email, read, write and submit, and its access
+ * token, as `src/auth/agent-tokens.ts` stores one. No OAuth endpoint mints one yet. Each insert returns a row only if the person exists.
+ */
+export async function localAgentToken(
+  email: string,
+  secret: string,
+  now: number,
+  grantId: string = crypto.randomUUID(),
+): Promise<{ sql: string; token: string }> {
+  const token = randomToken();
+  const hash = await keyedHash(secret, 'agent_access', token);
+  const quoted = email.replaceAll("'", "''");
+  const scopes = JSON.stringify(['read', 'write', 'submit']);
+  const sql =
+    'INSERT INTO agent_grant (id, person_id, client_id, client_name, redirect_uri, scopes, created_at) ' +
+    `SELECT '${grantId}', id, 'local-dev', 'Local dev token', 'http://127.0.0.1/', '${scopes}', ${String(now)} FROM person ` +
+    `WHERE email = '${quoted}' AND offboarded_at IS NULL RETURNING id; ` +
+    'INSERT INTO agent_token (hash, grant_id, kind, expires_at) ' +
+    `SELECT '${hash}', id, 'access', ${String(now + LOCAL_AGENT_MS)} FROM agent_grant WHERE id = '${grantId}' RETURNING grant_id;`;
+  return { sql, token };
 }

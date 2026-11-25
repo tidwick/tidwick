@@ -34,6 +34,7 @@ export const PAGES: Readonly<Record<string, Partial<Record<Method, Rule>>>> = {
   '/demo': get(PUBLIC),
   '/healthz': get(PUBLIC),
   '/account': get({ ...MEMBER, recovery: true }),
+  '/mcp': { GET: PUBLIC, POST: PUBLIC },
   '/week/[...start]': get(MEMBER),
   '/clients': get(MEMBER),
   '/clients/[id]': get(MEMBER),
@@ -102,6 +103,36 @@ export const ACTIONS: Readonly<Record<string, Rule>> = {
   'settings.save': ADMIN_STEP_UP,
   'keys.rewrap': ADMIN_STEP_UP,
 };
+
+/** What an access token must carry to call a tool: `read` to look, `write` to change a week, `submit` to lock one. */
+export type ToolScope = 'read' | 'write' | 'submit';
+
+/**
+ * The agent's tools, each gated by the route-table row of the Action or page it reuses, so no role is restated here.
+ * The `/mcp` route runs `authorize` on that row with the agent's principal, which holds no grants and no step-up:
+ * a tool wired to a steward, admin or step-up row is refused whatever the token says, and a test holds every row
+ * to a member rule.
+ */
+export const TOOLS = {
+  list_projects: { gate: { page: '/week/[...start]' }, scope: 'read' },
+  get_week: { gate: { page: '/week/[...start]' }, scope: 'read' },
+  save_entries: { gate: { action: 'entries.save' }, scope: 'write' },
+  add_row: { gate: { action: 'entries.addRow' }, scope: 'write' },
+  copy_last_week: { gate: { action: 'entries.copyLastWeek' }, scope: 'write' },
+  remove_row: { gate: { action: 'entries.removeRow' }, scope: 'write' },
+  submit_week: { gate: { action: 'submission.submit' }, scope: 'submit' },
+} as const satisfies Record<
+  string,
+  { gate: { page: string } | { action: string }; scope: ToolScope }
+>;
+
+export type ToolName = keyof typeof TOOLS;
+
+/** The row a tool is gated by: its Action's, or its page's GET. */
+export function toolRule(name: ToolName): Rule | undefined {
+  const { gate } = TOOLS[name];
+  return 'action' in gate ? actionRule(gate.action) : pageRule(gate.page, 'GET');
+}
 
 /** The row for a page request; HEAD is judged as GET, any other method has no row. */
 export function pageRule(pattern: string, method: string): Rule | undefined {
