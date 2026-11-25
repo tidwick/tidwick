@@ -1,6 +1,6 @@
 // Writes the SQL file that issues an admin a new 24-hour enrolment link when no admin can sign in (ADR 0003).
 // Reads SESSION_SECRET as a KEY=value line on standard input. The person id and the audit head come from the
-// read docs/ARCHITECTURE.md, Operate, gives. Usage: node scripts/rescue.ts <person id> <head seq> <head hash> <out sql>
+// id comes from the query in docs/ARCHITECTURE.md, Operate. Usage: node scripts/rescue.ts <person id> <head seq> <head hash> <out sql>
 import { readFileSync, writeFileSync } from 'node:fs';
 import { keyedHash, randomToken } from '../src/auth/tokens.ts';
 import { rescueSql } from '../src/db/rescue.ts';
@@ -18,7 +18,9 @@ if (personId === undefined || seq === undefined || head === undefined || out ===
   );
 }
 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(personId)) {
-  stop(`"${personId}" is not a person id; copy the id column of the read in docs/ARCHITECTURE.md, Operate`);
+  stop(
+    `"${personId}" is not a person id; copy a person_id from the query in docs/ARCHITECTURE.md, Operate`,
+  );
 }
 if (!/^[1-9][0-9]{0,15}$/.test(seq)) stop(`"${seq}" is not an audit seq; copy the seq column`);
 if (!/^[0-9a-f]{64}$/.test(head)) stop(`"${head}" is not an audit hash; copy the hash column`);

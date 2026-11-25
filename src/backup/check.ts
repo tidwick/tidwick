@@ -85,7 +85,7 @@ function body(problems: readonly string[], now: number): string {
     '',
     ...problems.map((p) => `- ${p}`),
     '',
-    'See docs/ARCHITECTURE.md, Operate: check the backup sink and the last backup_run row, then run the restore drill.',
+    'See docs/ARCHITECTURE.md, Backup and restore: check the backup sink and the last backup_run row, then run the restore drill.',
   ].join('\n');
 }
 

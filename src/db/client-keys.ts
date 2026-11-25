@@ -14,7 +14,6 @@ interface KeyRow {
   kek_id: string;
 }
 
-// `erased_at` and `destroyed_at` are reserved: nothing writes them yet, so no key is destroyed and erasure is not built.
 export interface DataKey {
   version: number;
   key: Bytes;
@@ -29,6 +28,7 @@ export interface KeyRing {
   version(clientId: string, version: number): Promise<Bytes | null>;
 }
 
+// `client_key.destroyed_at` is reserved: nothing writes it, so every key row is live and erasure is not built.
 const NEWEST = `SELECT version, wrapped, iv, kek_id FROM client_key
 WHERE client_id = ?1 AND destroyed_at IS NULL ORDER BY version DESC LIMIT 1`;
 

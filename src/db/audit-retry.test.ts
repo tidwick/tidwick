@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { retryOnce, retryWhileOpen } from './audit';
 
-const permanent = () => new Error('D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT');
+const permanent = () =>
+  new Error('D1_ERROR: FOREIGN KEY constraint failed: SQLITE_CONSTRAINT: note-secret-123');
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -18,6 +19,7 @@ describe('a write that keeps failing a constraint', () => {
     expect(runs).toBe(2);
     expect(log).toHaveBeenCalledOnce();
     expect(String(log.mock.calls[0]?.join(' '))).toMatch(/constraint/i);
+    expect(String(log.mock.calls[0]?.join(' '))).not.toContain('note-secret-123');
   });
 
   it('retryWhileOpen logs the D1 error before conflict', async () => {
