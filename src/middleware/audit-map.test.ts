@@ -65,12 +65,16 @@ describe('audit map', () => {
     expect(undeclaredAudit(AUDIT_OF_AGENT, writers)).toEqual([]);
     const known: readonly string[] = AUDIT_EVENTS;
     for (const [name, events] of Object.entries(AUDIT_OF_AGENT)) {
-      if (events !== 'none') for (const event of events) expect(known, name).toContain(event);
+      if (events === 'none') continue;
+      const declared = AUDIT_OF[name];
+      for (const event of events) {
+        expect(known, name).toContain(event);
+        expect(declared === 'none' ? [] : declared, name).toContain(event);
+      }
     }
   });
 
-  it('gives the agent an event for the Action a person’s own call leaves unaudited, cell saves, and for submit', () => {
-    expect(AUDIT_OF['entries.save']).toBe('none');
+  it('audits an agent’s cell save and its submit, and no row add, remove or copy', () => {
     expect(AUDIT_OF_AGENT['entries.save']).toEqual(['entries.save']);
     expect(AUDIT_OF_AGENT['submission.submit']).toEqual(AUDIT_OF['submission.submit']);
   });

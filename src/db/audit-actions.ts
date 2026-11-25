@@ -87,7 +87,8 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'auth.logoutOthers': ['auth.logoutOthers', 'agents.revoke'],
   'auth.revokePasskey': ['auth.revokePasskey', 'agents.revoke'],
   'auth.regenerateCodes': ['auth.regenerateCodes'],
-  'entries.save': 'none',
+  // Appended only for an agent's call (AUDIT_OF_AGENT); a person's own save is not audited.
+  'entries.save': ['entries.save'],
   'entries.addRow': 'none',
   'entries.removeRow': 'none',
   'entries.copyLastWeek': 'none',
@@ -123,10 +124,10 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
 };
 
 /**
- * The Actions an agent reaches as a tool, and the events its call may append, `none` where it writes none on
- * purpose. A person's own `entries.save` stays unaudited (`none` above); an agent's is audited, since a note or an
- * hour changed by a model is not the person's own keystroke. A row added, removed or copied carries no hours or
- * notes. A test holds this complete against the tools that write.
+ * The Actions an agent reaches as a tool that write, and the events (a subset of its AUDIT_OF row) its call appends,
+ * `none` where it writes none on purpose. A person's own `entries.save` is not audited; an agent's is, since a note
+ * or an hour changed by a model is not the person's own keystroke. A row added, removed or copied carries no hours
+ * or notes. A test holds this complete against the tools that write.
  */
 export const AUDIT_OF_AGENT: Readonly<Record<string, readonly AuditEvent[] | 'none'>> = {
   'entries.save': ['entries.save'],
