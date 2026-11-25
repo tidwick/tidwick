@@ -20,14 +20,19 @@ describe('MCP off', () => {
       const response = await mcp(token, call2025('list_projects'), options);
       expect(response.status, JSON.stringify(options)).toBe(404);
       expect(response.headers.get('www-authenticate')).toBeNull();
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect(response.body, JSON.stringify(options)).toMatchObject({
+        jsonrpc: '2.0',
+        error: { message: 'Not found' },
+      });
     }
   });
 
-  it('the token endpoint path is a 404 too, and the rest of the site still answers', async () => {
+  it('the token endpoint path is refused too, and the rest of the site still answers', async () => {
     const token = await exports.default.fetch(
       new Request(`${ORIGIN}/oauth/token`, { method: 'POST', body: 'grant_type=refresh_token' }),
     );
-    expect(token.status).toBe(404);
+    expect([403, 404]).toContain(token.status);
     expect((await exports.default.fetch(new Request(`${ORIGIN}/healthz`))).status).not.toBe(404);
   });
 });

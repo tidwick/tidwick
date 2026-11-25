@@ -9,6 +9,7 @@ import { secrets } from '../../test/helpers/probe-secrets';
 import { AppError, CATALOG } from '../lib/errors';
 import { RPC_PATTERN } from './authz';
 import { errors } from './errors';
+import { MCP_PATTERN } from './mcp-responses';
 
 async function answer(pattern: string, thrown: unknown): Promise<Response> {
   const context = { routePattern: pattern } as unknown as APIContext;
@@ -57,6 +58,25 @@ describe('the error boundary', () => {
       message: CATALOG.forbidden.message,
     });
     expect(log).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+});
+
+describe('the error boundary on /mcp', () => {
+  it('an uncaught throw leaves as a JSON-RPC internal error with no secret in it', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    for (const [kind, secret] of Object.entries(secrets())) {
+      const response = await answer(MCP_PATTERN, new Error(secret));
+      expect(response.headers.get('content-type')).toContain('application/json');
+      const body = await response.text();
+      expect(JSON.parse(body)).toEqual({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32600, message: CATALOG.internal.message },
+      });
+      expect(`${JSON.stringify([...response.headers])}${body}`, kind).not.toContain(secret);
+      expect(JSON.stringify(log.mock.calls), kind).not.toContain(secret);
+    }
     log.mockRestore();
   });
 });

@@ -36,11 +36,17 @@ describe('a bearer that is not a live access token is a 401 with a challenge and
     const none = await mcp(null, rpc2025('tools/list'));
     expect(none.status).toBe(401);
     expect(none.headers.get('www-authenticate')).toBe('Bearer realm="tidwick"');
+    expect(none.body).toMatchObject({ error: { code: expect.any(Number) as number } });
+    expect((none.body as { error: { data?: unknown } }).error.data).toBeUndefined();
     for (const token of ['x', 'a'.repeat(42), 'a'.repeat(44), 'a'.repeat(43), 'a b']) {
       const response = await mcp(token, rpc2025('tools/list'));
       expect(response.status, token).toBe(401);
       expect(response.headers.get('www-authenticate')).toContain('error="invalid_token"');
-      expect(response.body).toMatchObject({ error: 'invalid_token' });
+      expect(response.body).toMatchObject({
+        jsonrpc: '2.0',
+        id: null,
+        error: { data: { error: 'invalid_token' } },
+      });
     }
   });
 
@@ -84,7 +90,9 @@ describe('the scope a tool needs', () => {
       expect(response.headers.get('www-authenticate'), name).toContain(
         `error="insufficient_scope", scope="${scope}"`,
       );
-      expect(response.body, name).toMatchObject({ error: 'insufficient_scope' });
+      expect(response.body, name).toMatchObject({
+        error: { data: { error: 'insufficient_scope', scope } },
+      });
     }
     expect(await eventsAfter(seq)).toEqual([]);
   });

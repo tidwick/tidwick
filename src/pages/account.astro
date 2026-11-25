@@ -172,7 +172,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
           Other sessions
         </h2>
         <p class="text-sm text-muted-foreground">
-          Sign out every other browser and device, and revoke agent access. This one stays signed in.
+          Sign out every other browser and device, and revoke agent access. This one stays signed
+          in.
         </p>
         <form method="POST" action={`/account${actions.auth.logoutOthers}`}>
           <input type="hidden" name="_csrf" value={ctx.csrf} />

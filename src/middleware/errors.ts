@@ -5,6 +5,7 @@ import { errorText } from '../lib/error-text';
 import { isAppError } from '../lib/errors';
 import { errorPage, errorResponse } from './error-responses';
 import { RPC_PATTERN } from './authz';
+import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 
 export const errors: MiddlewareHandler = async (context, next) => {
   try {
@@ -14,6 +15,7 @@ export const errors: MiddlewareHandler = async (context, next) => {
     if (known === null || known.status >= 500)
       console.error('tidwick: request failed:', errorText(error));
     const code = known?.code ?? 'internal';
+    if (context.routePattern === MCP_PATTERN) return rpcRefusal(code);
     return context.routePattern === RPC_PATTERN ? errorResponse(code) : errorPage(code);
   }
 };

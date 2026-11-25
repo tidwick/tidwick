@@ -126,7 +126,7 @@ export function formPage(request: Request, origin: string): string {
 export const csrf: MiddlewareHandler = async (context, next) => {
   const { MCP, ORIGIN, SESSION_SECRET } = currentEnv();
   const agent = AGENT_PATHS.has(context.url.pathname);
-  if (agent && !MCP) return errorResponse('not_found');
+  if (agent && !MCP) return rpcRefusal('not_found');
   const verdict = await csrfVerdict(
     context.request,
     ORIGIN,
