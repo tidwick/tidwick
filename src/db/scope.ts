@@ -74,3 +74,8 @@ export function projectsParam(scope: Scope): string | null {
 export function requirePersonVisible(scope: Scope, personId: string): void {
   if (scope.kind !== 'all' && scope.actorId !== personId) fail('not_found');
 }
+
+/** Only an all-clients scope may call a steward or admin mutator; a member scope is refused, whatever the route table says. */
+export function requireAll(scope: Scope): void {
+  if (scope.kind !== 'all') fail('forbidden');
+}

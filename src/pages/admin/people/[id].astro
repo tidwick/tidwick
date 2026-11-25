@@ -21,7 +21,7 @@ import { personDetail } from '../../../db/people';
 import { errorPage } from '../../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const id = Astro.params.id ?? '';
 const issued = Astro.getActionResult(actions.people.issueEnrolment);
 const reissued = Astro.getActionResult(actions.people.reenrol);
@@ -31,7 +31,7 @@ const all = Astro.getActionResult(actions.assignments.addAll);
 const offboarded = Astro.getActionResult(actions.people.offboard);
 if (succeeded([offboarded])) return Astro.redirect(savedAt('/admin/people'), 303);
 if (succeeded([roles, all])) return Astro.redirect(savedAt(Astro.url.pathname), 303);
-const person = await personDetail(ctx.db, id);
+const person = await personDetail(ctx.scope, ctx.db, id);
 if (!person) return errorPage('not_found');
 const held = new Set(person.roles.split(','));
 const link = issued?.data?.link ?? reissued?.data?.link ?? null;

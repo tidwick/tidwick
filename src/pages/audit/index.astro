@@ -9,7 +9,7 @@ import { auditChoices, readAuditPage } from '../../db/audit-read';
 import { auditQuery, filterQuery, nextPageQuery } from '../../lib/audit-filter';
 import { pageContext, problemOf } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const verified = Astro.getActionResult(actions.audit.verify);
 const params = Astro.url.searchParams;
 const { filter, before, problem } = auditQuery(params);

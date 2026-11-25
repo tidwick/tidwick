@@ -3,7 +3,7 @@
 import { fail } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { auditedBatch, retryOnce, type AuditedBatch } from './audit';
-import type { Scope } from './scope';
+import { requireAll, type Scope } from './scope';
 import { translateUnique } from './unique';
 
 export interface TaskCodeRow {
@@ -45,6 +45,7 @@ export async function createTaskCode(
   input: { code: string; name: string },
   now: number,
 ): Promise<TaskCodeRow> {
+  requireAll(scope);
   const id = newId();
   await retryOnce(async () => {
     const batch = await auditedBatch(scope, db);
@@ -72,6 +73,7 @@ export async function renameTaskCode(
   name: string,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const before = (await taskCodeById(db, id)) ?? fail('not_found');
     const batch = await auditedBatch(scope, db);
@@ -99,6 +101,7 @@ export async function archiveTaskCode(
   restore: boolean,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const before = (await taskCodeById(db, id)) ?? fail('not_found');
     if ((before.archived_at !== null) !== restore) fail('bad_transition');

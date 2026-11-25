@@ -9,6 +9,7 @@ import { readSession } from '../../auth/session';
 import { createPerson } from '../../db/person-create';
 import { listFirms } from '../../db/firms';
 import { listPeople, personDetail } from '../../db/people';
+import { systemScope } from '../../db/scope';
 import { clientWithKeyCount } from '../../db/test-support';
 import { currentEnv } from '../../lib/env';
 
@@ -48,7 +49,9 @@ describe('SEC-23 an offboarded person keeps no access', () => {
       links: 0,
       sessions: 0,
     });
-    expect((await personDetail(d.db, person.personId))?.offboarded_at).toBe(T0 + 2 * HOUR);
+    expect((await personDetail(systemScope(), d.db, person.personId))?.offboarded_at).toBe(
+      T0 + 2 * HOUR,
+    );
     expect(await readSession(d.db, d.secret, person.sessionId, T0 + 3 * HOUR)).toBeNull();
     const { options, challengeId } = await loginOptions(d, T0 + 3 * HOUR);
     const response = await person.authenticator.assert(options, d.rp.origin);
@@ -95,7 +98,7 @@ describe('people', () => {
       { name: 'New Person', email, externalCode: 'R-7', firm: { id: firm?.id ?? '' } },
       T0,
     );
-    const row = await personDetail(env.DB, id);
+    const row = await personDetail(systemScope(), env.DB, id);
     expect(row).toMatchObject({ email, external_code: 'R-7', firm_id: firm?.id, roles: '' });
     expect(await liveState(id)).toEqual({ credentials: 0, codes: 0, links: 0, sessions: 0 });
     await expect(
@@ -112,7 +115,7 @@ describe('people', () => {
         T0,
       ),
     ).rejects.toMatchObject({ code: 'email_taken' });
-    expect((await listPeople(env.DB)).some((p) => p.id === id)).toBe(true);
+    expect((await listPeople(systemScope(), env.DB)).some((p) => p.id === id)).toBe(true);
   });
 
   it('a new firm is booked as a client with its own key, and a taken firm name is refused', async () => {

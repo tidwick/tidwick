@@ -17,7 +17,7 @@ import {
 import { listTaskCodes } from '../../db/task-codes';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const created = Astro.getActionResult(actions.taskCodes.create);
 const renamed = Astro.getActionResult(actions.taskCodes.update);
 const posted = [created, renamed, Astro.getActionResult(actions.taskCodes.archive)];

@@ -23,7 +23,7 @@ import { timeZoneChoices } from '../../lib/time-zones';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
 const SHOWN = 100;
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const posted = [
   Astro.getActionResult(actions.settings.save),
   Astro.getActionResult(actions.keys.rewrap),

@@ -5,7 +5,7 @@ import { newId } from '../lib/ids';
 import { parseProjectNumber } from '../lib/project-number';
 import { auditedBatch, retryOnce, type AuditedBatch } from './audit';
 import { clientById } from './clients';
-import { projectsParam, type Scope } from './scope';
+import { projectsParam, requireAll, type Scope } from './scope';
 import { projectNumberRequired } from './settings';
 import { translateUnique } from './unique';
 
@@ -143,6 +143,7 @@ export async function updateProject(
   input: ProjectInput,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   const number = await cleanNumber(db, input.number);
   await retryOnce(async () => {
     const before = (await projectById(scope, db, id)) ?? fail('not_found');
@@ -172,6 +173,7 @@ export async function archiveProject(
   restore: boolean,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const before = (await projectById(scope, db, id)) ?? fail('not_found');
     if ((before.archived_at !== null) !== restore) fail('bad_transition');

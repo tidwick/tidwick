@@ -17,7 +17,7 @@ const session = Astro.locals.session;
 if (!session) return Astro.redirect('/login');
 if (session.mustEnrol) return Astro.redirect('/account');
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const requested = Astro.params.start ?? '';
 const monday = requested === '' ? null : weekStartOf(requested);
 if (requested !== '' && monday === null) return new Response('Not found', { status: 404 });

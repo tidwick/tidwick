@@ -15,7 +15,7 @@ import { formatHours } from '../../../lib/hours';
 import { isWeekStart, weekDates, weekTotal } from '../../../lib/week';
 import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const personId = Astro.params.person ?? '';
 const weekStart = Astro.params.start ?? '';
 const person = isWeekStart(weekStart) ? await personById(ctx.db, personId) : null;

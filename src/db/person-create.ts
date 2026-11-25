@@ -3,7 +3,7 @@ import { fail } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { auditedBatch, retryOnce } from './audit';
 import { addFirm, firmById } from './firms';
-import type { Scope } from './scope';
+import { requireAll, type Scope } from './scope';
 import { translateUnique } from './unique';
 
 export interface NewPerson {
@@ -34,6 +34,7 @@ export async function createPerson(
   input: NewPerson,
   now: number,
 ): Promise<{ id: string; firmId: string }> {
+  requireAll(scope);
   const id = newId();
   const firmId = await retryOnce(async () => {
     const batch = await auditedBatch(scope, db);

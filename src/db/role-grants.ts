@@ -3,7 +3,7 @@ import { fail } from '../lib/errors';
 import { auditedBatch, retryOnce } from './audit';
 import { OTHER_SIGNED_IN_ADMIN, otherAdmins } from './admins';
 import { ADMIN_GRANT, GRANTS, grantsOf, type Grant } from './roles';
-import type { Scope } from './scope';
+import { requireAll, type Scope } from './scope';
 import { personById } from './people';
 
 const GRANT = `INSERT OR IGNORE INTO person_role (person_id, role, granted_at)
@@ -30,6 +30,7 @@ export async function setGrants(
   wanted: readonly Grant[],
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const person = await personById(db, personId);
     if (!person || person.offboarded_at !== null) fail('not_found');

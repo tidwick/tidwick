@@ -3,7 +3,7 @@ import { fail } from '../lib/errors';
 import { auditedBatch, retryOnce } from './audit';
 import { personById } from './people';
 import { projectById } from './projects';
-import type { Scope } from './scope';
+import { requireAll, type Scope } from './scope';
 import { translateUnique } from './unique';
 
 export interface AssignedPerson {
@@ -44,6 +44,7 @@ export async function addAssignment(
   personId: string,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   const project = (await projectById(scope, db, projectId)) ?? fail('not_found');
   if (project.archived_at !== null) fail('archived');
   const person = await personById(db, personId);
@@ -78,6 +79,7 @@ export async function removeAssignment(
   personId: string,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   const project = (await projectById(scope, db, projectId)) ?? fail('not_found');
   await retryOnce(async () => {
     const before = await db.prepare(ONE).bind(projectId, personId).first<{ assigned_at: number }>();
@@ -108,6 +110,7 @@ export async function addAllAssignments(
   personId: string,
   now: number,
 ): Promise<number> {
+  requireAll(scope);
   const person = await personById(db, personId);
   if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {

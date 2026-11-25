@@ -24,7 +24,7 @@ import { listTaskCodes } from '../../db/task-codes';
 import { errorPage } from '../../middleware/error-responses';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const id = Astro.params.id ?? '';
 const posted = [
   Astro.getActionResult(actions.projects.update),
@@ -43,7 +43,9 @@ const live = ctx.admin ? (await listTaskCodes(ctx.db)).filter((c) => c.archived_
 const team = ctx.steward ? await assignedTo(ctx.scope, ctx.db, id) : [];
 const assignedIds = new Set(team.map((p) => p.person_id));
 const addable = ctx.steward
-  ? (await listPeople(ctx.db)).filter((p) => p.offboarded_at === null && !assignedIds.has(p.id))
+  ? (await listPeople(ctx.scope, ctx.db)).filter(
+      (p) => p.offboarded_at === null && !assignedIds.has(p.id),
+    )
   : [];
 const typed = await postedFields(Astro);
 const archived = project.archived_at !== null;

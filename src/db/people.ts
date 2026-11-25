@@ -1,5 +1,6 @@
-// Person lookups for the auth ceremonies and the admin pages. People are not client rows, so these take no scope.
+// Person lookups. The auth ceremonies read one person with no scope; the listing readers need an all-clients scope.
 import { containsPattern } from '../lib/search';
+import { requireAll, type Scope } from './scope';
 
 export interface PersonRow {
   id: string;
@@ -41,10 +42,20 @@ export async function personByEmail(db: D1Database, email: string): Promise<Pers
  * Every person, active first, with their firm and comma-joined grants. A search term keeps the people whose name,
  * email, accounting code or firm holds it as text, ignoring case for ASCII letters (SQLite's LIKE).
  */
-export async function listPeople(db: D1Database, term = ''): Promise<PersonListRow[]> {
+export async function listPeople(
+  scope: Scope,
+  db: D1Database,
+  term = '',
+): Promise<PersonListRow[]> {
+  requireAll(scope);
   return (await db.prepare(LIST).bind(containsPattern(term)).all<PersonListRow>()).results;
 }
 
-export async function personDetail(db: D1Database, id: string): Promise<PersonListRow | null> {
+export async function personDetail(
+  scope: Scope,
+  db: D1Database,
+  id: string,
+): Promise<PersonListRow | null> {
+  requireAll(scope);
   return db.prepare(DETAIL).bind(id).first<PersonListRow>();
 }

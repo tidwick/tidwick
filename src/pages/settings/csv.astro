@@ -17,7 +17,7 @@ import { importPreview, previewEntries } from '../../lib/csv-preview';
 import { exportRows } from '../../lib/export';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const posted = [Astro.getActionResult(actions.settings.saveCsv)];
 if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const saved = { export: await loadExportMapping(ctx.db), import: await loadImportMapping(ctx.db) };

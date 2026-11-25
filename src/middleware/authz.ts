@@ -51,9 +51,11 @@ export const authz: MiddlewareHandler = async (context, next) => {
   const session = context.locals.session;
   const gated = session !== null && rules.some((rule) => rule && !rule.roles.includes('public'));
   context.locals.scope = null;
+  context.locals.grants = [];
   try {
     const grants = gated ? await grantsOf(DB, session.personId) : [];
     for (const rule of rules) authorize(rule, session, grants, Date.now());
+    context.locals.grants = grants;
     if (gated) context.locals.scope = await scopeFor(DB, session.personId);
   } catch (error) {
     if (!isAppError(error)) throw error;

@@ -20,7 +20,7 @@ import { formatHoursFixed } from '../../lib/hours';
 import { todayIn } from '../../lib/week';
 import { pageContext } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const from = Astro.url.searchParams.get('from') ?? '';
 const to = Astro.url.searchParams.get('to') ?? '';
 const asked = from !== '' && to !== '';
