@@ -36,6 +36,9 @@
       "DEMO_BANNER": {
         "description": "Optional. Leave empty (off)."
       },
+      "SETUP_TOKEN": {
+        "description": "Optional. One time: lets /setup create the first admin on an empty database; delete it after. `openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\\n'`"
+      },
       "NOTE_KEK_PREVIOUS": {
         "description": "Optional. Leave empty (off). Set only during a key rotation."
       },

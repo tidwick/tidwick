@@ -63,7 +63,11 @@ const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
 
 const ACTION_FILES = Object.keys(import.meta.glob(['../*/*.ts', '!../*/*.test.ts']))
   .map((file) => file.replace(/^\.\.\/([^/]+)\/([^/]+)\.ts$/, '$1.$2'))
-  .filter((name) => !name.startsWith('auth.') && !name.startsWith('entries.'));
+  // The setup claim is public and guarded by its token and an empty database: SEC-48.
+  .filter(
+    (name) =>
+      !name.startsWith('auth.') && !name.startsWith('entries.') && !name.startsWith('setup.'),
+  );
 
 async function actor(index: number): Promise<Caller | null> {
   switch (index) {

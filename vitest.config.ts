@@ -88,6 +88,8 @@ export default defineConfig({
                 ...(await secrets()),
                 // The built Worker runs mid-rotation, so every app test reads keys under either KEK (ADR 0005).
                 NOTE_KEK_PREVIOUS: randomBytes(32).toString('base64'),
+                // The first-admin claim is open here (src/actions/setup/claim.app.test.ts); the demo project sets none.
+                SETUP_TOKEN: randomBytes(32).toString('base64url'),
                 // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
                 MCP: 'on',
                 MCP_NOTES: '',

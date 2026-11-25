@@ -81,6 +81,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'auth.enrolOptions': 'none',
   'auth.enrolVerify': ['auth.enrol', 'people.revokeEnrolments'],
   'auth.recover': ['auth.recover', 'auth.recoveryLocked'],
+  'setup.claim': ['instance.bootstrap'],
   'auth.demoSignin': ['auth.demoSignin'],
   'auth.addPasskeyOptions': 'none',
   'auth.addPasskeyVerify': ['auth.addPasskey'],
@@ -149,5 +150,5 @@ export const AUDIT_OF_PAGES: Readonly<Record<string, readonly AuditEvent[]>> = {
   '/auth/sso/callback': ['auth.enrol', 'people.revokeEnrolments'],
 };
 
-/** Events written by code that is neither an Action nor a page: the first-run bootstrap and the operator rescue. */
+/** Events written by code that is neither an Action nor a page: the CLI bootstrap and the operator rescue. */
 export const NON_ACTION_SOURCES: readonly AuditEvent[] = ['instance.bootstrap', 'people.rescue'];

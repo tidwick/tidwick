@@ -17,6 +17,7 @@ function complete(): Record<string, unknown> {
     SESSION_SECRET: 'dummy-session-secret-for-tests-only-not-real',
     NOTE_KEK: 'ZHVtbXktbm90ZS1rZWstZm9yLXRlc3RzLW9ubHktMzI=',
     NOTE_KEK_PREVIOUS: '',
+    SETUP_TOKEN: '',
   };
 }
 
@@ -155,6 +156,14 @@ describe('typed env', () => {
     expect(caught({ ...complete(), SSO_PROVIDERS: providers }).detail).toBe('SSO_SECRET_GOOGLE');
     const on = readEnv({ ...complete(), SSO_PROVIDERS: providers, SSO_SECRET_GOOGLE: 's' });
     expect(on.SSO.map((p) => p.id)).toEqual(['google']);
+  });
+
+  it('SETUP_TOKEN reads null when unset or under 43 characters, and never throws', () => {
+    const long = 'x'.repeat(43);
+    expect(readEnv({ ...complete(), SETUP_TOKEN: long }).SETUP_TOKEN).toBe(long);
+    for (const value of [undefined, '', 'short', 'x'.repeat(42), 7]) {
+      expect(readEnv({ ...complete(), SETUP_TOKEN: value }).SETUP_TOKEN).toBeNull();
+    }
   });
 
   it('.dev.vars.example names every secret the env and the backup read that wrangler.jsonc does not set, each with no value', () => {

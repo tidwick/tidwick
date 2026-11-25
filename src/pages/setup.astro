@@ -1,16 +1,34 @@
 ---
-// What an unconfigured, empty instance still needs, by name only (`src/middleware/setup.ts`). The three values
-// it can make are made in this browser, shown here and sent nowhere: there is no form and no field has a name.
+// What an unconfigured, empty instance still needs, by name only (`src/middleware/setup.ts`). The values it can
+// make are made in this browser, shown here and sent nowhere: that part has no form and no field has a name.
+// A configured, empty instance shows the one-time first-admin claim instead, when SETUP_TOKEN is set.
+import { actions, isInputError } from 'astro:actions';
 import { cloudflare } from '../../package.json';
 import Heading from '../components/auth/heading.astro';
 import { LINK, PRIMARY } from '../components/auth/classes';
+import { Alert } from '../components/ui/alert';
 import { Input } from '../components/ui/input';
 import Auth from '../layouts/auth.astro';
 
-const { missing, flags } = Astro.locals.setup ?? { missing: [], flags: [] };
+const result = Astro.getActionResult(actions.setup.claim);
+if (result && !result.error) return Astro.redirect(result.data.next);
+const problem = result?.error
+  ? isInputError(result.error)
+    ? 'Enter the setup token, your email, your name and your firm.'
+    : result.error.message
+  : '';
+const { missing, flags, claim, tokenSet } = Astro.locals.setup ?? {
+  missing: [],
+  flags: [],
+  claim: false,
+  tokenSet: false,
+};
+const ready = missing.length === 0;
 const GENERATED = ['SESSION_SECRET', 'NOTE_KEK', 'BACKUP_RECIPIENT'] as const;
 const bindings: Record<string, { description: string }> = cloudflare.bindings;
-const rows = GENERATED.filter((name) => missing.includes(name)).map((name) => ({
+const rows = (
+  ready ? (tokenSet ? [] : ['SETUP_TOKEN']) : GENERATED.filter((name) => missing.includes(name))
+).map((name) => ({
   name,
   command: /`([^`]+)`/.exec(bindings[name]?.description ?? '')?.[1] ?? '',
 }));
@@ -19,10 +37,18 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
 
 <Auth title="Set up">
   <section class="grid gap-block">
-    <Heading text="Set up this instance">
-      Nothing is configured yet. The values below are named, never shown; set them in Cloudflare,
-      then reload.
-    </Heading>
+    {ready ? (
+      <Heading text="Claim this instance">
+        {tokenSet
+          ? 'Create the first admin with the SETUP_TOKEN you set in Cloudflare.'
+          : 'Set SETUP_TOKEN to claim the first admin here, or run just first-admin.'}
+      </Heading>
+    ) : (
+      <Heading text="Set up this instance">
+        Nothing is configured yet. The values below are named, never shown; set them in Cloudflare,
+        then reload.
+      </Heading>
+    )}
     <ul class="grid gap-1 list-disc pl-5">
       {missing.map((name) => (
         <li>
@@ -30,6 +56,42 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
         </li>
       ))}
     </ul>
+    {claim && (
+      <form method="POST" action={actions.setup.claim} class="grid gap-4">
+        <input type="hidden" name="_csrf" value={Astro.locals.csrf} />
+        {problem && (
+          <Alert id="setup-problem" variant="danger" className="font-medium">
+            {problem}
+          </Alert>
+        )}
+        {[
+          ['token', 'Setup token', 'password'],
+          ['email', 'Your email', 'email'],
+          ['name', 'Your name', 'text'],
+          ['firm', 'Your firm', 'text'],
+        ].map(([name, label, type]) => (
+          <label class="grid gap-1 text-sm font-medium">
+            {label}
+            <Input
+              name={name}
+              type={type}
+              autoComplete="off"
+              spellCheck={false}
+              required
+              aria-describedby={problem ? 'setup-problem' : undefined}
+              className="min-h-11"
+            />
+          </label>
+        ))}
+        <button type="submit" class={PRIMARY}>
+          Create the first admin
+        </button>
+        <p class="text-sm text-muted-foreground">
+          After you enrol, delete SETUP_TOKEN in Workers &gt; Settings &gt; Variables and Secrets;
+          it opens nothing once an admin exists, but leave nothing behind.
+        </p>
+      </form>
+    )}
     {flags.length > 0 && (
       <ul class="grid gap-1 list-disc pl-5 text-sm">
         {flags.map((line) => (
@@ -95,6 +157,7 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
       if (input) input.value = value;
     };
     set('SESSION_SECRET', sessionSecret());
+    set('SETUP_TOKEN', sessionSecret());
     set('NOTE_KEK', noteKek());
     const link = document.querySelector<HTMLAnchorElement>('[data-key-download]');
     if (link) {

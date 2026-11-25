@@ -35,7 +35,7 @@ const next = (): Promise<Response> => Promise.resolve(reached);
 
 async function report(more?: Record<string, unknown>): Promise<SetupReport> {
   const c = context();
-  expect(await setup(source(more))(c, next)).toBe(reached);
+  expect(await setup(next, source(more))(c, next)).toBe(reached);
   return c.locals.setup as SetupReport;
 }
 
@@ -59,7 +59,7 @@ const failingDb = {
 describe('the setup gate', () => {
   it('SEC-47 an empty database with the three secrets unset reaches the page, naming BACKUP_RECIPIENT, SESSION_SECRET and NOTE_KEK and no value', async () => {
     const c = context();
-    expect(await setup(source())(c, next)).toBe(reached);
+    expect(await setup(next, source())(c, next)).toBe(reached);
     expect(c.locals.setup?.missing).toEqual(['BACKUP_RECIPIENT', 'SESSION_SECRET', 'NOTE_KEK']);
     expect(c.locals.session).toBeNull();
     const json = JSON.stringify(c.locals);
@@ -82,26 +82,44 @@ describe('the setup gate', () => {
     expect(right.flags).toEqual([]);
   });
 
-  it('SEC-47 a missing DB binding, or one whose read fails, keeps the old missing_binding error', async () => {
-    const none = await refusal(() => setup(source({ DB: undefined }))(context(), next));
-    expect([none.code, none.detail]).toEqual(['missing_binding', 'DB']);
-    const down = await refusal(() => setup(source({ DB: failingDb }))(context(), next));
-    expect([down.code, down.detail]).toEqual(['missing_binding', 'BACKUP_RECIPIENT']);
+  const ready = {
+    BACKUP_RECIPIENT: currentEnv().BACKUP_RECIPIENT,
+    SESSION_SECRET: currentEnv().SESSION_SECRET,
+    NOTE_KEK: currentEnv().NOTE_KEK,
+  };
+
+  it('SEC-48 a configured empty Worker without SETUP_TOKEN shows no form', async () => {
+    const c = context();
+    expect(await setup(next, source({ ...ready, SETUP_TOKEN: undefined }))(c, next)).toBe(reached);
+    expect(c.locals.setup).toMatchObject({ missing: [], claim: false, tokenSet: false });
   });
 
-  it('SEC-47 a configured Worker answers 404 on /setup, and a POST is refused', async () => {
-    const got = await exports.default.fetch(new Request(`${ADDRESS}/setup`));
-    expect(got.status).toBe(404);
-    expect(await got.text()).toBe(await errorPage('not_found').text());
-    const posted = await exports.default.fetch(
-      new Request(`${ADDRESS}/setup`, { method: 'POST', body: '{}' }),
-    );
-    expect(posted.status).toBe(403);
+  it('SEC-48 a configured empty Worker with ORIGIN not this address shows the flag and no form', async () => {
+    const c = context();
+    const gate = setup(next, source({ ...ready, ORIGIN: 'https://elsewhere.example' }));
+    expect(await gate(c, next)).toBe(reached);
+    const shown = c.locals.setup as SetupReport;
+    expect([shown.claim, shown.tokenSet, shown.flags.length]).toEqual([false, true, 1]);
+  });
+
+  it('SEC-48 a configured empty Worker with SETUP_TOKEN opens the claim and hands on to the full chain', async () => {
+    const claimed = new Response('chain');
+    const c = context();
+    const gate = setup(() => claimed, source(ready));
+    expect(await gate(c, next)).toBe(claimed);
+    expect(c.locals.setup).toMatchObject({ missing: [], claim: true, tokenSet: true });
+  });
+
+  it('SEC-47 a missing DB binding, or one whose read fails, keeps the old missing_binding error', async () => {
+    const none = await refusal(() => setup(next, source({ DB: undefined }))(context(), next));
+    expect([none.code, none.detail]).toEqual(['missing_binding', 'DB']);
+    const down = await refusal(() => setup(next, source({ DB: failingDb }))(context(), next));
+    expect([down.code, down.detail]).toEqual(['missing_binding', 'BACKUP_RECIPIENT']);
   });
 
   it('SEC-47 the old error is unchanged: same status, page and log line', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const gate = setup(source({ DB: failingDb }));
+    const gate = setup(next, source({ DB: failingDb }));
     const c = context();
     const response = await errors(c, async () => (await gate(c, next)) as Response);
     expect(response instanceof Response && response.status).toBe(CATALOG.missing_binding.status);
@@ -116,8 +134,18 @@ describe('the setup gate', () => {
   it('SEC-47 once the database has history, a missing secret gives the old error, never the page', async () => {
     await loadSeed(env.DB, currentEnv().NOTE_KEK);
     const c = context();
-    const error = await refusal(() => setup(source())(c, next));
+    const error = await refusal(() => setup(next, source())(c, next));
     expect([error.code, error.detail]).toEqual(['missing_binding', 'BACKUP_RECIPIENT']);
     expect(c.locals.setup).toBeUndefined();
+  });
+
+  it('SEC-47 a configured Worker with history answers 404 on /setup, and so does a POST', async () => {
+    const got = await exports.default.fetch(new Request(`${ADDRESS}/setup`));
+    expect(got.status).toBe(404);
+    expect(await got.text()).toBe(await errorPage('not_found').text());
+    const posted = await exports.default.fetch(
+      new Request(`${ADDRESS}/setup`, { method: 'POST', body: '{}' }),
+    );
+    expect(posted.status).toBe(404);
   });
 });

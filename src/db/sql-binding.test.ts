@@ -55,7 +55,7 @@ function sqlOffences(file: string, text: string): string[] {
 }
 
 // restore.ts, bootstrap.ts and rescue.ts are excluded: they write SQL files for `wrangler d1 execute`, with every value
-// through `literal()` in sql-text.ts, and no request path reaches them. The test-support files are imported
+// through `literal()` in sql-text.ts. Only bootstrap.ts is on a request path (the setup claim), and there every value is bound. The test-support files are imported
 // only by tests and drill scripts.
 describe('SQL statements in src/db', () => {
   it('SEC-22 every statement is a module constant whose interpolations are other constants, and values are bound', () => {

@@ -48,6 +48,7 @@ export const CATALOG = {
     status: 403,
     message: 'Confirm with your passkey to continue; it has been more than 15 minutes',
   },
+  setup_failed: { status: 403, message: 'That setup token does not match SETUP_TOKEN' },
   rate_limited: { status: 429, message: 'Too many attempts; wait a minute and try again' },
   enrolment_invalid: {
     status: 410,

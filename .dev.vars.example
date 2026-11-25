@@ -5,6 +5,8 @@ SESSION_SECRET=
 NOTE_KEK=
 # NOTE_KEK_PREVIOUS: the NOTE_KEK a rotation retires, set only until keys.rewrap has moved every key; leave empty.
 NOTE_KEK_PREVIOUS=
+# SETUP_TOKEN: one time; lets /setup create the first admin on an empty database. Delete it after the claim.
+SETUP_TOKEN=
 # BACKUP_RECIPIENT: the age public key (age1...) the nightly backup is encrypted to; its identity stays offline.
 # `just gen-test-keys` writes a dummy pair under test/fixtures/ for local use.
 BACKUP_RECIPIENT=

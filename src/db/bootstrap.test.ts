@@ -5,7 +5,7 @@ import { keyedHash } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
 import { unwrapClientKey } from '../lib/note-crypto';
 import { checkChain } from './audit';
-import { BOOTSTRAP_ENROLMENT_MS } from './bootstrap';
+import { BOOTSTRAP_ENROLMENT_MS, bootstrapRefusal, bootstrapSql } from './bootstrap';
 import { openEnrolment } from './enrolments';
 import {
   adminGrants,
@@ -60,5 +60,30 @@ describe('first admin bootstrap', () => {
 
   it('the bootstrap link lasts as long as every other enrolment link', () => {
     expect(BOOTSTRAP_ENROLMENT_MS).toBe(ENROLMENT_MS);
+  });
+
+  it('a name holding a quote or ?1 renders once and stays one value', async () => {
+    const statements = await bootstrapSql({
+      email: 'a@example.test',
+      name: "O'Hara ?1 ?2",
+      firm: 'F',
+      personId: 'p',
+      firmId: 'f',
+      clientId: 'c',
+      key: { wrapped: new Uint8Array(1), iv: new Uint8Array(1), kekId: 'k' },
+      enrolmentHash: 'h',
+      now: 1,
+    });
+    const person = statements.find((s) => s.startsWith('INSERT INTO person (')) ?? '';
+    expect(person).toContain(
+      "SELECT 'p', 'f', 'a@example.test', 'O''Hara ?1 ?2', 1 WHERE (SELECT count(*)",
+    );
+  });
+
+  it('bootstrapRefusal refuses a bad email and a control character', () => {
+    expect(bootstrapRefusal('ada@example.test', 'Ada', 'Firm')).toBeNull();
+    expect(bootstrapRefusal('not-an-email', 'Ada', 'Firm')).toContain('not an email');
+    expect(bootstrapRefusal('ada@example.test', 'Ad\na', 'Firm')).toContain('name');
+    expect(bootstrapRefusal('ada@example.test', 'Ada', ' ')).toContain('firm');
   });
 });

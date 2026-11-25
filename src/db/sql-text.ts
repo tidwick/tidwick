@@ -1,5 +1,5 @@
 // SQL literals for the files a script hands to `wrangler d1 execute --file`, one statement per line.
-// Only `restore.ts`, `bootstrap.ts` and `rescue.ts` use them; a request path binds its values instead.
+// Only `restore.ts`, `bootstrap.ts` and `rescue.ts` render them; a request path, the setup claim included, binds its values.
 import type { Cell } from '../lib/backup-format.ts';
 
 /** A literal that stays on one line: text with a line break or control character goes as hex. Every
