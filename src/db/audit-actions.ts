@@ -3,6 +3,7 @@
 
 export const AUDIT_EVENTS = [
   'instance.bootstrap',
+  'demo.reset',
   'auth.demoSignin',
   'auth.addPasskey',
   'auth.enrol',
@@ -150,5 +151,9 @@ export const AUDIT_OF_PAGES: Readonly<Record<string, readonly AuditEvent[]>> = {
   '/auth/sso/callback': ['auth.enrol', 'people.revokeEnrolments'],
 };
 
-/** Events written by code that is neither an Action nor a page: the CLI bootstrap and the operator rescue. */
-export const NON_ACTION_SOURCES: readonly AuditEvent[] = ['instance.bootstrap', 'people.rescue'];
+/** Events written by code that is neither an Action nor a page: the CLI bootstrap, the operator rescue and the nightly demo wipe. */
+export const NON_ACTION_SOURCES: readonly AuditEvent[] = [
+  'instance.bootstrap',
+  'people.rescue',
+  'demo.reset',
+];

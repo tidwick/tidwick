@@ -90,6 +90,11 @@ export function systemScope(): Scope {
   return sealed({ kind: 'all', actorId: null });
 }
 
+/** The nightly demo wipe's scope: every client's rows and no actor, as the audit row it writes records. */
+export function cronScope(): Scope {
+  return sealed({ kind: 'all', actorId: null });
+}
+
 /**
  * The scope of a passkey, enrolment or recovery ceremony, which has no session yet. Only `src/auth/` calls
  * it, so its audit events carry the right actor; it reaches no client rows.
