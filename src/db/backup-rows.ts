@@ -9,6 +9,7 @@ export const BACKUP_TABLES = [
   'person',
   'person_role',
   'credential',
+  'person_identity',
   'enrolment',
   'recovery_code',
   'task_code',
@@ -26,7 +27,7 @@ export const BACKUP_TABLES = [
 
 export type BackupTable = (typeof BACKUP_TABLES)[number];
 
-/** Short-lived ceremony and session state, and agent access, that a restore starts without. */
+/** Short-lived ceremony and session state, sign-ins under way, and agent access, that a restore starts without. */
 export const SKIPPED_TABLES = [
   'session',
   'auth_challenge',
@@ -34,6 +35,7 @@ export const SKIPPED_TABLES = [
   'rate_window',
   'agent_grant',
   'agent_token',
+  'oidc_flow',
 ];
 
 /** Rows per keyset page. */
