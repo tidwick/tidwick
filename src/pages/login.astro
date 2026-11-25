@@ -4,10 +4,13 @@ import Heading from '../components/auth/heading.astro';
 import { LINK, PRIMARY } from '../components/auth/classes';
 import Status from '../components/auth/status.astro';
 import Auth from '../layouts/auth.astro';
+import { demoOpen } from '../auth/demo';
+import { currentEnv } from '../lib/env';
 
 const signedOut = Astro.getActionResult(actions.auth.logout);
 const session = Astro.locals.session;
 if (session && !signedOut) return Astro.redirect(session.mustEnrol ? '/account' : '/week');
+const demo = await demoOpen(currentEnv());
 ---
 
 <Auth title="Sign in">
@@ -31,6 +34,13 @@ if (session && !signedOut) return Astro.redirect(session.mustEnrol ? '/account' 
       </p>
     </noscript>
   </section>
+  {demo && (
+    <p class="-mt-2 text-sm">
+      <a id="demo-link" class={LINK} href="/demo">
+        Just looking? Try the demo with invented people
+      </a>
+    </p>
+  )}
   <p class="-mt-2 text-sm">
     <a class={LINK} href="/recover">
       Lost your passkey? Use a recovery code
