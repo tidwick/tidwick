@@ -2,7 +2,7 @@
 // hours only by failing the `entry` trigger, a locked week writes nothing because every statement carries the
 // lock predicate, and a row outside the scope or on a project its owner is no longer assigned to writes nothing,
 // whatever grants the caller holds, because every statement carries the assignment predicate too (SEC-12). An
-// owner's own edits to an unlocked week are not audited (DESIGN: Audit log).
+// owner's own edits to an unlocked week are not audited.
 import { fail } from '../lib/errors';
 import { DAY_CAP } from '../lib/hours';
 import { newId } from '../lib/ids';

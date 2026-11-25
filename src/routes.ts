@@ -1,4 +1,4 @@
-// The route table (P15): the only file that pairs a path or Action name with a role. Middleware denies
+// The route table: the only file that pairs a path or Action name with a role. Middleware denies
 // anything not listed here. Pages are keyed by Astro route pattern and method, Actions by name.
 
 export type Role = 'public' | 'member' | 'accounting_admin' | 'admin';

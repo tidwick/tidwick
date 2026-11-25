@@ -203,7 +203,7 @@ describe('the admin writes are audited', () => {
   it('every Action outside auth and the owner’s own week has a case in an audit-writes test asserting its one event', () => {
     const actions = Object.keys(import.meta.glob(['../actions/*/*.ts', '!../actions/*/*.test.ts']))
       .map((file) => file.replace(/^\.\.\/actions\/([^/]+)\/([^/]+)\.ts$/, '$1.$2'))
-      // An owner's edits to their own unlocked week are not audited (DESIGN: Audit log).
+      // An owner's edits to their own unlocked week are not audited.
       .filter((name) => !name.startsWith('auth.') && !name.startsWith('entries.'));
     const source = Object.values(
       import.meta.glob<string>('./audit-writes*.test.ts', {

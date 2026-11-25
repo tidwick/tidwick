@@ -4,53 +4,12 @@ import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
 import { generateX25519Identity, identityToRecipient } from 'age-encryption';
 import { defineConfig } from 'vitest/config';
 
-const APP_TESTS = [
-  'src/headers.test.ts',
-  'src/middleware/csrf.test.ts',
-  'src/middleware/csrf-refusal.test.ts',
-  'src/middleware/errors.test.ts',
-  'src/middleware/authz.test.ts',
-  'src/auth/step-up.test.ts',
-  'src/actions/admin/page-details.test.ts',
-  'src/actions/admin/people-list.test.ts',
-  'src/actions/admin/permissions.test.ts',
-  'src/actions/approvals-list.test.ts',
-  'src/actions/admin/actions.test.ts',
-  'src/actions/admin/settings.test.ts',
-  'src/actions/admin/rewrap.test.ts',
-  'src/actions/admin/audit.test.ts',
-  'src/actions/admin/search.test.ts',
-  'src/actions/dates-page.test.ts',
-  'src/actions/entries*.test.ts',
-  'src/actions/export.test.ts',
-  'src/actions/import.test.ts',
-  'src/actions/submission*.test.ts',
-  'src/actions/week-page.test.ts',
-  'src/actions/week-state.test.ts',
-  'src/actions/saved-line.test.ts',
-  'src/actions/step-up-line.test.ts',
-  'src/actions/auth/*.test.ts',
-];
-
-// The built Worker with the demo's three vars set; each test file seeds the marker itself, so the gate opens only there.
-const DEMO_TESTS = ['src/actions/demo-gate.test.ts', 'src/actions/demo-page.test.ts'];
-
-// Tests that need a browser's DOM (focus, keys, disclosure) run in jsdom, not in workerd (ADR 0012).
-const DOM_TESTS = [
-  'src/theme/theme.test.ts',
-  'src/components/passkey/codes.test.ts',
-  'test/e2e/specs.test.ts',
-  'src/components/week-grid/decide.test.tsx',
-  'src/components/week-grid/keyboard.test.tsx',
-  'src/components/week-grid/layout.test.tsx',
-  'src/components/week-grid/messages.test.tsx',
-  'src/components/week-grid/ledger.test.tsx',
-  'src/components/week-grid/phone.test.tsx',
-  'src/components/week-grid/totals.test.tsx',
-  'src/components/week-grid/unsaved.test.tsx',
-  'src/components/week-grid/api.test.tsx',
-  'src/components/week-grid/add-row.test.tsx',
-];
+// A test's project is its file suffix: *.app.test.ts runs in the built Worker, *.demo.test.ts in the built Worker with
+// the demo's three vars set (each file seeds the marker itself, so the gate opens only there), *.dom.test.ts[x] in
+// jsdom for a browser's DOM (focus, keys, disclosure; ADR 0012). Any other *.test.ts is a unit test in workerd.
+const APP = 'src/**/*.app.test.ts';
+const DEMO = 'src/**/*.demo.test.ts';
+const DOM = ['src/**/*.dom.test.{ts,tsx}', 'test/**/*.dom.test.ts'];
 
 // Fresh dummies per run: no test reads a real secret, and none can depend on a fixed value. The backup
 // identity is a test-only binding so the backup tests can decrypt what the scheduled handler wrote.
@@ -86,7 +45,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
-          exclude: [...APP_TESTS, ...DEMO_TESTS, ...DOM_TESTS],
+          exclude: [APP, DEMO, ...DOM],
           setupFiles: ['./test/apply-migrations.ts'],
         },
       },
@@ -105,7 +64,7 @@ export default defineConfig({
           })),
         ],
         resolve: { alias: { 'astro:actions': astroActions } },
-        test: { name: 'app', include: APP_TESTS, setupFiles: ['./test/apply-migrations.ts'] },
+        test: { name: 'app', include: [APP], setupFiles: ['./test/apply-migrations.ts'] },
       },
       {
         plugins: [
@@ -123,13 +82,13 @@ export default defineConfig({
           })),
         ],
         resolve: { alias: { 'astro:actions': astroActions } },
-        test: { name: 'demo', include: DEMO_TESTS, setupFiles: ['./test/apply-migrations.ts'] },
+        test: { name: 'demo', include: [DEMO], setupFiles: ['./test/apply-migrations.ts'] },
       },
       {
         resolve: { alias: { 'astro:actions': astroActions } },
         test: {
           name: 'dom',
-          include: DOM_TESTS,
+          include: DOM,
           environment: 'jsdom',
           setupFiles: ['./test/dom-setup.ts'],
         },

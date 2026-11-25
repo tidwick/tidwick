@@ -1,4 +1,4 @@
-// Hours are integer hundredths (P13): 7.5 hours is 750. Parsing and formatting are string and integer work only.
+// Hours are integer hundredths: 7.5 hours is 750. Parsing and formatting are string and integer work only.
 
 /** The most one person may book to one date. */
 export const DAY_CAP = 2400;

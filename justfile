@@ -28,8 +28,8 @@ build:
     npx --no-install wrangler types
     npx --no-install astro build
 
-test: build
-    npx --no-install vitest run
+test *args: build
+    npx --no-install vitest run {{ args }}
 
 golden: build
     npx --no-install vitest run -u
@@ -159,6 +159,14 @@ lint-sql-boundary:
     ./scripts/sql-boundary.test.sh
     ./scripts/sql-boundary.sh
 
+lint-test-support-gate:
+    ./scripts/test-support-gate.test.sh
+    ./scripts/test-support-gate.sh
+
+migration-manifest:
+    ./scripts/migration-manifest.test.sh
+    ./scripts/migration-manifest.sh
+
 lint-import-gate:
     ./scripts/import-gate.test.sh
     ./scripts/import-gate.sh
@@ -279,7 +287,7 @@ node-pin:
     [ -n "$want" ] && [ "$want" = "$have" ] || { echo "FAIL node-pin: mise.toml says '$want', package.json engines says '$have'; make them match"; exit 1; }
     echo "PASS node-pin"
 
-guard: node-pin lint-sql-boundary lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
+guard: node-pin migration-manifest lint-sql-boundary lint-test-support-gate lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
 
 audit:
     npm audit --audit-level=high

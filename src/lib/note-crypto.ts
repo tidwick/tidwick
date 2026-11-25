@@ -1,4 +1,4 @@
-// Per-client data keys, wrapped under NOTE_KEK and bound to their client and version (DESIGN: Notes). Only
+// Per-client data keys, wrapped under NOTE_KEK and bound to their client and version. Only
 // this module sees a key; an unwrapped key lives for one request.
 
 const encoder = new TextEncoder();
@@ -33,7 +33,7 @@ export async function kekId(kek: string): Promise<string> {
   return Array.from(digest.slice(0, 4), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** The KEK that wraps new keys, and while a rotation is under way the one it retires (DESIGN: Notes). */
+/** The KEK that wraps new keys, and while a rotation is under way the one it retires. */
 export interface NoteKeks {
   current: string;
   previous: string | null;

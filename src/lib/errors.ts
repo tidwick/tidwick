@@ -1,4 +1,4 @@
-// The error catalog (P8): the only source of error codes and messages. Actions and routes throw these alone.
+// The error catalog: the only source of error codes and messages. Actions and routes throw these alone.
 
 export const CATALOG = {
   missing_binding: {

@@ -1,5 +1,5 @@
 // The week as plain data and integer arithmetic. The server render, the Actions and the island all import this,
-// so a total is computed one way everywhere (P13). Weeks run Monday to Sunday; Monday is day 0.
+// so a total is computed one way everywhere. Weeks run Monday to Sunday; Monday is day 0.
 
 export const DAYS_IN_WEEK = 7;
 
