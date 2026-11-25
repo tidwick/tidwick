@@ -256,6 +256,11 @@ guard:
       base=FETCH_HEAD
     fi
     changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
+    # One-time: the v0.1.0 squash replaces the eleven shipped migrations with one. Delete in the release PR.
+    if [ -n "$changed" ] && [ "$(git rev-parse "$base:migrations")" = ea3281f44f711b0c3c29984cd4cb8bb10e3ad92a ] \
+      && [ "$(git rev-parse HEAD:migrations)" = c6dda7c0f91f7af8745c8605775540a161c48f92 ] && git diff --quiet HEAD -- migrations/; then
+      echo "PASS migrations (the v0.1.0 squash)"; changed=
+    fi
     [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
     echo "PASS migrations"
     ./scripts/restore-target.test.sh
