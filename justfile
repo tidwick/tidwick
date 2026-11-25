@@ -25,6 +25,10 @@ build:
     npx --no-install wrangler types
     npx --no-install astro build
 
+# The Worker bundles and wrangler accepts the config, as deploy would, before anything merges. No token needed.
+dry-run: build
+    npx --no-install wrangler deploy --dry-run --outdir "$(mktemp -d)"
+
 test *args: build
     npx --no-install vitest run {{ args }}
 
@@ -254,7 +258,7 @@ lint-actions:
     actionlint
     zizmor --min-severity medium .github
 
-check: typecheck lint lint-actions fmt-check build test migrate-check restore-drill guard
+check: typecheck lint lint-actions fmt-check build dry-run test migrate-check restore-drill guard
 
 ci: install check
 
@@ -262,7 +266,7 @@ ci: install check
 preview: build
     npx --no-install astro preview --ignore-lock
 
-# The full local suite, both widths. CI runs it at phone width (--project=phone).
+# The full local suite, both widths; CI runs it the same way.
 e2e *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -284,6 +288,24 @@ e2e *args:
 playwright-version:
     echo "version=$(npx --no-install playwright --version | awk '{print $2}')" >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
-# The scheduled probe: both public sites answer.
+# The deployed sites answer as the code says they do, GET only: the demo's sign-in is open, /login carries its CSP and a
+# hashed script that loads, /week wants a session, /mcp and /setup do not exist there, and the project site is up.
 live:
-    for url in https://tidwick.dev/ https://demo.tidwick.dev/; do curl -fsS -o /dev/null --retry 4 --retry-delay 15 --retry-all-errors --max-time 30 "$url"; done
+    #!/usr/bin/env bash
+    set -euo pipefail
+    demo=https://demo.tidwick.dev
+    get() { curl -sS --retry 4 --retry-delay 15 --retry-all-errors --max-time 30 -o "$1" -D "$1.h" -w '%{http_code}' "$2"; }
+    t="$(mktemp -d)"
+    want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
+    want /demo "$(get "$t/demo" $demo/demo)" 200
+    grep -q 'Pick a person' "$t/demo" || { echo "FAIL live: /demo lacks \"Pick a person\""; exit 1; }
+    want /login "$(get "$t/login" $demo/login)" 200
+    grep -qi '^content-security-policy:' "$t/login.h" || { echo "FAIL live: /login sends no content-security-policy"; exit 1; }
+    script="$(grep -o 'src="/_astro/[^"]*\.js"' "$t/login" | head -1 | cut -d'"' -f2)"
+    [ -n "$script" ] || { echo "FAIL live: /login names no hashed script"; exit 1; }
+    want "$script" "$(get "$t/js" "$demo$script")" 200
+    want /week "$(get "$t/week" $demo/week)" 401
+    want /mcp "$(get "$t/mcp" $demo/mcp)" 404
+    want /setup "$(get "$t/setup" $demo/setup)" 404
+    want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
+    echo "PASS live"
