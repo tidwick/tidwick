@@ -99,8 +99,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       )}
       {!session.mustEnrol && passkeys.length > 1 && (
         <p data-remove-note class="text-sm text-muted-foreground">
-          Removing a passkey does not sign out a browser already signed in with it. Use Sign out
-          other sessions below for that.
+          Removing a passkey does not sign out a browser already signed in with it, but it does
+          revoke agent access. Use Sign out other sessions below for browsers.
         </p>
       )}
       <button type="button" data-passkey="add" data-csrf={ctx.csrf} class={ADD}>
@@ -172,7 +172,7 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
           Other sessions
         </h2>
         <p class="text-sm text-muted-foreground">
-          Sign out every other browser and device. This one stays signed in.
+          Sign out every other browser and device, and revoke agent access. This one stays signed in.
         </p>
         <form method="POST" action={`/account${actions.auth.logoutOthers}`}>
           <input type="hidden" name="_csrf" value={ctx.csrf} />

@@ -39,7 +39,7 @@ export const accepted = (): Response => new Response(null, { status: 202 });
 export const notAllowed = (): Response =>
   new Response(null, { status: 405, headers: { allow: 'POST' } });
 
-/** What a refused request on `/mcp` or `/oauth/token` renders as, before any tool runs: a catalog code as JSON-RPC. */
+/** What a refused request on `/mcp` renders as, before any tool runs: a catalog code as JSON-RPC. */
 export function rpcRefusal(code: ErrorCode, status = CATALOG[code].status): Response {
   return rpcError(null, RPC.invalidRequest, CATALOG[code].message, status);
 }

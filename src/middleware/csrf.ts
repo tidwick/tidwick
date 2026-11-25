@@ -14,8 +14,8 @@ import { RPC_PATTERN } from './authz';
 export type CsrfVerdict =
   'ok' | 'foreign_origin' | 'too_large' | 'missing_token' | 'wrong_token' | 'cookie_and_bearer';
 
-/** The only paths whose callers authenticate with a bearer: the MCP route and the OAuth token endpoint. */
-const AGENT_PATHS: ReadonlySet<string> = new Set(['/mcp', '/oauth/token']);
+/** The only path whose callers authenticate with a bearer: the MCP route. */
+const AGENT_PATHS: ReadonlySet<string> = new Set(['/mcp']);
 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 const FORM = /^(application\/x-www-form-urlencoded|multipart\/form-data)/i;

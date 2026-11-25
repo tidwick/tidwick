@@ -32,6 +32,7 @@ export async function auditedCells(
   now: number,
 ): Promise<D1Result[]> {
   const batch = await auditedBatch(scope, db);
+  // Only the last statement guards the event; a cell refused by a concurrent unassignment may still be listed.
   const last = planned[planned.length - 1];
   for (const p of planned.slice(0, -1)) batch.also(p.statement);
   const clients = new Set(planned.map((p) => p.clientId));

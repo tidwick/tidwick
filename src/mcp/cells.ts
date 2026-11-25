@@ -13,7 +13,7 @@ export const cellsInput = z
   .array(
     z.object({
       rowId: idField,
-      day: z.number().int().min(0).max(6).describe('Monday is 0, Sunday is 6'),
+      day: z.number().int().min(0).max(DAYS_IN_WEEK - 1).describe('Monday is 0, Sunday is 6'),
       hours: z
         .union([z.string().max(32), z.number()])
         .describe('Hours for the day as a decimal such as 7.5; 0 clears it'),
