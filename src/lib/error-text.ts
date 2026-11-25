@@ -17,6 +17,8 @@ export const BINDING_NAMES: ReadonlySet<string> = new Set([
   'MAIL',
   'DEMO_BANNER',
   'DEMO_LOGIN',
+  'MCP',
+  'MCP_NOTES',
   'BACKUP_RECIPIENT',
   'SESSION_SECRET',
   'NOTE_KEK',
