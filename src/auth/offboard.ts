@@ -3,7 +3,7 @@
 import { auditedBatch, retryOnce } from '../db/audit';
 import { isLastAdmin, offboardStatement } from '../db/admins';
 import { personById } from '../db/people';
-import type { Scope } from '../db/scope';
+import { requireAll, type Scope } from '../db/scope';
 import { fail } from '../lib/errors';
 import { recordRevocations } from './revoke';
 
@@ -13,6 +13,7 @@ export async function offboard(
   personId: string,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const person = await personById(db, personId);
     if (!person || person.offboarded_at !== null) fail('not_found');

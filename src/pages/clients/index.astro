@@ -18,7 +18,7 @@ import {
 import { listClients } from '../../db/clients';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const newClient = Astro.getActionResult(actions.clients.create);
 const newProject = Astro.getActionResult(actions.projects.create);
 if (newClient?.data) return Astro.redirect(savedAt(`/clients/${newClient.data.id}`), 303);

@@ -16,7 +16,7 @@ import { pageContext, problemOf, savedAt, succeeded } from './_context';
 
 const session = Astro.locals.session;
 if (!session) return Astro.redirect('/login');
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const renewed = Astro.getActionResult(actions.auth.regenerateCodes);
 const posted = [
   Astro.getActionResult(actions.auth.revokePasskey),

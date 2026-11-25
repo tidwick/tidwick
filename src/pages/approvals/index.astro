@@ -18,7 +18,7 @@ import { formatHours } from '../../lib/hours';
 import { searchTerm } from '../../lib/search';
 import { pageContext } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const term = searchTerm(Astro.url.searchParams.get('q'));
 const weeks = await submittedWeeks(ctx.scope, ctx.db, term);
 const people = new Map<string, SubmittedWeek[]>();

@@ -2,7 +2,7 @@
 // show the outcome of the form that was just posted. Pages call `src/db/`; no SQL is written here.
 import type { AstroGlobal } from 'astro';
 import { isInputError } from 'astro:actions';
-import { grantsOf, isAccounting, isAdmin, isSteward, type Grant } from '../db/roles';
+import { isAccounting, isAdmin, isSteward, type Grant } from '../db/roles';
 import type { Scope } from '../db/scope';
 import { STEP_UP_MS } from '../auth/step-up';
 import { currentEnv } from '../lib/env';
@@ -23,13 +23,12 @@ export interface PageContext {
 }
 
 /** The signed-in caller's context; the route table already admitted them, so a gap here is a bug. */
-export async function pageContext(Astro: AstroGlobal): Promise<PageContext> {
+export function pageContext(Astro: AstroGlobal): PageContext {
   const session = Astro.locals.session ?? fail('unauthenticated');
   const scope = Astro.locals.scope ?? fail('unauthenticated');
-  const { DB } = currentEnv();
-  const grants = await grantsOf(DB, session.personId);
+  const grants = [...Astro.locals.grants];
   return {
-    db: DB,
+    db: currentEnv().DB,
     scope,
     personId: session.personId,
     csrf: Astro.locals.csrf,

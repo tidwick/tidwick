@@ -6,7 +6,7 @@ import StepUp from '../../components/admin/step-up.astro';
 import { Button } from '../../components/ui/button';
 import { pageContext, problemOf } from '../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const previewed = Astro.getActionResult(actions.import.preview);
 const applied = Astro.getActionResult(actions.import.apply);
 const report = applied?.data ?? previewed?.data ?? null;

@@ -8,5 +8,7 @@ declare namespace App {
     cookies: string[];
     /** The caller's scope for `src/db/`, set by `src/middleware/authz.ts` on every non-public row; null otherwise. */
     scope: import('./db/scope').Scope | null;
+    /** The caller's grants, read once by `src/middleware/authz.ts` on every non-public row; empty otherwise. */
+    grants: readonly import('./db/roles').Grant[];
   }
 }

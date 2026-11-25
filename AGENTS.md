@@ -15,7 +15,7 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 ## Invariants (a change that breaks one is wrong)
 
 - Never: hosted or multi-tenant, signup, billing, other clouds, timers, invoicing, rates, native apps, support promises.
-- SQL only under `src/db/`; roles only in `src/routes.ts` and `src/db/`; every row read through a `Scope`.
+- SQL only under `src/db/`; roles only in `src/routes.ts` and `src/db/`; client rows read through a `Scope`; steward and admin mutators and the people listings refuse a non-all-clients scope (`requireAll`).
 - Errors only from the catalog `src/lib/errors.ts`; bindings and secrets read only in `src/lib/env.ts`.
 - Hours are integer hundredths, no REAL, no float arithmetic. Audit log is append-only.
 - Colours only as tokens in `src/styles/global.css`. Source files <= 250 lines.

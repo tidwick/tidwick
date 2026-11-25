@@ -5,7 +5,7 @@ import { newId } from '../lib/ids';
 import { fail } from '../lib/errors';
 import { newClientKey, type WrappedKey } from '../lib/note-crypto';
 import { auditedBatch, retryOnce, type AuditedBatch } from './audit';
-import { projectsParam, type Scope } from './scope';
+import { projectsParam, requireAll, type Scope } from './scope';
 import { translateUnique } from './unique';
 
 export interface ClientRow {
@@ -101,6 +101,7 @@ export async function renameClient(
   name: string,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const before = (await clientById(scope, db, id)) ?? fail('not_found');
     const batch = await auditedBatch(scope, db);
@@ -128,6 +129,7 @@ export async function archiveClient(
   restore: boolean,
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   await retryOnce(async () => {
     const before = (await clientById(scope, db, id)) ?? fail('not_found');
     if ((before.archived_at !== null) !== restore) fail('bad_transition');

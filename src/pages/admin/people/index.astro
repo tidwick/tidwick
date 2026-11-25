@@ -23,11 +23,11 @@ import { accessByPerson } from '../../../db/people-access';
 import { searchTerm } from '../../../lib/search';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt } from '../../_context';
 
-const ctx = await pageContext(Astro);
+const ctx = pageContext(Astro);
 const created = Astro.getActionResult(actions.people.create);
 if (created?.data) return Astro.redirect(savedAt(`/admin/people/${created.data.id}`), 303);
 const term = searchTerm(Astro.url.searchParams.get('q'));
-const people = await listPeople(ctx.db, term);
+const people = await listPeople(ctx.scope, ctx.db, term);
 const firms = await listFirms(ctx.db);
 const access = await accessByPerson(ctx.db, Date.now());
 const typed = await postedFields(Astro);

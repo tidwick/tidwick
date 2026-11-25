@@ -3,7 +3,7 @@
 import { fail } from '../lib/errors';
 import { auditedBatch, retryOnce } from './audit';
 import { projectById } from './projects';
-import type { Scope } from './scope';
+import { requireAll, type Scope } from './scope';
 
 export interface AllowedTask {
   task_code_id: string;
@@ -55,6 +55,7 @@ export async function setProjectTasks(
   taskCodeIds: readonly string[],
   now: number,
 ): Promise<void> {
+  requireAll(scope);
   const wanted = [...new Set(taskCodeIds)].toSorted();
   const live = await db.prepare(LIVE_CODES).bind(JSON.stringify(wanted)).all<{ id: string }>();
   if (live.results.length !== wanted.length) fail('invalid_input', 'unknown or archived task code');

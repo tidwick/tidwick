@@ -4,7 +4,7 @@ import { activeCredentialsOf, revokeCredentialsOf } from '../db/credentials';
 import { closeEnrolmentsOf, openEnrolmentCount } from '../db/enrolments';
 import { personById } from '../db/people';
 import { closeCodesOf, unusedCodeCount } from '../db/recovery-codes';
-import type { Scope } from '../db/scope';
+import { requireAll, type Scope } from '../db/scope';
 import { liveSessionCount, revokeSessionsOf } from '../db/sessions';
 import { fail } from '../lib/errors';
 import { recordEnrolment } from './enrol';
@@ -65,6 +65,7 @@ export async function reenrol(
   personId: string,
   now: number,
 ): Promise<string> {
+  requireAll(scope);
   const person = await personById(db, personId);
   if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {

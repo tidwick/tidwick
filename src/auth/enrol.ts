@@ -10,7 +10,7 @@ import {
 } from '../db/enrolments';
 import { personById } from '../db/people';
 import { closeCodesOf, insertCodes } from '../db/recovery-codes';
-import { ceremonyScope, type Scope } from '../db/scope';
+import { ceremonyScope, requireAll, type Scope } from '../db/scope';
 import type { AuthEnv } from '../lib/env';
 import { fail } from '../lib/errors';
 import { storeChallenge, takeChallenge } from './challenge';
@@ -89,6 +89,7 @@ export async function issueEnrolment(
   personId: string,
   now: number,
 ): Promise<string> {
+  requireAll(scope);
   const person = await personById(db, personId);
   if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {
