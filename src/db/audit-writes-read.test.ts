@@ -7,13 +7,14 @@ import { eventsAfter, headSeq } from '../../test/helpers/reference';
 import { appendEvent } from './audit';
 import { readAuditPage } from './audit-read';
 import { verifyAudit } from './audit-verify';
+import { synthetic } from '../../test/helpers/audit-event';
 
 describe('the audit reads write nothing', () => {
   it("'audit.verify' and a page of the log add no event and change no row", async () => {
     const admin = await adminScope();
     await appendEvent(admin, env.DB, {
       at: T0,
-      action: 'test.read',
+      action: synthetic('test.read'),
       clientId: null,
       target: 't:1',
     });

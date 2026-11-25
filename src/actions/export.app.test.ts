@@ -63,7 +63,7 @@ describe('export', () => {
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('4.00');
     const events = await eventsAfter(before);
-    expect(events.map((e) => [e.action, e.client_id])).toEqual([['export.client', b.clientId]]);
+    expect(events.map((e) => [e.action, e.client_id])).toEqual([['export.clientCsv', b.clientId]]);
     expect(JSON.parse(events[0]?.after_json ?? '{}')).toMatchObject({
       entries: 1,
       hundredths: 400,
@@ -97,7 +97,7 @@ describe('export', () => {
     const file = await exportClient(scope, once, keks, b.clientId, RANGE, Date.now());
     expect(file.text).toContain('4.00');
     const events = await eventsAfter(before);
-    expect(events.map((e) => e.action)).toEqual(['drill.event', 'export.client']);
+    expect(events.map((e) => e.action)).toEqual(['drill.event', 'export.clientCsv']);
     const mid = await headSeq();
     const twice = racingRead(env.DB, 'INSERT INTO audit_event', race, 2);
     await expect(
@@ -182,7 +182,7 @@ describe('reports', () => {
     ];
     expect(rows.slice(1)).toEqual(expected);
     expect((await eventsAfter(before)).map((e) => [e.action, e.target])).toEqual([
-      ['report.csv', 'report:week'],
+      ['reports.download', 'report:week'],
     ]);
     expect((await formPost('/reports/nonsense.csv', null, await fresh(), RANGE)).status).toBe(404);
   });

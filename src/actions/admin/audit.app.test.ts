@@ -10,6 +10,7 @@ import { appendEvent } from '../../db/audit';
 import { AUDIT_PAGE } from '../../db/audit-read';
 import { systemScope } from '../../db/scope';
 import { tamperTarget } from '../../db/test-support-backup';
+import { synthetic } from '../../../test/helpers/audit-event';
 
 /** A response body as text; the script caller's answer is devalue, which `.text()` warns about. */
 async function bodyText(response: Response): Promise<string> {
@@ -19,8 +20,15 @@ async function bodyText(response: Response): Promise<string> {
 const SEALED = 'c0ffee00deadbeef0123456789abcdef';
 
 async function write(action: string, target: string, after?: unknown, at = T0): Promise<number> {
-  return (await appendEvent(systemScope(), env.DB, { at, action, clientId: null, target, after }))
-    .seq;
+  return (
+    await appendEvent(systemScope(), env.DB, {
+      at,
+      action: synthetic(action),
+      clientId: null,
+      target,
+      after,
+    })
+  ).seq;
 }
 
 describe('SEC-33 only an accounting admin or an admin reads or checks the audit log', () => {

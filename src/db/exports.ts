@@ -17,7 +17,7 @@ export interface CsvFile {
   filename: string;
 }
 
-/** The client's approved time in the range through the saved export mapping, with one `export.client` event. */
+/** The client's approved time in the range through the saved export mapping, with one `export.clientCsv` event. */
 export async function exportClient(
   scope: Scope,
   db: D1Database,
@@ -33,7 +33,7 @@ export async function exportClient(
   const hundredths = entries.reduce((sum, e) => sum + e.hundredths, 0);
   await appendEvent(scope, db, {
     at: now,
-    action: 'export.client',
+    action: 'export.clientCsv',
     clientId: client.id,
     target: `client:${client.id}`,
     after: { from: range.from, to: range.to, entries: entries.length, hundredths },
@@ -41,7 +41,7 @@ export async function exportClient(
   return { text, filename: `export-${client.name}-${range.from}-${range.to}` };
 }
 
-/** One report over the range with one `report.csv` event. */
+/** One report over the range with one `reports.download` event. */
 export async function runReport(
   scope: Scope,
   db: D1Database,
@@ -53,7 +53,7 @@ export async function runReport(
   const text = reportCsv(kind, rows);
   await appendEvent(scope, db, {
     at: now,
-    action: 'report.csv',
+    action: 'reports.download',
     clientId: null,
     target: `report:${kind}`,
     after: { from: range.from, to: range.to, rows: rows.length },

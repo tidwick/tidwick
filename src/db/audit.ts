@@ -9,6 +9,7 @@ import {
 } from '../lib/chain';
 import { fail } from '../lib/errors';
 import { errorText } from '../lib/error-text';
+import type { AuditEvent } from './audit-actions';
 import { PAGE_ROWS } from './backup-rows';
 import type { Scope } from './scope';
 
@@ -20,7 +21,7 @@ export type ChainCheck = LinkVerdict | { ok: false; unreadFrom: number };
 
 export interface AuditInput {
   at: number;
-  action: string;
+  action: AuditEvent;
   clientId: string | null;
   target: string;
   before?: unknown;

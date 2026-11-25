@@ -59,7 +59,7 @@ export async function regenerateCodes(
     const batch = await auditedBatch(scope, db);
     const event = {
       at: now,
-      action: 'auth.regenerateCodes',
+      action: 'auth.regenerateCodes' as const,
       clientId: null,
       target: `person:${personId}`,
     };

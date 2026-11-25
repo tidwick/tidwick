@@ -40,7 +40,7 @@ export async function bootstrapSql(input: BootstrapInput): Promise<string[]> {
     seq: 1,
     at: now,
     actor_id: null,
-    action: 'bootstrap',
+    action: 'instance.bootstrap',
     client_id: null,
     target: `person:${input.personId}`,
     before_json: null,

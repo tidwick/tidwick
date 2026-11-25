@@ -8,6 +8,7 @@ import { racingDb } from '../db/test-support';
 import { completeEnrolment, ENROLMENT_MS, enrolOptions, issueEnrolment } from './enrol';
 import { readSession } from './session';
 import { keyedHash, randomToken } from './tokens';
+import { synthetic } from '../../test/helpers/audit-event';
 
 async function issued(now = T0) {
   const d = deps();
@@ -65,7 +66,7 @@ describe('enrolment links', () => {
     });
     await expect(enrolWith(second, T0 + 2)).resolves.toBeTruthy();
     const closed = (await storedRows(d.db, 'audit_event')).filter(
-      (e) => e.action === 'enrolment.revoke' && e.target === `person:${person.id}`,
+      (e) => e.action === 'people.revokeEnrolments' && e.target === `person:${person.id}`,
     );
     expect(closed.map((e) => e.before_json)).toEqual(['{"open":1}']);
   });
@@ -103,7 +104,12 @@ describe('enrolment links', () => {
       const { d, person, token } = await issued();
       const admin = await adminScope();
       const bump = () =>
-        appendEvent(admin, d.db, { at: T0, action: 'test.bump', clientId: null, target: 'test' });
+        appendEvent(admin, d.db, {
+          at: T0,
+          action: synthetic('test.bump'),
+          clientId: null,
+          target: 'test',
+        });
       const racing = { ...d, db: racingDb(d.db, bump, moves) };
       const authenticator = await createSoftwareAuthenticator();
       const { options, challengeId } = await enrolOptions(d, token, T0);
@@ -123,7 +129,12 @@ describe('enrolment links', () => {
     const { d, person, token } = await issued();
     const admin = await adminScope();
     const bump = () =>
-      appendEvent(admin, d.db, { at: T0, action: 'test.bump', clientId: null, target: 'test' });
+      appendEvent(admin, d.db, {
+        at: T0,
+        action: synthetic('test.bump'),
+        clientId: null,
+        target: 'test',
+      });
     const racing = { ...d, db: racingDb(d.db, bump, 3) };
     const authenticator = await createSoftwareAuthenticator();
     const first = await enrolOptions(d, token, T0);

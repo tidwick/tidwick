@@ -35,7 +35,7 @@ describe('auth.revokePasskey removes one of the caller own passkeys', () => {
     const rows = await storedFor('credential', who.personId);
     expect(rows.filter((c) => c.revoked_at !== null).map((c) => c.id)).toEqual([ids[0]]);
     const events = (await storedRows(env.DB, 'audit_event')).filter(
-      (e) => e.action === 'credential.revoke' && e.target === `person:${who.personId}`,
+      (e) => e.action === 'auth.revokePasskey' && e.target === `person:${who.personId}`,
     );
     expect(events).toHaveLength(1);
   });

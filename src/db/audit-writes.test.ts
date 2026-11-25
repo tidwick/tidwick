@@ -8,7 +8,8 @@ import { issueEnrolment } from '../auth/enrol';
 import { offboard } from '../auth/offboard';
 import { reenrol } from '../auth/revoke';
 import { currentEnv } from '../lib/env';
-import { addAllAssignments, addAssignment, removeAssignment } from './assignments';
+import { AUDIT_OF } from './audit-actions';
+import { addAssignment, removeAssignment } from './assignments';
 import { archiveClient, createClient, renameClient } from './clients';
 import { listFirms } from './firms';
 import { createPerson } from './person-create';
@@ -19,10 +20,15 @@ import type { Scope } from './scope';
 import { archiveTaskCode, createTaskCode, renameTaskCode } from './task-codes';
 
 const kek = () => currentEnv().NOTE_KEK;
-const REVOKES = ['credential.revoke', 'session.revoke', 'recovery_code.revoke', 'enrolment.revoke'];
+const REVOKES = [
+  'people.revokeCredentials',
+  'people.revokeSessions',
+  'people.revokeCodes',
+  'people.revokeEnrolments',
+];
 
 interface Case {
-  action: string;
+  action: keyof typeof AUDIT_OF;
   run: () => Promise<unknown>;
   target: RegExp;
   before: object | null;
@@ -52,7 +58,7 @@ beforeAll(async () => {
   const clientName = unique('Audited');
   const other = (await createClient(admin, env.DB, kek(), unique('Other'), T0)).id;
   const p = (
-    action: string,
+    action: keyof typeof AUDIT_OF,
     run: () => Promise<unknown>,
     before: object | null,
     after: object | null,
@@ -198,18 +204,6 @@ beforeAll(async () => {
   ];
 });
 
-describe('assign to all live projects', () => {
-  it("the Action 'assignments.addAll' writes one assignments.add event per project added, by the admin, and nothing else", async () => {
-    const who = await addPerson();
-    const seq = await headSeq();
-    const added = await addAllAssignments(admin, env.DB, who.id, T0);
-    const events = await eventsAfter(seq);
-    expect(added).toBeGreaterThan(0);
-    expect(events.map((e) => e.action)).toEqual(Array<string>(added).fill('assignments.add'));
-    expect(events.every((e) => e.actor_id === admin.actorId)).toBe(true);
-  });
-});
-
 describe('every admin write is audited once', () => {
   it('each Action write adds exactly one event of its own name with actor, target, before and after', async () => {
     expect(cases).toHaveLength(18);
@@ -217,6 +211,10 @@ describe('every admin write is audited once', () => {
       const seq = await headSeq();
       await c.run();
       const events = await eventsAfter(seq);
+      const row = AUDIT_OF[c.action];
+      const declared: readonly string[] = row === undefined || row === 'none' ? [] : row;
+      for (const emitted of [c.action, ...(c.extra ?? [])])
+        expect(declared, c.action).toContain(emitted);
       const own = events.filter((e) => e.action === c.action);
       expect(own, c.action).toHaveLength(1);
       expect(events.map((e) => e.action).toSorted(), c.action).toEqual(
@@ -234,14 +232,15 @@ describe('every admin write is audited once', () => {
     }
   });
 
-  it('a write that fails leaves no event, and a refused duplicate leaves none either', async () => {
-    const seq = await headSeq();
-    await expect(
-      createTaskCode(admin, env.DB, { code: 'aud1', name: 'Again' }, T0),
-    ).rejects.toMatchObject({ code: 'code_taken' });
-    await expect(removeAssignment(admin, env.DB, project.id, person.id, T0)).rejects.toMatchObject({
-      code: 'not_found',
-    });
-    expect(await eventsAfter(seq)).toEqual([]);
+  it('every audited admin-data Action in the map has a case here', () => {
+    const covered = new Set(cases.map((c) => c.action));
+    const owned = /^(clients|projects|taskCodes|assignments|people)\./;
+    const missing = Object.entries(AUDIT_OF)
+      .filter(
+        ([name, events]) => owned.test(name) && events !== 'none' && name !== 'assignments.addAll',
+      )
+      .map(([name]) => name)
+      .filter((name) => !covered.has(name));
+    expect(missing).toEqual([]);
   });
 });

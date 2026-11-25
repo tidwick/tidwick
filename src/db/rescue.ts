@@ -3,7 +3,7 @@
 //
 // The file is for a deployment where no admin can sign in: the bootstrap link expired unused, or the only admin
 // lost every passkey and recovery code. Its first statement appends one
-// `enrolment.rescue` event onto the head the operator read, and only while the person is an active admin and no
+// `people.rescue` event onto the head the operator read, and only while the person is an active admin and no
 // admin holds an unrevoked passkey. Every later statement writes only while that event exists, by its hash, and
 // still no admin can sign in, so a deployment with a working admin, a moved head, or a link already used takes
 // no row. As re-enrolment does, it revokes the person's sessions, unused recovery codes and other open links.
@@ -41,7 +41,7 @@ export async function rescueSql(
     seq: input.headSeq + 1,
     at: now,
     actor_id: null,
-    action: 'enrolment.rescue',
+    action: 'people.rescue',
     client_id: null,
     target: `person:${personId}`,
     before_json: null,
