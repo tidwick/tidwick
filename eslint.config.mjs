@@ -30,7 +30,7 @@ const ROLE =
 const SHIPS =
   'Production source reaches test support or systemScope: keep it in a *.test.ts file or src/db/test-support*.ts';
 const CRON =
-  'cronScope is the demo wipe\'s all-clients scope: only src/db/demo-wipe.ts may use it, so take the narrowest Scope your path has';
+  "cronScope is the demo wipe's all-clients scope: only src/db/demo-wipe.ts may use it, so take the narrowest Scope your path has";
 const EDGE =
   '/^(astro|cloudflare):|[/](actions|middleware|pages|components|layouts|mcp|worker)([/]|$)/';
 const edge = (not = '') => [
