@@ -6,6 +6,8 @@ import { DEMO_RESET_CRON, scheduled } from '../backup/scheduled';
 import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv } from '../lib/env';
 import { checkChain } from './audit';
+import { wipeDemo } from './demo-wipe';
+import { instanceEmpty } from './empty';
 
 const NOW = Date.UTC(2026, 10, 18, 4, 0, 0);
 const OPEN = {
@@ -74,5 +76,10 @@ describe('the nightly demo wipe', () => {
     expect((await checkChain(env.DB)).ok).toBe(true);
     await demoSignIn(OPEN, 'a-long-demo-password', DEMO_PERSONAS[0].key, NOW);
     await expect(env.DB.exec('DELETE FROM audit_event')).rejects.toThrow();
+  });
+
+  it('leaves the seed admin in place, so the setup gate stays shut after a wipe', async () => {
+    await wipeDemo(env.DB, currentEnv().NOTE_KEK, NOW);
+    expect(await instanceEmpty(env.DB)).toBe(false);
   });
 });

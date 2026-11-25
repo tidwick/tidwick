@@ -5,6 +5,7 @@ import {
   binding,
   choice,
   demoPassword,
+  hasMethods,
   mailOf,
   optionalSecret,
   origin,
@@ -14,6 +15,7 @@ import {
   text,
   type Source,
 } from './env-fields';
+import { isAppError } from './errors';
 import { isNoteKek, isSessionSecret } from './secrets';
 import { ssoProviders, type SsoProvider } from './sso-config';
 
@@ -50,26 +52,38 @@ export interface Env {
   NOTE_KEK_PREVIOUS: string | null;
 }
 
-function parse(source: Source): Env {
-  const mail = mailOf(source);
+/** With `gaps`, a refused field is recorded by name and read as undefined, so one pass names every gap; without, the first throws. */
+function parse(source: Source, gaps?: string[]): Env {
+  const field = <T>(read: () => T): T => {
+    try {
+      return read();
+    } catch (error) {
+      if (gaps === undefined || !isAppError(error, 'missing_binding')) throw error;
+      gaps.push(error.detail ?? '');
+      return undefined as T;
+    }
+  };
+  const mail = field(() => mailOf(source));
   return {
-    DB: binding(source, 'DB', ['prepare', 'batch']) as D1Database,
-    RATE_LIMIT: binding(source, 'RATE_LIMIT', ['limit']) as RateLimit,
-    LOGIN_LIMIT: binding(source, 'LOGIN_LIMIT', ['limit']) as RateLimit,
+    DB: field(() => binding(source, 'DB', ['prepare', 'batch']) as D1Database),
+    RATE_LIMIT: field(() => binding(source, 'RATE_LIMIT', ['limit']) as RateLimit),
+    LOGIN_LIMIT: field(() => binding(source, 'LOGIN_LIMIT', ['limit']) as RateLimit),
     EMAIL: mail?.EMAIL ?? null,
-    ORIGIN: origin(source, 'ORIGIN'),
-    RP_ID: text(source, 'RP_ID'),
+    ORIGIN: field(() => origin(source, 'ORIGIN')),
+    RP_ID: field(() => text(source, 'RP_ID')),
     MAIL_FROM: mail?.MAIL_FROM ?? null,
-    DEMO_BANNER: choice(source, 'DEMO_BANNER', ['', 'on'], '') === 'on',
-    DEMO_LOGIN: choice(source, 'DEMO_LOGIN', ['', 'on'], '') === 'on',
+    DEMO_BANNER: field(() => choice(source, 'DEMO_BANNER', ['', 'on'], '') === 'on'),
+    DEMO_LOGIN: field(() => choice(source, 'DEMO_LOGIN', ['', 'on'], '') === 'on'),
     DEMO_PASSWORD: demoPassword(source),
-    MCP: choice(source, 'MCP', ['', 'on'], '') === 'on',
-    MCP_NOTES: choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
-    SSO: ssoProviders(providersText(source), source),
-    BACKUP_RECIPIENT: recipient(source, 'BACKUP_RECIPIENT'),
-    SESSION_SECRET: secret(source, 'SESSION_SECRET', isSessionSecret),
-    NOTE_KEK: secret(source, 'NOTE_KEK', isNoteKek),
-    NOTE_KEK_PREVIOUS: optionalSecret(source, 'NOTE_KEK_PREVIOUS', isNoteKek),
+    MCP: field(() => choice(source, 'MCP', ['', 'on'], '') === 'on'),
+    MCP_NOTES: field(() =>
+      choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
+    ),
+    SSO: field(() => ssoProviders(providersText(source), source)),
+    BACKUP_RECIPIENT: field(() => recipient(source, 'BACKUP_RECIPIENT')),
+    SESSION_SECRET: field(() => secret(source, 'SESSION_SECRET', isSessionSecret)),
+    NOTE_KEK: field(() => secret(source, 'NOTE_KEK', isNoteKek)),
+    NOTE_KEK_PREVIOUS: field(() => optionalSecret(source, 'NOTE_KEK_PREVIOUS', isNoteKek)),
   };
 }
 
@@ -101,6 +115,10 @@ const configured = (s: Source, name: string): string => {
   return typeof value === 'string' ? value : '';
 };
 
+function copyOf(s: Source): CopySettings {
+  return Object.fromEntries(COPY_NAMES.map((name) => [name, configured(s, name)])) as CopySettings;
+}
+
 /**
  * What the 03:00 backup reads: the recipient and the copy's settings as configured, each empty when unset, so a
  * missing or malformed one becomes a failed `backup_run` the 09:00 check reports rather than a cron that stops
@@ -113,12 +131,11 @@ export function backupEnv(source: object): {
   copy: CopySettings;
 } {
   const s = source as Source;
-  const copy = Object.fromEntries(COPY_NAMES.map((name) => [name, configured(s, name)]));
   return {
     DB: binding(s, 'DB', ['prepare', 'batch']) as D1Database,
     BACKUPS: binding(s, 'BACKUPS', ['put', 'get', 'list']) as R2Bucket,
     BACKUP_RECIPIENT: configured(s, 'BACKUP_RECIPIENT'),
-    copy: copy as CopySettings,
+    copy: copyOf(s),
   };
 }
 
@@ -132,6 +149,30 @@ export function checkEnv(source: object): {
 } {
   const s = source as Source;
   return { DB: binding(s, 'DB', ['prepare', 'batch']) as D1Database, mail: mailOf(s) };
+}
+
+/** What the setup page reads: the names `readEnv` refuses, in parse order, and the few settings it compares; no secret. */
+export interface SetupEnv {
+  DB: D1Database | null;
+  missing: readonly string[];
+  ORIGIN: string;
+  MAIL_FROM: string | null;
+  copy: CopySettings;
+}
+
+/** Null when `readEnv` would pass; otherwise every refused name, so the page can list them all at once. */
+export function setupEnv(source: object = workersEnv): SetupEnv | null {
+  const s = source as Source;
+  const missing: string[] = [];
+  parse(s, missing);
+  if (missing.length === 0) return null;
+  return {
+    DB: hasMethods(s.DB, ['prepare', 'batch']) ? (s.DB as D1Database) : null,
+    missing,
+    ORIGIN: configured(s, 'ORIGIN'),
+    MAIL_FROM: s.MAIL === 'off' ? null : configured(s, 'MAIL_FROM') || null,
+    copy: copyOf(s),
+  };
 }
 
 /** The running Worker's env, parsed: what middleware, Actions and pages read at request start. */

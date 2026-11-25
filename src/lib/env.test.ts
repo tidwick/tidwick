@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { COPY_NAMES, readEnv } from './env';
+import { COPY_NAMES, readEnv, setupEnv } from './env';
 import { AppError } from './errors';
 
 function complete(): Record<string, unknown> {
@@ -172,5 +172,18 @@ describe('typed env', () => {
     const read = [...strings.map(([name]) => name), ...COPY_NAMES];
     const secrets = read.filter((name) => !wrangler.includes(`"${name}"`));
     expect(named).toEqual([...secrets, ...LOCAL_SWITCHES].toSorted());
+  });
+
+  it('setupEnv is null for a complete env and otherwise names every refused binding in parse order, never a value', () => {
+    expect(setupEnv(complete())).toBeNull();
+    const source = {
+      ...complete(),
+      RP_ID: undefined,
+      NOTE_KEK: 'not-a-kek',
+      SESSION_SECRET: undefined,
+    };
+    const found = setupEnv(source);
+    expect(found?.missing).toEqual(['RP_ID', 'SESSION_SECRET', 'NOTE_KEK']);
+    expect(JSON.stringify(found)).not.toContain('not-a-kek');
   });
 });
