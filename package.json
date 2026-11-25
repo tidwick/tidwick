@@ -18,13 +18,40 @@
   "cloudflare": {
     "bindings": {
       "SESSION_SECRET": {
-        "description": "HMAC key for stored token hashes and CSRF tokens. 32 random bytes, base64url without padding: openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\\n'"
+        "description": "HMAC key for stored token hashes and CSRF tokens. 32 random bytes, base64url without padding: `openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\\n'`"
       },
       "NOTE_KEK": {
-        "description": "Wraps each client's note key. 32 random bytes, standard base64: openssl rand -base64 32 | tr -d '\\n'. Losing it loses every note; keep a copy offline."
+        "description": "Wraps each client's note key. 32 random bytes, standard base64: `openssl rand -base64 32 | tr -d '\\n'`. Losing it loses every note; keep a copy offline."
       },
       "BACKUP_RECIPIENT": {
-        "description": "The age public key (age1...) the nightly backup is encrypted to. Make one with: age-keygen -o backup-key.txt; age-keygen -y backup-key.txt. Keep the identity file offline."
+        "description": "The age public key (age1...) the nightly backup is encrypted to. Make one with: `age-keygen -o backup-key.txt; age-keygen -y backup-key.txt`. Keep the identity file offline."
+      },
+      "SSO_PROVIDERS": {
+        "description": "Optional. Leave empty (off). Anything else must be a JSON array of providers, or the deploy fails; see ARCHITECTURE, Deploy."
+      },
+      "MCP": {
+        "description": "Optional. Leave empty (off)."
+      },
+      "MCP_NOTES": {
+        "description": "Optional. Leave empty (off)."
+      },
+      "DEMO_BANNER": {
+        "description": "Optional. Leave empty (off)."
+      },
+      "NOTE_KEK_PREVIOUS": {
+        "description": "Optional. Leave empty (off). Set only during a key rotation."
+      },
+      "BACKUP_S3_ENDPOINT": {
+        "description": "Optional. Leave empty (off). Off-account backup copy."
+      },
+      "BACKUP_S3_BUCKET": {
+        "description": "Optional. Leave empty (off). Off-account backup copy."
+      },
+      "BACKUP_S3_KEY_ID": {
+        "description": "Optional. Leave empty (off). Off-account backup copy."
+      },
+      "BACKUP_S3_SECRET": {
+        "description": "Optional. Leave empty (off). Off-account backup copy."
       }
     }
   },

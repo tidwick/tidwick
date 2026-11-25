@@ -58,6 +58,7 @@ describe('deployable default', () => {
     const main = parsed(text);
     expect(main['workers_dev']).toBe(true);
     expect(dbs(main).every((d) => !('database_id' in d))).toBe(true);
+    expect(['account_id', 'route', 'routes'].filter((k) => k in main)).toEqual([]);
     const demo = (main['env'] as Record<string, Record<string, unknown>>)['demo'];
     expect(demo?.['workers_dev']).toBe(false);
     expect(dbs(demo ?? {})[0]?.['database_id']).toBeTruthy();
