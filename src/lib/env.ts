@@ -3,6 +3,7 @@ import { env as workersEnv } from 'cloudflare:workers';
 import { fail } from './errors';
 import type { NoteKeks } from './note-crypto';
 import { isAgeRecipient, isNoteKek, isSessionSecret } from './secrets';
+import { ssoProviders, type SsoProvider } from './sso-config';
 
 export interface Env {
   DB: D1Database;
@@ -26,6 +27,8 @@ export interface Env {
   MCP: boolean;
   /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
   MCP_NOTES: 'off' | 'read';
+  /** The identity providers `SSO_PROVIDERS` allows, each with its `SSO_SECRET_<ID>`; none turns every `/auth/sso/*` route into a 404. */
+  SSO: readonly SsoProvider[];
   BACKUP_RECIPIENT: string;
   SESSION_SECRET: string;
   NOTE_KEK: string;
@@ -133,6 +136,7 @@ function parse(source: Source): Env {
     DEMO_PASSWORD: demoPassword(source),
     MCP: choice(source, 'MCP', ['', 'on'], '') === 'on',
     MCP_NOTES: choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
+    SSO: ssoProviders(source),
     BACKUP_RECIPIENT: recipient(source, 'BACKUP_RECIPIENT'),
     SESSION_SECRET: secret(source, 'SESSION_SECRET', isSessionSecret),
     NOTE_KEK: secret(source, 'NOTE_KEK', isNoteKek),
