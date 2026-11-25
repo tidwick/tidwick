@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Colour lives in one place: the tokens in src/styles/global.css. Fails on a hex, rgb, hsl or oklch literal, or a named palette utility such as `bg-white` or
-# `text-slate-900`, anywhere else under src/, since each is a colour that dark mode cannot restyle. An in-page link
-# such as href="#main" is not a colour. Takes the tree to scan as an optional argument.
+# Colour lives in one place: the tokens in src/styles/global.css. Fails on a hex, rgb, hsl or oklch literal, or a
+# named palette utility such as `bg-white` or `text-slate-900`, anywhere else under src/, since each is a colour that
+# dark mode cannot restyle. An in-page link such as href="#main" is not a colour. Takes the tree to scan as an
+# optional argument.
 set -uo pipefail
 cd "${1:-$(dirname "$0")/..}"
 palette='(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)'

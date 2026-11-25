@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import pkg from '../../package.json';
 
 const files = import.meta.glob<string>(
-  ['../../justfile', '../../package-lock.json', '../../.github/workflows/*.yml'],
+  [
+    '../../justfile',
+    '../../package-lock.json',
+    '../../.github/workflows/*.yml',
+    '../../.github/workflows/*.yaml',
+  ],
   {
     query: '?raw',
     import: 'default',
@@ -151,6 +156,9 @@ describe('dependencies', () => {
     expect(workflows.length).toBeGreaterThanOrEqual(2);
     for (const [path, yaml] of workflows) expect(pinProblems(yaml), path).toEqual([]);
     expect(unlistedRuns(files['../../.github/workflows/ci.yml'] ?? '')).toEqual([]);
+    expect(files['../../.github/workflows/ci.yml']).toMatch(
+      /^ {2}deploy:\n {4}needs: \[check, smoke\]\n(?: {4}.*\n)*? {4}environment: demo$/m,
+    );
     const mutant = [
       '    steps:',
       '      - uses: actions/checkout@v4',
