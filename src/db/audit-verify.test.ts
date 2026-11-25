@@ -8,13 +8,14 @@ import { appendEvent, readHead } from './audit';
 import { PAGE_ROWS } from './backup-rows';
 import { tamperTarget } from './test-support-backup';
 import { REQUEST_QUERIES, verifyAudit } from './audit-verify';
+import { synthetic } from '../../test/helpers/audit-event';
 
 async function append(count: number): Promise<void> {
   const admin = await adminScope();
   for (let n = 0; n < count; n++) {
     await appendEvent(admin, env.DB, {
       at: T0 + n,
-      action: 'test.verify',
+      action: synthetic('test.verify'),
       clientId: null,
       target: `t:${String(n)}`,
     });

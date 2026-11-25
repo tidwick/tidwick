@@ -69,7 +69,7 @@ async function recordClosedLinks(
     closeEnrolmentsOf(db, personId, now),
     {
       at: now,
-      action: 'enrolment.revoke',
+      action: 'people.revokeEnrolments',
       clientId: null,
       target: `person:${personId}`,
       before: { open },

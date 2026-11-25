@@ -95,7 +95,7 @@ async function rewrapPage(
         );
       const event = {
         at: now,
-        action: 'keys.rewrap',
+        action: 'keys.rewrap' as const,
         clientId: row.client_id,
         target: `client_key:${row.client_id}:${String(row.version)}`,
         before: { kek_id: previousId },

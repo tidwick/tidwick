@@ -20,7 +20,7 @@ export async function revokeOwnPasskey(
       revokeCredential(db, personId, credentialId, now),
       {
         at: now,
-        action: 'credential.revoke',
+        action: 'auth.revokePasskey',
         clientId: null,
         target: `person:${personId}`,
         before: { credentials: [credentialId] },

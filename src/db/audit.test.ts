@@ -15,6 +15,7 @@ import {
 import { saveCellsFor } from './entries-for';
 import { systemScope } from './scope';
 import { decideWeek, submitWeek } from './submissions';
+import { synthetic } from '../../test/helpers/audit-event';
 
 const AT = 1_700_000_000_000;
 
@@ -23,7 +24,7 @@ function event(seq: number): ChainEvent {
     seq,
     at: AT + seq,
     actor_id: null,
-    action: 'bootstrap',
+    action: 'instance.bootstrap',
     client_id: null,
     target: 'instance',
     before_json: null,
@@ -35,7 +36,7 @@ async function insert(seq: number, prevHash: string): Promise<D1Result> {
   const hash = await eventHash(prevHash, event(seq));
   return env.DB.prepare(
     `INSERT INTO audit_event (seq, at, actor_id, action, client_id, target, before_json, after_json, prev_hash, hash)
-     VALUES (?1, ?2, NULL, 'bootstrap', NULL, 'instance', NULL, '{}', ?3, ?4)`,
+     VALUES (?1, ?2, NULL, 'instance.bootstrap', NULL, 'instance', NULL, '{}', ?3, ?4)`,
   )
     .bind(seq, AT + seq, prevHash, hash)
     .run();
@@ -140,7 +141,7 @@ describe('SEC-02 the audit hash chain names the first edited event', () => {
     for (let i = 0; i < 5; i++) {
       await appendEvent(systemScope(), env.DB, {
         at: AT + i,
-        action: 'task_code.create',
+        action: synthetic('task_code.create'),
         clientId: null,
         target: `task_code:${String(i)}`,
         after: { code: `T${String(i)}` },
@@ -183,7 +184,12 @@ describe('an audit event lands only with the change it records', () => {
 
   it('a write that changed the expected rows lands with its event', async () => {
     const before = await readHead(env.DB);
-    const input = { at: AT, action: 'task_code.create', clientId: null, target: 'task_code:P1' };
+    const input = {
+      at: AT,
+      action: synthetic('task_code.create'),
+      clientId: null,
+      target: 'task_code:P1',
+    };
     const { statement, head } = await auditStatement(systemScope(), env.DB, before, input, 1);
     await env.DB.batch([insertTask('P1'), statement]);
     expect(await readHead(env.DB)).toEqual(head);
@@ -192,7 +198,12 @@ describe('an audit event lands only with the change it records', () => {
   it('a write that changed no rows rolls back with no event', async () => {
     await env.DB.batch([insertTask('P2')]);
     const before = await readHead(env.DB);
-    const input = { at: AT, action: 'task_code.create', clientId: null, target: 'task_code:P2' };
+    const input = {
+      at: AT,
+      action: synthetic('task_code.create'),
+      clientId: null,
+      target: 'task_code:P2',
+    };
     const { statement } = await auditStatement(systemScope(), env.DB, before, input, 1);
     await expect(env.DB.batch([insertTask('P2'), statement])).rejects.toThrow();
     expect(await readHead(env.DB)).toEqual(before);

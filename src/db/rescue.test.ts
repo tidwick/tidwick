@@ -72,7 +72,7 @@ describe('rescuing a deployment no admin can sign in to', () => {
       'SELECT action, actor_id, target FROM audit_event WHERE seq = 2',
     ).first();
     expect(event).toEqual({
-      action: 'enrolment.rescue',
+      action: 'people.rescue',
       actor_id: null,
       target: `person:${adminId}`,
     });

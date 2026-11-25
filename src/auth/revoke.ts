@@ -23,22 +23,22 @@ export async function recordRevocations(
   const event = { at: now, clientId: null, target: `person:${personId}` };
   await batch.record(
     revokeCredentialsOf(db, personId, now),
-    { ...event, action: 'credential.revoke', before: { credentials } },
+    { ...event, action: 'people.revokeCredentials', before: { credentials } },
     credentials.length,
   );
   await batch.record(
     revokeSessionsOf(db, personId, now),
-    { ...event, action: 'session.revoke', before: { sessions } },
+    { ...event, action: 'people.revokeSessions', before: { sessions } },
     sessions,
   );
   await batch.record(
     closeCodesOf(db, personId, now),
-    { ...event, action: 'recovery_code.revoke', before: { unused: codes } },
+    { ...event, action: 'people.revokeCodes', before: { unused: codes } },
     codes,
   );
   await batch.record(
     closeEnrolmentsOf(db, personId, now),
-    { ...event, action: 'enrolment.revoke', before: { open: links } },
+    { ...event, action: 'people.revokeEnrolments', before: { open: links } },
     links,
   );
 }

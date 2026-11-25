@@ -7,6 +7,7 @@ import { racingDb } from '../db/test-support';
 import { emailHash, LOCK_AFTER, lockDuration, unlockRecovery } from './lockout';
 import { completeLogin, loginOptions } from './login';
 import { recover } from './recovery';
+import { synthetic } from '../../test/helpers/audit-event';
 
 const WRONG = '0000-0000-0000-0000';
 
@@ -97,7 +98,7 @@ describe('recovery lockout', () => {
     const bump = () =>
       appendEvent(scope, deps().db, {
         at: T0,
-        action: 'test.bump',
+        action: synthetic('test.bump'),
         clientId: null,
         target: 'test',
       });

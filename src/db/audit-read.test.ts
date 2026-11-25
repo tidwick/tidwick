@@ -10,6 +10,7 @@ import { AUDIT_PAGE, auditChoices, readAuditPage } from './audit-read';
 import { scopeFor, systemScope } from './scope';
 import { createClient } from './clients';
 import { currentEnv } from '../lib/env';
+import { synthetic } from '../../test/helpers/audit-event';
 
 const NONE: AuditFilter = {
   from: null,
@@ -28,7 +29,9 @@ async function write(
   clientId: string | null = null,
   after?: unknown,
 ): Promise<number> {
-  return (await appendEvent(who, env.DB, { at, action, clientId, target, after })).seq;
+  return (
+    await appendEvent(who, env.DB, { at, action: synthetic(action), clientId, target, after })
+  ).seq;
 }
 
 describe('reading the audit log', () => {
@@ -39,7 +42,7 @@ describe('reading the audit log', () => {
     for (let n = 0; n < total; n++) await write(admin, T0 + n, 'test.page', `thing:${String(n)}`);
     const seen: number[] = [];
     let before: number | null = null;
-    const filter = { ...NONE, action: 'test.page' };
+    const filter = { ...NONE, action: synthetic('test.page') };
     for (let pages = 0; pages < 10; pages++) {
       const page = await readAuditPage(admin, env.DB, filter, before);
       expect(page.events.length).toBeLessThanOrEqual(AUDIT_PAGE);
@@ -61,7 +64,12 @@ describe('reading the audit log', () => {
     ];
     await write(admin, day - 1, 'test.range', 'a:0');
     await write(admin, day + 2 * DAY, 'test.range', 'a:3');
-    const filter = { ...NONE, action: 'test.range', from: '2031-05-10', to: '2031-05-11' };
+    const filter = {
+      ...NONE,
+      action: synthetic('test.range'),
+      from: '2031-05-10',
+      to: '2031-05-11',
+    };
     const page = await readAuditPage(admin, env.DB, filter, null);
     expect(page.events.map((e) => e.seq)).toEqual(inside.toReversed());
     const open = await readAuditPage(admin, env.DB, { ...filter, to: null }, null);
@@ -75,7 +83,7 @@ describe('reading the audit log', () => {
     const mine = await write(admin, T0, 'test.who', 'client:x', client.id);
     const theirs = await write(other, T0, 'test.who', 'project:y');
     const systemic = await write(systemScope(), T0, 'test.who', 'client:z');
-    const base = { ...NONE, action: 'test.who' };
+    const base = { ...NONE, action: synthetic('test.who') };
     const seqs = async (filter: Partial<AuditFilter>) =>
       (await readAuditPage(admin, env.DB, { ...base, ...filter }, null)).events.map((e) => e.seq);
     expect(await seqs({})).toEqual([systemic, theirs, mine]);
@@ -97,8 +105,9 @@ describe('reading the audit log', () => {
       hundredths: 100,
       note_ct: 'aabb',
     });
-    const [event] = (await readAuditPage(admin, env.DB, { ...NONE, action: 'test.names' }, null))
-      .events;
+    const [event] = (
+      await readAuditPage(admin, env.DB, { ...NONE, action: synthetic('test.names') }, null)
+    ).events;
     expect(event).toMatchObject({
       seq,
       actor_id: admin.actorId,

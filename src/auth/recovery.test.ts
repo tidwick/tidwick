@@ -21,6 +21,7 @@ import { recover } from './recovery';
 import { codeHash, newRecoveryCode, normalizeCode, regenerateCodes } from './recovery-codes';
 import { reenrol } from './revoke';
 import { readSession } from './session';
+import { synthetic } from '../../test/helpers/audit-event';
 
 const actions = async () => (await storedRows(deps().db, 'audit_event')).map((e) => e.action);
 
@@ -47,7 +48,12 @@ describe('recovery codes and re-enrolment', () => {
     const d = deps();
     const admin = await adminScope();
     const bump = () =>
-      appendEvent(admin, d.db, { at: T0, action: 'test.bump', clientId: null, target: 'test' });
+      appendEvent(admin, d.db, {
+        at: T0,
+        action: synthetic('test.bump'),
+        clientId: null,
+        target: 'test',
+      });
     const racing = { ...d, db: racingDb(d.db, bump, 2) };
     const code = person.codes[0] ?? '';
     await expect(recover(racing, person.email, code, T0)).resolves.toMatchObject({
@@ -63,7 +69,12 @@ describe('recovery codes and re-enrolment', () => {
     const d = deps();
     const admin = await adminScope();
     const bump = () =>
-      appendEvent(admin, d.db, { at: T0, action: 'test.bump', clientId: null, target: 'test' });
+      appendEvent(admin, d.db, {
+        at: T0,
+        action: synthetic('test.bump'),
+        clientId: null,
+        target: 'test',
+      });
     const racing = { ...d, db: racingDb(d.db, bump, 3) };
     const code = person.codes[0] ?? '';
     await expect(recover(racing, person.email, code, T0)).rejects.toMatchObject({
@@ -162,13 +173,13 @@ describe('recovery codes and re-enrolment', () => {
       (e) => e.target === `person:${person.personId}` && e.actor_id === scope.actorId,
     );
     expect(events.map((e) => e.action)).toEqual([
-      'credential.revoke',
-      'session.revoke',
-      'recovery_code.revoke',
-      'enrolment.revoke',
+      'people.revokeCredentials',
+      'people.revokeSessions',
+      'people.revokeCodes',
+      'people.revokeEnrolments',
       'people.reenrol',
     ]);
-    const revoked = events.find((e) => e.action === 'session.revoke');
+    const revoked = events.find((e) => e.action === 'people.revokeSessions');
     expect(JSON.parse(String(revoked?.before_json))).toEqual({ sessions: 2 });
     const fresh = await createSoftwareAuthenticator();
     const again = await enrolOptions(d, token, now);

@@ -19,7 +19,12 @@ import type { Scope } from './scope';
 import { archiveTaskCode, createTaskCode, renameTaskCode } from './task-codes';
 
 const kek = () => currentEnv().NOTE_KEK;
-const REVOKES = ['credential.revoke', 'session.revoke', 'recovery_code.revoke', 'enrolment.revoke'];
+const REVOKES = [
+  'people.revokeCredentials',
+  'people.revokeSessions',
+  'people.revokeCodes',
+  'people.revokeEnrolments',
+];
 
 interface Case {
   action: string;

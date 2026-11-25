@@ -16,7 +16,12 @@ import { emailHash, recordFailure } from '../../auth/lockout';
 import { idOf } from '../../db/test-support';
 import { currentEnv } from '../../lib/env';
 
-const REVOKES = ['credential.revoke', 'session.revoke', 'recovery_code.revoke', 'enrolment.revoke'];
+const REVOKES = [
+  'people.revokeCredentials',
+  'people.revokeSessions',
+  'people.revokeCodes',
+  'people.revokeEnrolments',
+];
 
 /** Calls an Action, expects 200, and checks it left one event of its own name plus any named extras. */
 async function does(

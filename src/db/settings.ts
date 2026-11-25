@@ -108,7 +108,7 @@ export async function saveSettings(
           : db.prepare(UPDATE).bind(key, after, before);
       const event = {
         at: now,
-        action: 'settings.save',
+        action: 'settings.save' as const,
         clientId: null,
         target: `setting:${key}`,
         before: before === null ? null : (JSON.parse(before) as unknown),
