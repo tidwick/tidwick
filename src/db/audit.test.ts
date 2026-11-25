@@ -215,7 +215,11 @@ describe('the admin writes are audited', () => {
     const actions = Object.keys(import.meta.glob(['../actions/*/*.ts', '!../actions/*/*.test.ts']))
       .map((file) => file.replace(/^\.\.\/actions\/([^/]+)\/([^/]+)\.ts$/, '$1.$2'))
       // An owner's edits to their own unlocked week are not audited.
-      .filter((name) => !name.startsWith('auth.') && !name.startsWith('entries.'));
+      // The setup claim writes the chain's first event, asserted in src/auth/setup-claim.test.ts.
+      .filter(
+        (name) =>
+          !name.startsWith('auth.') && !name.startsWith('entries.') && !name.startsWith('setup.'),
+      );
     const source = Object.values(
       import.meta.glob<string>('./audit-writes*.test.ts', {
         query: '?raw',
