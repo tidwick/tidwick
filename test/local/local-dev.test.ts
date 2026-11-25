@@ -28,9 +28,9 @@ async function person(id: string, email: string, offboardedAt: number | null): P
   );
 }
 
-/** The statements of a `--command` string, which wrangler splits itself, run as one batch. */
+/** The statements of a `--command` string, which wrangler splits itself, run one at a time. */
 async function run(sql: string): Promise<void> {
-  await env.DB.batch(sql.split(/(?<=;)\s+/).map((statement) => env.DB.prepare(statement)));
+  for (const statement of sql.split(/(?<=;)\s+/)) await env.DB.exec(statement);
 }
 
 async function sessionsOf(personId: string): Promise<number> {

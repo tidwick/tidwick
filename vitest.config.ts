@@ -58,6 +58,8 @@ export default defineConfig({
                 ...(await secrets()),
                 // The built Worker runs mid-rotation, so every app test reads keys under either KEK (ADR 0005).
                 NOTE_KEK_PREVIOUS: randomBytes(32).toString('base64'),
+                // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
+                MCP: 'on',
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),
               },
             },

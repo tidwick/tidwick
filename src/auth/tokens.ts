@@ -13,7 +13,8 @@ export type HashKind =
   | 'ip'
   | 'agent_code'
   | 'agent_access'
-  | 'agent_refresh';
+  | 'agent_refresh'
+  | 'agent_confirm';
 
 export function toBase64Url(bytes: Uint8Array): string {
   let binary = '';

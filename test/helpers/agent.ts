@@ -51,10 +51,10 @@ export async function mintAgent(personId: string, options: AgentOptions = {}): P
       kind: 'access',
       expiresAt: now + (options.life ?? 60 * 60 * 1000),
     }),
-    ...(options.revoked
-      ? [env.DB.prepare('UPDATE agent_grant SET revoked_at = ?2 WHERE id = ?1').bind(grantId, now)]
-      : []),
   ]);
+  if (options.revoked) {
+    await env.DB.exec(`UPDATE agent_grant SET revoked_at = ${String(now)} WHERE id = '${grantId}'`);
+  }
   return { grantId, personId, token };
 }
 
@@ -81,6 +81,15 @@ export interface McpOptions {
   origin?: string | null;
 }
 
+function parse(text: string): Record<string, unknown> {
+  if (text === '') return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { raw: text };
+  }
+}
+
 /** POST a JSON-RPC message to `/mcp` with `token` as the bearer, or none for null. */
 export async function mcp(
   token: string | null,
@@ -95,12 +104,7 @@ export async function mcp(
   if (method !== 'GET') init.body = options.raw ?? JSON.stringify(message);
   const response = await exports.default.fetch(new Request(`${ORIGIN}/mcp`, init));
   const text = await response.text();
-  let body: Record<string, unknown> = {};
-  try {
-    body = text === '' ? {} : (JSON.parse(text) as Record<string, unknown>);
-  } catch {
-    body = { raw: text };
-  }
+  const body = parse(text);
   return { status: response.status, headers: response.headers, body };
 }
 
@@ -129,3 +133,30 @@ export function rpc2026(method: string, params: Record<string, unknown> = {}) {
 /** `tools/call` in the 2025 era. */
 export const call2025 = (name: string, args: Record<string, unknown> = {}) =>
   rpc2025('tools/call', { name, arguments: args });
+
+export interface Called {
+  status: number;
+  isError: boolean;
+  data: Record<string, unknown>;
+  text: string;
+}
+
+/** A tool call through the 2025 era, its result's structured content and whether it was refused. */
+export async function tool(
+  agent: Agent,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<Called> {
+  const { status, body } = await mcp(agent.token, call2025(name, args));
+  const result = (body.result ?? {}) as {
+    isError?: boolean;
+    structuredContent?: Record<string, unknown>;
+    content?: { text: string }[];
+  };
+  const text = result.content?.[0]?.text ?? '';
+  const refused = result.isError === true;
+  const data = refused
+    ? (JSON.parse(text) as Record<string, unknown>)
+    : (result.structuredContent ?? {});
+  return { status, isError: refused, data, text };
+}

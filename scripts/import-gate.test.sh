@@ -32,6 +32,8 @@ probe src/lib/leak.ts "const page = await import('../pages/_csv');"
 probe src/lib/leak.ts "import { x } from '../components/Card';"
 probe src/lib/leak.ts "import x from '../layouts/Base';"
 probe src/lib/leak.ts "import { y } from '../worker';"
+probe src/db/leak.ts "import { tools } from '../mcp/tools';"
+probe src/auth/leak.ts "export { INSTRUCTIONS } from '../mcp/schemas';"
 probe src/db/leak.tsx "import { z } from '../pages/index';"
 probe src/lib/leak.astro "import { z } from '../middleware/auth';"
 probe src/db/leak.ts $'import {\n  forAction,\n} from \'../middleware/error-responses\';'
