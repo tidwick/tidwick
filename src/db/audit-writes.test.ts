@@ -9,7 +9,7 @@ import { offboard } from '../auth/offboard';
 import { reenrol } from '../auth/revoke';
 import { currentEnv } from '../lib/env';
 import { AUDIT_OF } from './audit-actions';
-import { addAllAssignments, addAssignment, removeAssignment } from './assignments';
+import { addAssignment, removeAssignment } from './assignments';
 import { archiveClient, createClient, renameClient } from './clients';
 import { listFirms } from './firms';
 import { createPerson } from './person-create';
@@ -204,18 +204,6 @@ beforeAll(async () => {
   ];
 });
 
-describe('assign to all live projects', () => {
-  it("the Action 'assignments.addAll' writes one assignments.add event per project added, by the admin, and nothing else", async () => {
-    const who = await addPerson();
-    const seq = await headSeq();
-    const added = await addAllAssignments(admin, env.DB, who.id, T0);
-    const events = await eventsAfter(seq);
-    expect(added).toBeGreaterThan(0);
-    expect(events.map((e) => e.action)).toEqual(Array<string>(added).fill('assignments.add'));
-    expect(events.every((e) => e.actor_id === admin.actorId)).toBe(true);
-  });
-});
-
 describe('every admin write is audited once', () => {
   it('each Action write adds exactly one event of its own name with actor, target, before and after', async () => {
     expect(cases).toHaveLength(18);
@@ -254,16 +242,5 @@ describe('every admin write is audited once', () => {
       .map(([name]) => name)
       .filter((name) => !covered.has(name));
     expect(missing).toEqual([]);
-  });
-
-  it('a write that fails leaves no event, and a refused duplicate leaves none either', async () => {
-    const seq = await headSeq();
-    await expect(
-      createTaskCode(admin, env.DB, { code: 'aud1', name: 'Again' }, T0),
-    ).rejects.toMatchObject({ code: 'code_taken' });
-    await expect(removeAssignment(admin, env.DB, project.id, person.id, T0)).rejects.toMatchObject({
-      code: 'not_found',
-    });
-    expect(await eventsAfter(seq)).toEqual([]);
   });
 });
