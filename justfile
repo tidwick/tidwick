@@ -165,6 +165,7 @@ lint-test-support-gate:
 
 migration-manifest:
     ./scripts/migration-manifest.test.sh
+    [ -z "${CI:-}" ] || git fetch --depth=1 origin next:refs/remotes/origin/next
     ./scripts/migration-manifest.sh
 
 lint-import-gate:
