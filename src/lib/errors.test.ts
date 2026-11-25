@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { BINDING_NAMES, errorText } from './error-text';
 import { secrets } from '../../test/helpers/probe-secrets';
-import { AppError, CATALOG, errorPage, errorResponse, forAction, type ErrorCode } from './errors';
+import { AppError, CATALOG, type ErrorCode } from './errors';
+import { errorPage, errorResponse, forAction } from '../middleware/error-responses';
 
 const CODES = Object.keys(CATALOG) as ErrorCode[];
 

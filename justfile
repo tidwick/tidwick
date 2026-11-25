@@ -159,6 +159,10 @@ lint-sql-boundary:
     ./scripts/sql-boundary.test.sh
     ./scripts/sql-boundary.sh
 
+lint-import-gate:
+    ./scripts/import-gate.test.sh
+    ./scripts/import-gate.sh
+
 lint-role-boundary:
     ./scripts/role-boundary.test.sh
     ./scripts/role-boundary.sh
@@ -275,7 +279,7 @@ node-pin:
     [ -n "$want" ] && [ "$want" = "$have" ] || { echo "FAIL node-pin: mise.toml says '$want', package.json engines says '$have'; make them match"; exit 1; }
     echo "PASS node-pin"
 
-guard: node-pin lint-sql-boundary lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
+guard: node-pin lint-sql-boundary lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
 
 audit:
     npm audit --audit-level=high

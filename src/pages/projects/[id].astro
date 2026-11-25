@@ -21,7 +21,7 @@ import { listPeople } from '../../db/people';
 import { allowedTasks } from '../../db/project-tasks';
 import { projectById } from '../../db/projects';
 import { listTaskCodes } from '../../db/task-codes';
-import { errorPage } from '../../lib/errors';
+import { errorPage } from '../../middleware/error-responses';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
 const ctx = await pageContext(Astro);

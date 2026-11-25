@@ -5,7 +5,8 @@ import { requireStepUp } from '../auth/step-up';
 import { grantsOf, type Grant } from '../db/roles';
 import { scopeFor } from '../db/scope';
 import { currentEnv } from '../lib/env';
-import { errorPage, errorResponse, fail, isAppError } from '../lib/errors';
+import { fail, isAppError } from '../lib/errors';
+import { errorPage, errorResponse } from './error-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
 export const RPC_PATTERN = '/_actions/[...path]';
