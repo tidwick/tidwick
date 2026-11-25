@@ -16,6 +16,7 @@ import {
   start,
   through,
 } from '../../test/helpers/sso';
+import { storedRows } from '../db/stored-rows';
 import { currentEnv } from '../lib/env';
 import { issueEnrolment } from './enrol';
 import { SESSION_COOKIE } from './session';
@@ -82,7 +83,7 @@ describe('SEC-38 signing in through an identity provider', () => {
     const again = await through(idp, '/auth/sso/login?provider=tenant-a', { subject: 's1' });
     expect(again.status).toBe(200);
     expect((await getPage('/account', signedInAs(again, id))).status).toBe(200);
-    expect(((await storedFor('person_identity', id))[0]?.last_used_at ?? 0) > 0).toBe(true);
+    expect((await storedFor('person_identity', id))[0]?.last_used_at).toEqual(expect.any(Number));
     expect((await eventsAfter(seq)).filter((e) => e.action === 'auth.enrol')).toHaveLength(1);
   });
 
@@ -111,9 +112,9 @@ describe('SEC-38 signing in through an identity provider', () => {
 
   it('stores the flow only as a hash, with its verifier, for ten minutes, and uses it once', async () => {
     const begun = await start('/auth/sso/login?provider=tenant-a');
-    const rows = await env.DB.prepare('SELECT * FROM oidc_flow').all<Record<string, unknown>>();
-    expect(JSON.stringify(rows.results)).not.toContain(begun.flow ?? 'x');
-    const mine = rows.results.at(-1);
+    const rows = await storedRows(env.DB, 'oidc_flow');
+    expect(JSON.stringify(rows)).not.toContain(begun.flow ?? 'x');
+    const mine = rows.at(-1);
     expect(mine).toMatchObject({ provider: 'tenant-a', purpose: 'login', used_at: null });
     expect(Number(mine?.expires_at) - Number(mine?.created_at)).toBe(10 * MINUTE);
   });

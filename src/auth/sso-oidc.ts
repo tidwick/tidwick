@@ -116,7 +116,10 @@ export async function exchange(
     const claims = oauth.getValidatedIdTokenClaims(tokens);
     if (!claims || claims.sub.length === 0 || claims.sub.length > SUBJECT_MAX) fail('sso_failed');
     const hd = claims['hd'];
-    if (provider.hd !== null && (typeof hd !== 'string' || hd.toLowerCase() !== provider.hd.toLowerCase()))
+    if (
+      provider.hd !== null &&
+      (typeof hd !== 'string' || hd.toLowerCase() !== provider.hd.toLowerCase())
+    )
       fail('sso_failed');
     const { email, auth_time: authTime } = claims;
     return {

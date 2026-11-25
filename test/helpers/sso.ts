@@ -1,10 +1,11 @@
 // The browser's side of a single sign-on flow against the built Worker, with `mockIdp` as the provider.
 import { env, exports } from 'cloudflare:workers';
+import { expect } from 'vitest';
 import { SSO_COOKIE } from '../../src/auth/sso';
 import { SESSION_COOKIE } from '../../src/auth/session';
 import { readEnv } from '../../src/lib/env';
 import type { SsoProvider } from '../../src/lib/sso-config';
-import { withIdentity } from './auth';
+import { addPerson, withIdentity } from './auth';
 import { ORIGIN, type Caller } from './callers';
 import { mockIdp, type MockIdp, type MockIssuer, type MockLogin } from './mock-idp';
 
@@ -74,8 +75,12 @@ export function signedInAs(response: Response, personId: string): Caller {
 }
 
 /** Links an identity to a person at a configured provider; returns its id. */
-export const link = (personId: string, providerId: string, subject: string): Promise<string> =>
-  withIdentity(personId, provider(providerId).issuer, subject);
+export const link = (
+  personId: string,
+  providerId: string,
+  subject: string,
+  email: string | null = null,
+): Promise<string> => withIdentity(personId, provider(providerId).issuer, subject, email);
 
 /** A whole sign-in at a start route: the redirect out, the provider's answer for `login`, the callback's response. */
 export async function through(
@@ -87,4 +92,41 @@ export async function through(
   const begun = await start(path, who);
   if (begun.location === '') return begun.response;
   return callback(idp.authorize(begun.location, login), begun.flow);
+}
+
+export const LOGIN = '/auth/sso/login?provider=tenant-a';
+export const nowSeconds = (): number => Math.floor(Date.now() / 1000);
+
+/** A person already linked at tenant A as `subject`. */
+export async function linked(subject: string): Promise<string> {
+  const { id } = await addPerson();
+  await link(id, 'tenant-a', subject);
+  return id;
+}
+
+let serial = 0;
+/** A subject no other case has used, linked to a new person. */
+export async function someone(): Promise<string> {
+  const subject = `subject-${String((serial += 1))}`;
+  await linked(subject);
+  return subject;
+}
+
+/** The callback for a login as `login`, after `tamper` has changed the address or the cookie the browser sends. */
+export async function attempt(
+  idp: MockIdp,
+  login: MockLogin,
+  tamper: (url: string, flow: string | null) => [string, string | null] = (u, f) => [u, f],
+  path = LOGIN,
+): Promise<Response> {
+  const begun = await start(path);
+  const [url, flow] = tamper(idp.authorize(begun.location, login), begun.flow);
+  return callback(url, flow);
+}
+
+/** What a refusal must never have done: a session, or a flow cookie left set. */
+export function refused(response: Response, status: number): void {
+  expect(response.status).toBe(status);
+  expect(setCookie(response, SESSION_COOKIE)).toBeNull();
+  expect(setCookie(response, SSO_COOKIE)).toBe('');
 }

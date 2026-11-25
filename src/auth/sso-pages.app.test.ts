@@ -1,6 +1,5 @@
 // Runs in the `app` project: where the provider buttons, the provider confirmation and the admin's view of
 // sign-in methods appear, and the Action that unlinks one.
-import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ADMIN, addPerson, MINUTE, storedFor } from '../../test/helpers/auth';
 import { caller, formPost, getPage } from '../../test/helpers/callers';
@@ -24,11 +23,12 @@ describe('SEC-44 the provider buttons are links beside the passkey ones', () => 
   it('the sign-in page lists one link per provider and keeps the passkey button', async () => {
     const page = await html(await getPage('/login', null));
     expect(page).toContain('data-passkey="login"');
-    for (const [id, label] of [
+    const buttons: [string, string][] = [
       ['tenant-a', 'Tenant A'],
       ['tenant-b', 'Tenant B'],
       ['google', 'Google'],
-    ]) {
+    ];
+    for (const [id, label] of buttons) {
       expect(page).toContain(`href="/auth/sso/login?provider=${id}"`);
       expect(page).toContain(`Sign in with ${label}`);
     }
@@ -66,10 +66,7 @@ describe('SEC-46 an admin sees and unlinks a person’s identity', () => {
   it('lists it with its provider and email, and Unlink revokes it, audited, only for an admin who has confirmed', async () => {
     const admin = await caller([ADMIN]);
     const person = await addPerson();
-    const identity = await link(person.id, 'tenant-a', 'u1');
-    await env.DB.prepare('UPDATE person_identity SET email = ?2 WHERE id = ?1')
-      .bind(identity, 'u1@x.example')
-      .run();
+    const identity = await link(person.id, 'tenant-a', 'u1', 'u1@x.example');
     const page = await html(await getPage(`/admin/people/${person.id}`, admin));
     expect(page).toContain('Sign-in methods');
     expect(page).toContain('Tenant A');
