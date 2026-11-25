@@ -6,7 +6,7 @@ import { enrol, tokenOf } from './enrol';
 
 const WEEK = '2031-03-10';
 
-test('a member submits a week and an accounting admin approves it after a passkey confirmation @smoke', async ({
+test('a member submits a week and an accounting admin approves it after a passkey confirmation', async ({
   page: member,
   browser,
 }, info) => {

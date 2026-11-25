@@ -1,12 +1,12 @@
 # No logic here: every step is a `just` recipe, so CI runs what a laptop runs. Actions are pinned by commit SHA.
-# Nothing here has a secret: it runs on pull requests, including from forks.
+# Only the deploy job holds a secret, from the demo environment, which only next can reach; pull requests and forks never do.
 name: ci
 
 on:
   pull_request:
-    branches: [next, main]
+    branches: [next]
   push:
-    branches: [next, main]
+    branches: [next]
   schedule:
     - cron: '17 5 * * 1'
   workflow_dispatch:
@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -53,10 +54,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: npx --no-install playwright install --with-deps chromium
-      - run: just e2e-smoke
+      - run: just e2e --project=phone
 
-  audit:
-    if: github.event_name == 'schedule' || github.event.pull_request.user.login == 'dependabot[bot]'
+  weekly:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -68,11 +69,15 @@ jobs:
           version: 2026.9.11
           cache: true
       - run: just audit
+      - if: ${{ !cancelled() }}
+        run: just live
 
-  live:
-    if: github.event_name == 'schedule'
+  deploy:
+    needs: [check, smoke]
+    if: github.repository_owner == 'tidwick' && github.ref == 'refs/heads/next'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    environment: demo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,5 +85,9 @@ jobs:
       - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: 2026.9.11
-          cache: true
-      - run: just live
+          cache: false
+      - run: just install
+      - run: just deploy demo
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

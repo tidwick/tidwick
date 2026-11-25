@@ -8,7 +8,7 @@ const WEEK = '/week/2031-03-03';
 const hours = (page: Page, task: string, day: string) =>
   page.getByLabel(`Hours, Grid pavilion, ${task}, ${day}`);
 
-test('a member copies last week, fills the week, adds a row and removes a blank one @smoke', async ({
+test('a member copies last week, fills the week, adds a row and removes a blank one', async ({
   page,
 }, info) => {
   await enrol(page, tokenOf(`grid-${info.project.name}`));

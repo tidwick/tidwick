@@ -312,7 +312,7 @@ ci: install check
 preview: build
     npx --no-install astro preview --ignore-lock
 
-# The full local suite, both widths. `e2e-smoke` is the CI subset: the specs tagged @smoke, on chromium.
+# The full local suite, both widths. CI runs it at phone width (--project=phone).
 e2e *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -329,9 +329,6 @@ e2e *args:
     just db-migrate
     npx --no-install wrangler d1 execute tidwick --local --file .wrangler/e2e.sql
     npx --no-install playwright test {{ args }}
-
-e2e-smoke:
-    just e2e --grep @smoke --project=phone
 
 # Writes `version=X` to the step output in CI (stdout elsewhere), as the cache key for the browser download.
 playwright-version:

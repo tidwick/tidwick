@@ -12,7 +12,7 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   await enrol(page, tokenOf(`csv-${project}`));
 
   await page.goto('/settings/csv');
-  await expect(page.getByLabel('Export mapping')).toContainText('"header": "Reference"');
+  await expect(page.getByLabel('Export mapping')).toContainText('"header": "Batch"');
   await page.getByRole('button', { name: 'Save mappings' }).click();
   await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
 
