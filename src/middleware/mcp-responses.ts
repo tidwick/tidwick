@@ -71,6 +71,7 @@ export function toolRefusal(code: ErrorCode, detail?: string): ToolResult {
 export function bearerRefusal(
   error: 'missing_token' | 'invalid_token' | 'insufficient_scope',
   scope?: string,
+  id: RpcId = null,
 ): Response {
   const forbidden = error === 'insufficient_scope';
   const code: ErrorCode = forbidden ? 'forbidden' : 'unauthenticated';
@@ -78,11 +79,11 @@ export function bearerRefusal(
   if (error !== 'missing_token') challenge.push(`error="${error}"`);
   if (scope !== undefined) challenge.push(`scope="${scope}"`);
   const response = rpcError(
-    null,
+    id,
     RPC.invalidRequest,
     CATALOG[code].message,
     CATALOG[code].status,
-    scope === undefined ? { error } : { error, scope },
+    error === 'missing_token' ? undefined : scope === undefined ? { error } : { error, scope },
   );
   response.headers.set('www-authenticate', challenge.join(', '));
   return response;

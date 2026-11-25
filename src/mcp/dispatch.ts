@@ -90,7 +90,7 @@ async function callTool(
   const id = message.id ?? null;
   if (!isTool(name)) return rpcError(id, RPC.invalidParams, 'Unknown tool');
   const needs = TOOLS[name].scope;
-  if (!scopesOf(grant).includes(needs)) return bearerRefusal('insufficient_scope', needs);
+  if (!scopesOf(grant).includes(needs)) return bearerRefusal('insufficient_scope', needs, id);
   const now = Date.now();
   try {
     gateTool(name, grant.person_id, now);

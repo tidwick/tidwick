@@ -36,6 +36,8 @@ describe('a bearer that is not a live access token is a 401 with a challenge and
     const none = await mcp(null, rpc2025('tools/list'));
     expect(none.status).toBe(401);
     expect(none.headers.get('www-authenticate')).toBe('Bearer realm="tidwick"');
+    expect(none.body).toMatchObject({ error: { code: expect.any(Number) as number } });
+    expect((none.body as { error: { data?: unknown } }).error.data).toBeUndefined();
     for (const token of ['x', 'a'.repeat(42), 'a'.repeat(44), 'a'.repeat(43), 'a b']) {
       const response = await mcp(token, rpc2025('tools/list'));
       expect(response.status, token).toBe(401);
