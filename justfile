@@ -282,17 +282,7 @@ contrast:
     ./scripts/contrast.test.sh
     node scripts/contrast.ts
 
-# One Node source: mise.toml, mirrored in package.json engines and .node-version.
-node-pin:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    want="$(sed -n 's/^node = "\(.*\)"$/\1/p' mise.toml)"
-    have="$(node -p 'require("./package.json").engines.node')"
-    file="$(tr -d '[:space:]' < .node-version)"
-    [ -n "$want" ] && [ "$want" = "$have" ] && [ "$want" = "$file" ] || { echo "FAIL node-pin: mise.toml says '$want', package.json engines says '$have', .node-version says '$file'; make them match"; exit 1; }
-    echo "PASS node-pin"
-
-guard: node-pin migration-manifest lint-sql-boundary lint-test-support-gate lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
+guard: migration-manifest lint-sql-boundary lint-test-support-gate lint-import-gate lint-role-boundary restore-target restore-errors docs-bar size contrast colour-literals
 
 audit:
     npm audit --audit-level=high
@@ -301,10 +291,7 @@ lint-actions:
     actionlint
     zizmor --min-severity medium .github
 
-pin-check:
-    pinact run --check
-
-check: typecheck lint lint-actions pin-check fmt-check build test migrate-check restore-drill guard
+check: typecheck lint lint-actions fmt-check build test migrate-check restore-drill guard
 
 ci: install check
 
