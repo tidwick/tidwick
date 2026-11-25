@@ -9,14 +9,19 @@ describe('the project page and people', () => {
     const b = await booking();
     const other = await caller();
     const steward = await caller([ACCOUNTING]);
-    const html = await (await getPage(`/projects/${b.projectId}`, steward)).text();
+    const res = await getPage(`/projects/${b.projectId}`, steward);
+    expect(res.status).toBe(200);
+    const html = await res.text();
     expect(html).toContain(other.personId);
   });
 
   it('a member sees no list of other people', async () => {
     const b = await booking();
     const other = await caller();
-    const html = await (await getPage(`/projects/${b.projectId}`, b.who)).text();
+    const res = await getPage(`/projects/${b.projectId}`, b.who);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain(`/clients/${b.clientId}`);
     expect(html).not.toContain(other.personId);
   });
 });

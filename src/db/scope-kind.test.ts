@@ -2,6 +2,10 @@ import { env } from 'cloudflare:workers';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { SEED_IDS } from '../../test/seed/build';
 import { loadSeed } from '../../test/seed/load';
+import { offboard } from '../auth/offboard';
+import { issueEnrolment } from '../auth/enrol';
+import { reenrol } from '../auth/revoke';
+import { unlockRecovery } from '../auth/lockout';
 import { currentEnv } from '../lib/env';
 import { addAllAssignments, addAssignment, removeAssignment } from './assignments';
 import { archiveClient, createClient, renameClient } from './clients';
@@ -32,7 +36,7 @@ describe('the domain refuses privileged calls by scope kind', () => {
     }).not.toThrow();
     expect(() => {
       requireAll(member);
-    }).toThrow();
+    }).toThrow(expect.objectContaining({ code: 'forbidden' }));
   });
 
   it('a member scope is refused by every steward-only and admin-only mutator', async () => {
@@ -63,6 +67,10 @@ describe('the domain refuses privileged calls by scope kind', () => {
           NOW,
         ),
       () => setGrants(member, db, ID, ['admin'], NOW),
+      () => offboard(member, db, ID, NOW),
+      () => issueEnrolment(member, db, 'secret', ID, NOW),
+      () => reenrol(member, db, 'secret', ID, NOW),
+      () => unlockRecovery(member, db, 'secret', ID, NOW),
       () => listPeople(member, db),
       () => personDetail(member, db, ID),
     ];

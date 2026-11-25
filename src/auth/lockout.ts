@@ -2,7 +2,7 @@
 import { auditedBatch, retryOnce } from '../db/audit';
 import { personById } from '../db/people';
 import { attemptOf, clearAttempts, countFailure, lockAttempts } from '../db/recovery-attempts';
-import { ceremonyScope, type Scope } from '../db/scope';
+import { ceremonyScope, requireAll, type Scope } from '../db/scope';
 import { fail } from '../lib/errors';
 import { keyedHash } from './tokens';
 
@@ -75,6 +75,7 @@ export async function unlockRecovery(
   personId: string,
   now: number,
 ): Promise<boolean> {
+  requireAll(scope);
   const person = await personById(db, personId);
   if (!person) fail('not_found');
   const hash = await emailHash(secret, person.email);
