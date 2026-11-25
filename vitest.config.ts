@@ -60,6 +60,7 @@ export default defineConfig({
                 NOTE_KEK_PREVIOUS: randomBytes(32).toString('base64'),
                 // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
                 MCP: 'on',
+                MCP_NOTES: '',
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),
               },
             },
