@@ -21,12 +21,6 @@ dev-session who:
 dev-agent-token who:
     @node test/local/dev-agent-token.ts {{ quote(who) }}
 
-dev-smoke who="grid-phone":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cookie="$(just dev-session {{ quote(who) }})" || { echo "$cookie"; exit 1; }
-    printf '%s\n' "$cookie" | node test/local/dev-smoke.ts
-
 build:
     npx --no-install wrangler types
     npx --no-install astro build
@@ -72,15 +66,10 @@ seed: dev-vars
     npx --no-install wrangler d1 execute tidwick --local --file .wrangler/e2e.sql >> .wrangler/seed.log 2>&1 || { tail -n 40 .wrangler/seed.log; echo "FAIL seed: the e2e fixture people did not load; see test/e2e/prepare.ts"; exit 1; }
     echo "PASS seed: 2 firms, 100 people, 40 projects, a key per client, ten rows with notes in the current week for Cora, thirty people with last week submitted and ten with the week before, and the fixture people (grid-phone, admin-desktop, ...) in the local dev D1; wrangler output in .wrangler/seed.log"
 
-seed-demo target="local": (demo-load target "keep")
-
-demo-reset target="local": (demo-load target "reset")
-
-# The demo recipes' one body. `local` is the local dev D1; `remote` is the deployed demo's D1 from
-# wrangler.jsonc env.demo, with the demo Worker's NOTE_KEK=... line on standard input. `reset` drops every table
-# first, audit log included, then both modes migrate and load the demo seed.
-[private]
-demo-load target mode:
+# `local` is the local dev D1; `remote` is the deployed demo's D1 from wrangler.jsonc env.demo, with the demo
+# Worker's NOTE_KEK=... line on standard input. Drops every table first, audit log included, then migrates and
+# loads the demo seed.
+demo-reset target="local":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p .wrangler
@@ -95,15 +84,13 @@ demo-load target mode:
       remote)
         db=(tidwick-db --remote --config wrangler.jsonc --env demo)
         node scripts/seed-demo.ts .wrangler/demo.sql ;;
-      *) echo "FAIL demo: the target is local or remote, not \"{{ target }}\""; exit 1 ;;
+      *) echo "FAIL demo-reset: the target is local or remote, not \"{{ target }}\""; exit 1 ;;
     esac
-    if [ {{ quote(mode) }} = reset ]; then
-      node scripts/seed-demo.ts --drop > .wrangler/demo-drop.sql
-      npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo-drop.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the tables did not drop; the statement wrangler names above is in test/demo/reset.ts"; exit 1; }
-    fi
-    npx --no-install wrangler d1 migrations apply "${db[@]}" --force >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo: migrations did not apply to the {{ target }} D1; fix the SQL named above"; exit 1; }
-    npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo: the demo seed did not load; the statement wrangler names above is built in test/demo/"; exit 1; }
-    echo "PASS demo ({{ mode }}, {{ target }}): 2 invented firms, 25 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
+    node scripts/seed-demo.ts --drop > .wrangler/demo-drop.sql
+    npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo-drop.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the tables did not drop; the statement wrangler names above is in test/demo/reset.ts"; exit 1; }
+    npx --no-install wrangler d1 migrations apply "${db[@]}" --force >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: migrations did not apply to the {{ target }} D1; fix the SQL named above"; exit 1; }
+    npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the demo seed did not load; the statement wrangler names above is built in test/demo/"; exit 1; }
+    echo "PASS demo-reset ({{ target }}): 2 invented firms, 25 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
 
 # One command for a human to see the demo: reset and load the demo seed into the local D1, give the generated dummy
 # .dev.vars the demo sign-in's signals (DEMO_LOGIN, DEMO_BANNER, a dummy DEMO_PASSWORD), then serve the production
@@ -158,9 +145,7 @@ restore-drill: backup-fixture
     just restore test/fixtures/backup.age test/fixtures/backup-key.txt
     node scripts/restore-drill.ts .wrangler/drill/source .wrangler/restore
 
-# Deploy, in order: deploy-init, edit wrangler.jsonc (ARCHITECTURE, Deploy), deploy-keys, deploy, deploy-secrets,
-# deploy-check, first-admin. `env` is "" for the real deployment or "demo" for wrangler.jsonc env.demo. Nothing here
-# prints a secret value. Never run these from a working session against a live account.
+# Deploy recipes; the order is in ARCHITECTURE, Deploy.
 [private]
 _wr env:
     #!/usr/bin/env bash

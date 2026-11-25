@@ -32,29 +32,13 @@ None of this needs a Cloudflare account, a login or a secret. The database is a 
 - `just dev-agent-token <who>` prints a bearer for `/mcp` as one of them (needs `MCP=on`, which the generated `.dev.vars` sets).
 - `just demo-local` loads the demo data and serves it at `http://localhost:4321/demo`, with member, approver and admin personas.
 
-The deploy recipes (`deploy-init`, `deploy`, `deploy-secrets`, `first-admin`) act on a real Cloudflare account. Nothing in a contribution needs them.
+The deploy recipes (ARCHITECTURE, Deploy) act on a real Cloudflare account. Nothing in a contribution needs them.
 
 ## The checks
 
 `just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at phone width; a weekly run checks advisories (`just audit`) and that both public sites answer (`just live`). It runs typecheck, lint, format check, build, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
 
-`just lint` and `just guard` hold a few boundaries that keep the code reviewable:
-
-- SQL lives only under `src/db/`, so every query can be read in one place.
-- Role names appear only in `src/routes.ts` and `src/db/`, so authorization stays in one table.
-- Colours are tokens in `src/styles/global.css`, and the contrast check runs against them.
-- A source file stays at or under 250 lines.
-- Markdown lives only in the README, this file, the agent entry files (`AGENTS.md`, `CLAUDE.md`), `docs/ARCHITECTURE.md`, `docs/adr/` and `.github/pull_request_template.md`.
-
-Some rules are held by tests and review:
-
-- Hours are integer hundredths, with no floating point.
-- The audit log is append-only.
-- Errors come from the catalog in `src/lib/errors.ts`.
-- Bindings and secrets are read only in `src/lib/env.ts`.
-- Every row is read through a `Scope`.
-- Migrations only move forward. A change to the schema is a new migration file.
-- Dependencies are pinned to exact versions.
+The boundaries those checks hold, and the tests that hold the rest, are listed in `docs/ARCHITECTURE.md`, Boundaries enforced by gates.
 
 ## Tests
 

@@ -9,23 +9,18 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 - `just check` is the one gate (typecheck, lint, fmt, build, test, migrate, restore drill, guard). `just ci` = what CI runs. Needs no Cloudflare account.
 - One test file: `just test src/lib/week.test.ts` (builds first; app and demo tests need it). A file's suffix picks its project: `.app.test.ts`, `.demo.test.ts`, `.dom.test.ts[x]`, else unit.
 - `just dev`, `just seed`, `just dev-session <who>`, `just golden` (rewrite goldens, review the diff), `just fmt`. `just --list` has the rest.
-- Deploy: `just deploy-init`, `deploy`, `deploy-secrets`, `first-admin` (Deploy in ARCHITECTURE). Never run against a live account from a working session.
+- Deploy: ARCHITECTURE, Deploy. Never run against a live account from a working session.
 - A failing check prints one FAIL line that names the next action; write new checks the same way.
 
-## Invariants (a change that breaks one is wrong)
+## Invariants
 
-- Never: hosted or multi-tenant, signup, billing, other clouds, timers, invoicing, rates, native apps, support promises.
-- SQL only under `src/db/`; roles only in `src/routes.ts` and `src/db/`; client rows read through a `Scope`; steward and admin mutators and the people listings refuse a non-all-clients scope (`requireAll`).
-- Errors only from the catalog `src/lib/errors.ts`; bindings and secrets read only in `src/lib/env.ts`.
-- Hours are integer hundredths, no REAL, no float arithmetic. Audit log is append-only.
-- Colours only as tokens in `src/styles/global.css`. Source files <= 250 lines.
-- Every security test has a negative case. Tests use synthetic data only: no real data, secrets, `.dev.vars` or Cloudflare login.
-- Dependencies: exact pins; a new runtime dependency needs an ADR.
+- A change that breaks a rule in ARCHITECTURE, Boundaries enforced by gates, or the README's Never list is wrong.
+- Tests use synthetic data only: no real data, secrets, `.dev.vars` or Cloudflare login.
 - Never print or read `.dev.vars` or secrets.
 
 ## Docs bar
 
-- No new docs. Amend `docs/ARCHITECTURE.md` (terse, SVG over prose) when a boundary, flow or limit changes, or add an ADR only for a decision costly to reverse that code cannot state.
+- No new docs. CONTRIBUTING, Design changes, says when to amend ARCHITECTURE or add an ADR.
 - A rule that must hold lives in a test, a lint, or a comment at the code site, never only in prose.
 - No per-directory READMEs, runbooks, changelog prose or session logs (`just guard`).
 

@@ -1,7 +1,7 @@
-// What `just demo-reset` runs before migrating again and loading the demo seed: every table dropped, children
+// What the `demo-reset` recipe runs before migrating again and loading the demo seed: every table dropped, children
 // before parents, with wrangler's migration log last so every migration applies again. A dropped table takes its
-// triggers with it, so the append-only audit log goes too; that is the point of a reset, and why only the demo
-// recipes run this file. `src/db/demo-reset.test.ts` proves the list leaves no table behind.
+// triggers with it, so the append-only audit log goes too; that is the point of a reset, and why only the demo-reset
+// recipe runs this file. `src/db/demo-reset.test.ts` proves the list leaves no table behind.
 
 /**
  * Every table the migrations create, in an order that drops each before any table it references. The audit log

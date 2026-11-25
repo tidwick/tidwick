@@ -56,7 +56,13 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 | `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                   | `just lint` (`guard/import-gate`)                              |
 | Roles only in `src/routes.ts` and `src/db/`                                                                         | `just lint` (`guard/role-boundary`)                            |
 | Test support, `systemScope` and `test/` never reach shipped source                                                  | `just lint` (`guard/test-support-gate`, `guard/test-boundary`) |
-| A shipped migration never changes                                                                                   | `just guard`                                                   |     |
+| A shipped migration never changes                                                                                   | `just guard`                                                   |
+| Hours are integer hundredths                                                                                        | tests (`src/actions/entries.app.test.ts`)                      |
+| The audit log is append-only                                                                                        | `src/db/audit.test.ts`                                         |
+| Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                    | `src/db/scope-kind.test.ts`                                    |
+| Migrations only move forward                                                                                        | the migration gate (`just guard`)                              |
+| Security tests are `SEC-nn`, each with a negative case                                                              | review                                                         |
+| A new runtime dependency needs an ADR (0012)                                                                        | review                                                         |
 | Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts`                                        | review; grep                                                   |
 | Colours only as tokens in `src/styles/global.css`, contrast checked                                                 | `just guard`                                                   |
 | Source files <= 250 lines                                                                                           | `just guard`                                                   |
@@ -84,7 +90,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 - `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (40 days).
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
-- Backups are kept by bucket lifecycle only (35 days; 40 off-account). The Worker deletes none.
+- Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.
 - No admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Redeploy by merging your `wrangler.jsonc` edits into the new release.
