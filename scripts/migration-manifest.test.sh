@@ -37,4 +37,25 @@ if ! "$repo/scripts/migration-manifest.sh" "$work/b" > "$work/append.log"; then
   echo "FAIL migration-manifest self-test: a new migration with its appended line failed; appending must pass"
   exit 1
 fi
+# Rewriting a shipped line along with its migration passes the per-file check but not the append-only one.
+cp "$repo/scripts/migrations.sha256" "$work/base.sha256"
+mkdir "$work/c" "$work/c/scripts"
+cp -R "$repo/migrations" "$work/c/"
+echo "-- edited" >> "$work/c/migrations/$first"
+(cd "$work/c/migrations" && shasum -a 256 "$first") > "$work/c/scripts/migrations.sha256.new"
+sed "s|^.* $first\$|$(cat "$work/c/scripts/migrations.sha256.new")|" "$repo/scripts/migrations.sha256" > "$work/c/scripts/migrations.sha256"
+if ! "$repo/scripts/migration-manifest.sh" "$work/c" > "$work/rewrite.log"; then
+  cat "$work/rewrite.log"
+  echo "FAIL migration-manifest self-test: the rewritten line should pass without a base manifest"
+  exit 1
+fi
+if MANIFEST_BASE_FILE="$work/base.sha256" "$repo/scripts/migration-manifest.sh" "$work/c" > "$work/rewrite.log"; then
+  echo "FAIL migration-manifest self-test: a rewritten shipped line passed against the base manifest; the prefix check is not running"
+  exit 1
+fi
+if ! MANIFEST_BASE_FILE="$work/base.sha256" "$repo/scripts/migration-manifest.sh" "$work/b" > "$work/append.log"; then
+  cat "$work/append.log"
+  echo "FAIL migration-manifest self-test: appending a line failed against the base manifest; appending must pass"
+  exit 1
+fi
 echo "PASS migration-manifest self-test"

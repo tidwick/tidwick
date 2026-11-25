@@ -5,7 +5,7 @@
 set -uo pipefail
 cd "${1:-$(dirname "$0")/..}"
 hits=$(grep -rnE 'test-support|systemScope' --include='*.ts' --include='*.tsx' --include='*.astro' --include='*.js' --include='*.mjs' \
-  --exclude='*.test.*' --exclude='test-support*.ts' --exclude='scope.ts' src)
+  --exclude='*.test.*' src | grep -vE '^src/db/(scope|test-support[^/]*)\.ts:')
 if [ -n "$hits" ]; then
   echo "FAIL lint-test-support-gate: production source reaches test support or systemScope; keep it in a *.test.ts file or src/db/test-support*.ts:"
   echo "$hits" | head -20

@@ -22,4 +22,14 @@ for line in "import { seed } from '../db/test-support';" "import { systemScope }
     exit 1
   fi
 done
+# A production file that borrows an exempt basename outside src/db/ is still production.
+rm "$work/src/lib/leak.ts"
+for name in lib/test-support-x.ts lib/scope.ts; do
+  printf "import { seed } from '../db/test-support';\nexport const s = systemScope();\n" > "$work/src/$name"
+  if "$repo/scripts/test-support-gate.sh" "$work" > "$work/name.log"; then
+    echo "FAIL lint-test-support-gate self-test: src/$name passed; the exemption must be by path under src/db/, not by basename"
+    exit 1
+  fi
+  rm "$work/src/$name"
+done
 echo "PASS lint-test-support-gate self-test"

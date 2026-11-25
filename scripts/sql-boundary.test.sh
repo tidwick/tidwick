@@ -26,4 +26,9 @@ if "$repo/scripts/sql-boundary.sh" "$work" > "$work/exec.log"; then
   echo "FAIL lint-sql-boundary self-test: a db.exec( in src/lib/ passed; the .exec( scan in scripts/sql-boundary.sh is not matching"
   exit 1
 fi
+printf "export const leak = (database: D1Database) => database.exec('DROP TABLE entry');\n" > "$work/src/lib/leak.ts"
+if "$repo/scripts/sql-boundary.sh" "$work" > "$work/exec.log"; then
+  echo "FAIL lint-sql-boundary self-test: database.exec( passed; the .exec( scan must not depend on the receiver name"
+  exit 1
+fi
 echo "PASS lint-sql-boundary self-test"
