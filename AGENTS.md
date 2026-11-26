@@ -26,4 +26,4 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 
 ## Commit
 
-- `just check` green. Stage files by name. Never push from a working session.
+- `just check` green. Stage files by name. A session may push a feature branch and open a pull request against `next`; only a reviewed pull request merges, and never to `main`.

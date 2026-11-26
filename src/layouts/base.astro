@@ -21,6 +21,12 @@ const { DEMO_BANNER: demo, DEMO_LOGIN: pick } =
     <title>{title}</title>
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
+    <a
+      href="#main"
+      class="sr-only rounded-md bg-background px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:outline-2 focus:outline-ring print:hidden"
+    >
+      Skip to the content
+    </a>
     {demo && (
       <p
         class="border-b border-border bg-notice-surface px-gutter py-2 text-center text-sm text-notice"
