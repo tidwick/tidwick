@@ -219,17 +219,21 @@ deploy-init env="":
     [ -n "$flags" ] || npx --no-install wrangler r2 bucket lifecycle add tidwick-backups expire-old --expire-days 35
     if [ -n "$flags" ]; then echo "NEXT: put the database_id printed above in wrangler.jsonc env.demo, with the other edits in ARCHITECTURE, Deploy"; else echo "NEXT: the database is found by name; make the other edits in ARCHITECTURE, Deploy"; fi
 
-deploy-keys out=".wrangler/kit":
+# The deploy kit (session secret, note key, backup recipient) goes in `out`; the backup decryption identity goes alone in `identity`,
+# a directory the owner moves to offline storage, so the deploying machine need not keep it.
+deploy-keys out=".wrangler/kit" identity=".wrangler/offline-key":
     #!/usr/bin/env bash
     set -euo pipefail
-    [ ! -e {{ quote(out) }}/backup-key.txt ] || { echo "FAIL deploy-keys: {{ out }} already holds a kit; move it aside, never overwrite an identity"; exit 1; }
+    for held in {{ quote(out) }}/backup-recipient.txt {{ quote(identity) }}/backup-key.txt; do
+      [ ! -e "$held" ] || { echo "FAIL deploy-keys: $held exists; move the kit and identity aside, never overwrite a key"; exit 1; }
+    done
     umask 077
-    mkdir -p -m 700 {{ quote(out) }}
-    age-keygen -o {{ quote(out) }}/backup-key.txt 2> /dev/null
-    age-keygen -y {{ quote(out) }}/backup-key.txt > {{ quote(out) }}/backup-recipient.txt
+    mkdir -p -m 700 {{ quote(out) }} {{ quote(identity) }}
+    age-keygen -o {{ quote(identity) }}/backup-key.txt 2> /dev/null
+    age-keygen -y {{ quote(identity) }}/backup-key.txt > {{ quote(out) }}/backup-recipient.txt
     openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' > {{ quote(out) }}/session-secret
     openssl rand -base64 32 | tr -d '\n' > {{ quote(out) }}/note-kek
-    echo "PASS deploy-keys: backup-key.txt, backup-recipient.txt, session-secret, note-kek in {{ out }}; copy the kit to the owner's offline storage and read it back before any data exists"
+    echo "PASS deploy-keys: backup-recipient.txt, session-secret, note-kek in {{ out }}; the backup decryption identity is {{ identity }}/backup-key.txt: move it to the owner's offline storage, read it back, then delete {{ identity }}; copy the kit too"
 
 deploy-check env="":
     ./scripts/deploy-check.sh {{ env }}
@@ -297,6 +301,7 @@ guard:
     ./scripts/restore-target.test.sh
     ./scripts/restore-errors.test.sh
     ./scripts/deploy-check.test.sh
+    ./scripts/deploy-keys.test.sh
     ./scripts/demo-schema-sync.test.sh
     ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh

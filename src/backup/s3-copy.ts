@@ -72,8 +72,12 @@ export function s3Copy(
   timeoutMs = COPY_TIMEOUT_MS,
 ): BackupCopy {
   const key = { keyId: target.keyId, secret: target.secret, region: target.region, service: 's3' };
+  // A key this copy already tried: its earlier PUT may have landed with the response lost, and the bucket's lock refuses a second write.
+  const tried = new Set<string>();
   return {
     async write(objectKey, sealed) {
+      const retry = tried.has(objectKey);
+      tried.add(objectKey);
       const body = new Uint8Array(sealed);
       const url = `${target.endpoint}/${target.bucket}/${objectKey.split('/').map(uriEncode).join('/')}`;
       try {
@@ -81,7 +85,16 @@ export function s3Copy(
         const signal = AbortSignal.timeout(timeoutMs);
         const response = await fetcher(new Request(url, { method: 'PUT', headers, body, signal }));
         const text = await response.text();
-        return response.ok ? null : refused(response.status, text);
+        // R2's bucket lock answers a write over an existing key with 409 ObjectLockedByBucketPolicy, before any condition is read.
+        // The key carries the run's second, so on a retry that key is the earlier attempt, which landed.
+        if (
+          response.ok ||
+          (retry &&
+            response.status === 409 &&
+            text.includes('<Code>ObjectLockedByBucketPolicy</Code>'))
+        )
+          return null;
+        return refused(response.status, text);
       } catch (error) {
         return `the off-account bucket could not be reached: ${errorText(error)}`;
       }

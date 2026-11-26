@@ -6,6 +6,7 @@
 import { Encrypter } from 'age-encryption';
 import {
   BACKUP_TABLES,
+  chainHead,
   PAGE_ROWS,
   readPage,
   schemaVersion,
@@ -98,6 +99,36 @@ export interface BackupLimits {
 
 const LIMITS: BackupLimits = { queries: D1_QUERIES_PER_INVOCATION, chars: BACKUP_DUMP_CHARS };
 
+/** One snapshot and dump of the tables: the file and the head it certifies, whether the head was unmoved after it, or why it could not be made. */
+async function dumpOnce(
+  db: D1Database,
+  schema: string | null,
+  startedAt: number,
+  limits: BackupLimits,
+): Promise<
+  string | { dump: { text: string }; head: Snapshot['head']; planned: number; steady: boolean }
+> {
+  const taken = await snapshot(db);
+  const planned = plannedQueries(taken.tables.map((t) => t.count));
+  if (planned > limits.queries) {
+    return `query budget: ${String(planned)} statements needed, ${String(limits.queries)} allowed`;
+  }
+  const header: BackupHeader = {
+    format: FORMAT,
+    version: VERSION,
+    schema_version: schema,
+    created_at: startedAt,
+    chain_seq: taken.head.seq,
+    chain_head: taken.head.hash,
+  };
+  const dump = await ndjson(db, header, taken, limits.chars);
+  if ('over' in dump) {
+    return `size budget: the dump passed ${String(limits.chars)} characters while reading ${dump.over}`;
+  }
+  const after = await chainHead(db);
+  return { dump, head: taken.head, planned, steady: after.seq === taken.head.seq };
+}
+
 /** Writes the file and marks `run` ok, or returns why it did not, naming the step that failed. */
 async function attempt(
   deps: BackupDeps,
@@ -110,27 +141,20 @@ async function attempt(
   let step = 'reading the schema version';
   try {
     const schema = await schemaVersion(deps.db);
-    step = 'reading the snapshot';
-    const taken = await snapshot(deps.db);
-    run.chain_seq = taken.head.seq;
-    run.chain_head = taken.head.hash;
-    const planned = plannedQueries(taken.tables.map((t) => t.count));
-    if (planned > limits.queries) {
-      return `query budget: ${String(planned)} statements needed, ${String(limits.queries)} allowed`;
-    }
-    const header: BackupHeader = {
-      format: FORMAT,
-      version: VERSION,
-      schema_version: schema,
-      created_at: run.started_at,
-      chain_seq: taken.head.seq,
-      chain_head: taken.head.hash,
-    };
     step = 'dumping the tables';
-    const dump = await ndjson(deps.db, header, taken, limits.chars);
-    if ('over' in dump) {
-      return `size budget: the dump passed ${String(limits.chars)} characters while reading ${dump.over}`;
+    let dumped = await dumpOnce(deps.db, schema, run.started_at, limits);
+    // Row bounds hide later inserts but not later updates, so a moved chain head means the file may disagree with the head it records: dump again once, if the budget allows.
+    if (typeof dumped !== 'string' && !dumped.steady) {
+      const again = dumped.planned * 2 <= limits.queries;
+      dumped = again ? await dumpOnce(deps.db, schema, run.started_at, limits) : dumped;
+      if (typeof dumped !== 'string' && !dumped.steady) {
+        return 'the data changed while it was read; the next run takes a fresh dump';
+      }
     }
+    if (typeof dumped === 'string') return dumped;
+    const dump = dumped.dump;
+    run.chain_seq = dumped.head.seq;
+    run.chain_head = dumped.head.hash;
     run.chars = dump.text.length;
     step = 'encrypting';
     const encrypter = new Encrypter();
