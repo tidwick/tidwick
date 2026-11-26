@@ -162,6 +162,7 @@ export interface SetupEnv {
   ORIGIN: string;
   MAIL_FROM: string | null;
   copy: CopySettings;
+  SETUP_TOKEN: string | null;
 }
 
 /** Null when `readEnv` would pass; otherwise every refused name, so the page can list them all at once. */
@@ -176,6 +177,7 @@ export function setupEnv(source: object = workersEnv): SetupEnv | null {
     ORIGIN: configured(s, 'ORIGIN'),
     MAIL_FROM: s.MAIL === 'off' ? null : configured(s, 'MAIL_FROM') || null,
     copy: copyOf(s),
+    SETUP_TOKEN: setupToken(s),
   };
 }
 

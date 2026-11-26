@@ -37,22 +37,22 @@
         "description": "Optional. Leave empty (off)."
       },
       "SETUP_TOKEN": {
-        "description": "Optional. One time: lets /setup create the first admin on an empty database; delete it after. `openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\\n'`"
+        "description": "One time: lets /setup create the first admin on an empty database; delete it after. `openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\\n'`"
       },
       "NOTE_KEK_PREVIOUS": {
         "description": "Optional. Leave empty (off). Set only during a key rotation."
       },
       "BACKUP_S3_ENDPOINT": {
-        "description": "Optional. Leave empty (off). Off-account backup copy."
+        "description": "Off-account backup copy, needed while BACKUP_COPY is s3 (wrangler.jsonc): see ARCHITECTURE, Deploy, With the button. Without it the nightly backup fails and /healthz answers 503."
       },
       "BACKUP_S3_BUCKET": {
-        "description": "Optional. Leave empty (off). Off-account backup copy."
+        "description": "Off-account backup copy, needed while BACKUP_COPY is s3 (wrangler.jsonc): see ARCHITECTURE, Deploy, With the button. Without it the nightly backup fails and /healthz answers 503."
       },
       "BACKUP_S3_KEY_ID": {
-        "description": "Optional. Leave empty (off). Off-account backup copy."
+        "description": "Off-account backup copy, needed while BACKUP_COPY is s3 (wrangler.jsonc): see ARCHITECTURE, Deploy, With the button. Without it the nightly backup fails and /healthz answers 503."
       },
       "BACKUP_S3_SECRET": {
-        "description": "Optional. Leave empty (off). Off-account backup copy."
+        "description": "Off-account backup copy, needed while BACKUP_COPY is s3 (wrangler.jsonc): see ARCHITECTURE, Deploy, With the button. Without it the nightly backup fails and /healthz answers 503."
       }
     }
   },

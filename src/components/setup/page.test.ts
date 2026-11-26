@@ -19,4 +19,11 @@ describe('the setup page source', () => {
     expect(generator).not.toContain('<form');
     expect(generator).not.toMatch(/<Input[^>]*\sname=/);
   });
+
+  it('offers one kit download, a live region for Generate, and generates SETUP_TOKEN, with no inline style', () => {
+    expect(page.match(/data-kit-download/g)).toHaveLength(2);
+    expect(page).toContain('role="status"');
+    expect(page).toContain("'SETUP_TOKEN'");
+    expect(page).not.toMatch(/\sstyle=/);
+  });
 });

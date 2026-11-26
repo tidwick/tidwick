@@ -93,7 +93,9 @@ const at = (weekStart: string, days: number, hour: number, minutes: number): num
 
 /** The SQL for every demo person's thirteen weeks ending at `currentWeek`, notes sealed under `kek`. */
 export async function demoWeekStatements(kek: string, currentWeek: string): Promise<string[]> {
-  const sql: string[] = [];
+  const allRows: string[] = [];
+  const allEntries: string[] = [];
+  const allSubmissions: string[] = [];
   const people = demoPeople();
   for (let back = DEMO_WEEKS - 1; back >= 0; back--) {
     const weekStart = addDays(currentWeek, -7 * back);
@@ -122,10 +124,8 @@ export async function demoWeekStatements(kek: string, currentWeek: string): Prom
           );
         }
       }
-      sql.push(
-        `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ${rowValues.join(', ')};`,
-        `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, note_ct, note_iv, key_version, updated_at) VALUES ${entryValues.join(', ')};`,
-      );
+      allRows.push(...rowValues);
+      allEntries.push(...entryValues);
       if (state === null) continue;
       const own = DEMO_ACCOUNTANTS[firmOf(n)];
       const other = DEMO_ACCOUNTANTS[firmOf(n) === 0 ? 1 : 0];
@@ -134,10 +134,45 @@ export async function demoWeekStatements(kek: string, currentWeek: string): Prom
         state === 'submitted'
           ? 'NULL, NULL'
           : `'${decider}', ${String(at(weekStart, 7, 9, 30 + n * 3))}`;
-      sql.push(
-        `INSERT OR IGNORE INTO week_submission (person_id, week_start, state, submitted_at, decided_by, decided_at) VALUES ('${person.id}', '${weekStart}', '${state}', ${String(submittedAt)}, ${decided});`,
+      allSubmissions.push(
+        `('${person.id}', '${weekStart}', '${state}', ${String(submittedAt)}, ${decided})`,
       );
     }
   }
-  return sql;
+  return [
+    ...multiRow(
+      'week_row (id, client_id, person_id, week_start, project_id, task_code_id, position)',
+      allRows,
+    ),
+    ...multiRow(
+      'entry (id, client_id, row_id, dow, hundredths, note_ct, note_iv, key_version, updated_at)',
+      allEntries,
+    ),
+    ...multiRow(
+      'week_submission (person_id, week_start, state, submitted_at, decided_by, decided_at)',
+      allSubmissions,
+    ),
+  ];
+}
+
+/** D1 refuses a statement over 100 KB; stay well under it. */
+const STATEMENT_BYTES = 60_000;
+
+/** The rows as as few multi-row INSERTs as fit, so the seed's statement count stays far under the D1 budget. */
+function multiRow(target: string, values: readonly string[]): string[] {
+  const head = `INSERT OR IGNORE INTO ${target} VALUES `;
+  const out: string[] = [];
+  let batch: string[] = [];
+  let size = head.length;
+  for (const value of values) {
+    if (batch.length > 0 && size + value.length + 2 > STATEMENT_BYTES) {
+      out.push(`${head}${batch.join(', ')};`);
+      batch = [];
+      size = head.length;
+    }
+    batch.push(value);
+    size += value.length + 2;
+  }
+  if (batch.length > 0) out.push(`${head}${batch.join(', ')};`);
+  return out;
 }

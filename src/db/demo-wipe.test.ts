@@ -5,6 +5,7 @@ import { demoSignIn } from '../auth/demo';
 import { DEMO_RESET_CRON, scheduled } from '../backup/scheduled';
 import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv } from '../lib/env';
+import { D1_QUERIES_PER_INVOCATION } from '../lib/limits';
 import { checkChain } from './audit';
 import { wipeDemo } from './demo-wipe';
 import { instanceEmpty } from './empty';
@@ -83,5 +84,40 @@ describe('the nightly demo wipe', () => {
   it('leaves the seed admin in place, so the setup gate stays shut after a wipe', async () => {
     await wipeDemo(env.DB, currentEnv().NOTE_KEK, NOW);
     expect(await instanceEmpty(env.DB)).toBe(false);
+  });
+
+  it('a whole scheduled reset stays at or under 900 queries, so seed growth fails here and not at 04:00', async () => {
+    let prepared = 0;
+    const batches: number[] = [];
+    const spy = new Proxy(env.DB, {
+      get(target, key) {
+        const value = Reflect.get(target, key) as (...args: unknown[]) => unknown;
+        if (key === 'prepare')
+          return (sql: string) => {
+            prepared += 1;
+            return value.call(target, sql);
+          };
+        if (key === 'batch')
+          return (statements: D1PreparedStatement[]) => {
+            batches.push(statements.length);
+            return value.call(target, statements);
+          };
+        return value.bind(target);
+      },
+    });
+    const cron = { cron: DEMO_RESET_CRON, scheduledTime: NOW } as ScheduledController;
+    await scheduled(cron, {
+      ...env,
+      DB: spy,
+      DEMO_LOGIN: 'on',
+      DEMO_BANNER: 'on',
+      DEMO_PASSWORD: OPEN.DEMO_PASSWORD,
+    });
+    expect(batches, 'the reset must run as one batch').toHaveLength(1);
+    expect(
+      prepared,
+      `the reset prepared ${String(prepared)} queries (D1 allows ${String(D1_QUERIES_PER_INVOCATION)} per invocation; keep it at 900 or under): merge seed INSERTs into multi-row statements (test/demo/weeks.ts multiRow); never split the batch, the audit triggers would stay dropped between batches`,
+    ).toBeLessThanOrEqual(900);
+    console.info(`demo reset: batch ${String(batches[0])}, invocation ${String(prepared)}`);
   });
 });

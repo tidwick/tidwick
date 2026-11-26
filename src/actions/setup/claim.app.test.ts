@@ -4,6 +4,8 @@ import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { formOriginFor } from '../../../test/helpers/browser';
 import { ORIGIN } from '../../../test/helpers/callers';
+import { withPasskey } from '../../../test/helpers/auth';
+import { lockedOutAdmin } from '../../db/rescue';
 import { adminGrants, claimedAs, rowCounts } from '../../db/test-support-bootstrap';
 import { currentEnv } from '../../lib/env';
 
@@ -92,6 +94,9 @@ describe('the first-admin claim page', () => {
     expect(await adminGrants(env.DB)).toBe(1);
     const stored = await claimedAs(env.DB, "o'hara?1@example.test");
     expect(stored).toEqual({ name: WHO.name, firm: WHO.firm });
+    // Until a passkey exists the page stays open for a new link; once one does it is a 404.
+    expect((await exports.default.fetch(new Request(`${ORIGIN}/setup`))).status).toBe(200);
+    await withPasskey((await lockedOutAdmin(env.DB))?.id ?? '');
     expect((await exports.default.fetch(new Request(`${ORIGIN}/setup`))).status).toBe(404);
     expect(
       (await claim({ token: currentEnv().SETUP_TOKEN ?? '', ...WHO }, '203.0.113.53')).status,
