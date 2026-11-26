@@ -32,7 +32,7 @@ if (succeeded(posted)) return Astro.redirect(savedAt('/account'), 303);
 // Post, redirect, get: the new codes are read back from their short-lived record, so a reload shows them again.
 if (renewed && !renewed.error) return Astro.redirect('/account', 303);
 const problem = problemOf([...posted, renewed]);
-const newCodes = await pendingCodesOf(ctx.db, session.personId, Date.now());
+const newCodes = await pendingCodesOf(ctx.db, currentEnv().SESSION_SECRET, session, Date.now());
 const codesLeft = await unusedCodeCount(ctx.db, session.personId);
 const passkeys = await listedCredentialsOf(ctx.db, session.personId);
 const identities = await liveIdentitiesOf(ctx.db, session.personId);

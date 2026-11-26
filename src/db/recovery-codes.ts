@@ -1,4 +1,4 @@
-// Recovery codes, stored only as hashes, each used once.
+// Recovery codes, stored as hashes, each used once (the plain batch waits ten minutes in pending_codes).
 
 const INSERT_ONE =
   'INSERT INTO recovery_code (person_id, code_hash, created_at) VALUES (?1, ?2, ?3)';

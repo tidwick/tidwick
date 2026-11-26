@@ -140,7 +140,14 @@ describe('recovery codes and re-enrolment', () => {
   it('SEC-05 regenerating codes retires every unused one, audited', async () => {
     const person = await enrolledPerson();
     const d = deps();
-    const next = await regenerateCodes(await adminScope(), d.db, d.secret, person.personId, T0);
+    const next = await regenerateCodes(
+      await adminScope(),
+      d.db,
+      d.secret,
+      person.personId,
+      T0,
+      'sess',
+    );
     expect(next).toHaveLength(10);
     await expect(recover(d, person.email, person.codes[0] ?? '', T0)).rejects.toMatchObject({
       code: 'recovery_failed',

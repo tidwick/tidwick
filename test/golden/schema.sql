@@ -141,6 +141,7 @@ CREATE TABLE oidc_flow (
 -- table pending_codes
 CREATE TABLE pending_codes (
   person_id TEXT PRIMARY KEY REFERENCES person (id),
+  session_hash TEXT NOT NULL,
   codes TEXT NOT NULL,
   expires_at INTEGER NOT NULL
 ) STRICT;
