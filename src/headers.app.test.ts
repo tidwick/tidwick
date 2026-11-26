@@ -123,7 +123,10 @@ describe('SEC-19 every response carries the strict header set and CSP', () => {
       headerBlock('GET /favicon.svg', await get('/favicon.svg')),
       headerBlock('GET /_astro/<stylesheet>.css', await get(stylesheet)),
       headerBlock('POST /_actions/auth.loginOptions', await post('/_actions/auth.loginOptions')),
-      headerBlock('GET /week/2026-01-05 signed out', await get('/week/2026-01-05')),
+      headerBlock(
+        'GET /admin/people as a member',
+        await getPage('/admin/people', await caller([])),
+      ),
       headerBlock(
         'POST /_actions/people.setRoles signed out',
         await post('/_actions/people.setRoles'),

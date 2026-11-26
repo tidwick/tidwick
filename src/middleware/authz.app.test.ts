@@ -38,6 +38,8 @@ function builtPages(): [string, Rule][] {
 
 /** The denial a response carries, or null when the route table let it through. */
 async function denial(response: Response): Promise<string | null> {
+  if (response.status === 303 && response.headers.get('location')?.startsWith('/login'))
+    return '401';
   if (response.status !== 401 && response.status !== 403) return null;
   const type = response.headers.get('content-type') ?? '';
   if (!type.startsWith('application/json')) return String(response.status);

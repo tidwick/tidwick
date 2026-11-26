@@ -39,10 +39,10 @@ set-cookie: __Host-tidwick-challenge=<value>; Path=/; Max-Age=300; HttpOnly; Sec
 strict-transport-security: max-age=63072000; includeSubDomains
 x-content-type-options: nosniff
 
-# GET /week/2026-01-05 signed out 401
+# GET /admin/people as a member 403
 cache-control: no-store
-content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
-content-type: text/html; charset=utf-8
+content-security-policy: default-src 'none';img-src 'self';font-src 'self';connect-src 'self';form-action 'self';frame-ancestors 'none';base-uri 'none'; script-src 'self' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>' 'sha256-<hash>'; style-src 'self' 'sha256-<hash>';
+content-type: text/html
 cross-origin-opener-policy: same-origin
 permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
 referrer-policy: same-origin

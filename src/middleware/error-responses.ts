@@ -1,5 +1,7 @@
 // Catalog errors as Astro Actions errors, JSON bodies and bare pages: the edge half of the catalog in src/lib/errors.ts.
+import type { APIContext } from 'astro';
 import { ActionError } from 'astro:actions';
+import { isAccounting, isAdmin, type Grant } from '../db/roles';
 import { AppError, CATALOG, errorMessage, type ErrorCode } from '../lib/errors';
 
 /**
@@ -44,18 +46,47 @@ export interface PageLink {
   label: string;
 }
 
+/** What `src/pages/error.astro` shows: the catalog error and the one link that moves the person on. */
+export interface Refusal {
+  code: ErrorCode;
+  detail: string | undefined;
+  back: PageLink | undefined;
+}
+
+export const ERROR_PATH = '/error';
+
+/** The page a refused person lands on: signed out the sign-in page, otherwise the first page their roles open. */
+export function homeFor(signedIn: boolean, mustEnrol: boolean, grants: readonly Grant[]): PageLink {
+  if (!signedIn) return { href: '/login', label: 'Sign in' };
+  if (mustEnrol) return { href: '/account', label: 'Go to your account' };
+  if (isAccounting(grants)) return { href: '/approvals', label: 'Go to approvals' };
+  if (isAdmin(grants)) return { href: '/admin/people', label: 'Go to people' };
+  return { href: '/week', label: 'Go to your week' };
+}
+
+type Refuser = Pick<APIContext, 'locals' | 'request' | 'rewrite' | 'routePattern' | 'url'>;
+
 /**
- * A catalog error as a bare page for a browser: the message with its detail, and the one link that moves the
- * person on, `back` when the caller names one.
+ * A catalog error as a page for a browser: the request is rewritten to `/error`, which renders the message in
+ * the app's own frame with the status of `code` and the one link that moves the person on, `back` when the
+ * caller names one. A refusal raised while `/error` itself renders gets the bare page, so it cannot loop.
  */
-export function errorPage(code: ErrorCode, detail?: string, back?: PageLink): Response {
+export async function errorPage(
+  context: Refuser,
+  code: ErrorCode,
+  detail?: string,
+  back?: PageLink,
+): Promise<Response> {
+  if (context.routePattern === ERROR_PATH) return plainPage(code, detail);
+  context.locals.refusal = { code, detail, back };
+  return context.rewrite(
+    new Request(new URL(ERROR_PATH, context.url), { headers: context.request.headers }),
+  );
+}
+
+function plainPage(code: ErrorCode, detail: string | undefined): Response {
   const { status } = CATALOG[code];
   const message = escaped(errorMessage(code, detail));
-  const link =
-    back ??
-    (code === 'unauthenticated'
-      ? { href: '/login', label: 'Sign in' }
-      : { href: '/account', label: 'Go to your account' });
-  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><title>${message} · tidwick</title><p>${message}.</p><p><a href="${escaped(link.href)}">${escaped(link.label)}</a></p></html>\n`;
+  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><title>${message} · tidwick</title><p>${message}.</p></html>\n`;
   return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }

@@ -35,7 +35,7 @@ const posted = [
 ];
 if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const project = await projectById(ctx.scope, ctx.db, id);
-if (!project) return errorPage('not_found');
+if (!project) return errorPage(Astro, 'not_found');
 const client = await clientById(ctx.scope, ctx.db, project.client_id);
 const allowed = await allowedTasks(ctx.scope, ctx.db, id);
 const allowedIds = new Set(allowed.map((t) => t.task_code_id));
@@ -53,7 +53,7 @@ const updated = posted[0];
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 ---
 
-<Shell title={project.name} admin={ctx.admin} problem={problemOf(posted)} section="/clients">
+<Shell title={project.name} problem={problemOf(posted)} section="/clients">
   <Fragment slot="lead">
     <a class="underline underline-offset-2" href={`/clients/${project.client_id}`}>
       {client?.name ?? 'Client'}

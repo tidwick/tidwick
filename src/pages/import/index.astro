@@ -12,12 +12,7 @@ const applied = Astro.getActionResult(actions.import.apply);
 const report = applied?.data ?? previewed?.data ?? null;
 ---
 
-<Shell
-  title="Import"
-  admin={ctx.admin}
-  accounting={ctx.accounting}
-  problem={problemOf([previewed, applied])}
->
+<Shell title="Import" problem={problemOf([previewed, applied])}>
   <Fragment slot="lead">
     Upload a time-tracking CSV, up to 2 MB and 5,000 rows. Its columns are read through the mapping
     in

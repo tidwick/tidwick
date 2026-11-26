@@ -22,12 +22,7 @@ const olderQuery = page.next === null ? null : nextPageQuery(params, page.next);
 const filtered = Object.values(filter).some((value) => value !== null);
 ---
 
-<Shell
-  title="Audit log"
-  admin={ctx.admin}
-  accounting={ctx.accounting}
-  problem={problemOf([verified]) ?? problem}
->
+<Shell title="Audit log" problem={problemOf([verified]) ?? problem}>
   <Fragment slot="lead">
     Every change the app records, newest first. Times are UTC. A note shows only as "note changed";
     the log never holds its words.

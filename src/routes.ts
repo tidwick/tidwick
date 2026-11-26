@@ -29,6 +29,7 @@ const post = (rule: Rule): Partial<Record<Method, Rule>> => ({ POST: rule });
 export const PAGES: Readonly<Record<string, Partial<Record<Method, Rule>>>> = {
   '/': get(PUBLIC),
   '/login': get(PUBLIC),
+  '/error': get(PUBLIC),
   '/enrol/[token]': get(PUBLIC),
   '/recover': get(PUBLIC),
   '/auth/sso/login': get(PUBLIC),

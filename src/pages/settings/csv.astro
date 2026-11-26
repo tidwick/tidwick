@@ -30,12 +30,7 @@ const [header = [], ...sample] = exportRows(previewEntries(), saved.export);
 const incoming = importPreview(saved.import);
 ---
 
-<Shell
-  title="CSV settings"
-  admin={ctx.admin}
-  accounting={ctx.accounting}
-  problem={problemOf(posted)}
->
+<Shell title="CSV settings" problem={problemOf(posted)}>
   <Fragment slot="lead">
     The column mappings for the export and the import are settings, not code. Each is a JSON
     document checked when you save; a change is recorded in the audit log.

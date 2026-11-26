@@ -10,6 +10,8 @@ declare namespace App {
     scope: import('./db/scope').Scope | null;
     /** The caller's grants, read once by `src/middleware/authz.ts` on every non-public row; empty otherwise. */
     grants: readonly import('./db/roles').Grant[];
+    /** Set by `errorPage` for the `/error` page to render: the catalog error and the link onward. */
+    refusal?: import('./middleware/error-responses').Refusal;
     /** Set only by `src/middleware/setup.ts` on `/setup`, for an instance with an empty database: the missing names, or the claim. */
     setup?: import('./middleware/setup').SetupReport;
   }

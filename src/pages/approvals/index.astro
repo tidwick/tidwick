@@ -31,7 +31,7 @@ const whom = people.size === 1 ? '1 person' : `${String(people.size)} people`;
 const status = `${noun(weeks.length)} from ${whom}${term === '' ? '' : ` ${weeks.length === 1 ? 'matches' : 'match'} \u201c${term}\u201d`}.`;
 ---
 
-<Shell title="Approvals" admin={ctx.admin} accounting={ctx.accounting}>
+<Shell title="Approvals">
   <Fragment slot="lead">
     Weeks people have submitted, one line each. Open one to read it, approve it, return it, or edit
     it through the lock.

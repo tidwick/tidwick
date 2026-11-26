@@ -205,6 +205,6 @@ describe('SEC-39 confirming again through the identity provider', () => {
   it('is refused for a person with no identity at that provider, and for no session at all', async () => {
     const who = await caller();
     expect((await start('/auth/sso/step-up?provider=tenant-a', who)).response.status).toBe(403);
-    expect((await start('/auth/sso/step-up?provider=tenant-a')).response.status).toBe(401);
+    expect((await start('/auth/sso/step-up?provider=tenant-a')).response.status).toBe(303);
   });
 });

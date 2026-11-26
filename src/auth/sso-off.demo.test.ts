@@ -12,7 +12,7 @@ describe('SSO off', () => {
       '/auth/sso/step-up?provider=google',
       '/auth/sso/callback?code=c&state=s',
     ]) {
-      expect((await getPage(path, null)).status, path).toBe(path.includes('step-up') ? 401 : 404);
+      expect((await getPage(path, null)).status, path).toBe(path.includes('step-up') ? 303 : 404);
       expect((await getPage(path, who)).status, path).toBe(404);
     }
   });

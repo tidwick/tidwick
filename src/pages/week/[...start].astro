@@ -11,6 +11,7 @@ import { addRowOptions, loadWeek } from '../../db/week-view';
 import { writtenDate } from '../../lib/dates';
 import { noteKeks } from '../../lib/env';
 import { isWeekStart, neighbourWeek, todayIn, weekDates, weekStartOf } from '../../lib/week';
+import { errorPage } from '../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../_context';
 
 const session = Astro.locals.session;
@@ -20,7 +21,7 @@ if (session.mustEnrol) return Astro.redirect('/account');
 const ctx = pageContext(Astro);
 const requested = Astro.params.start ?? '';
 const monday = requested === '' ? null : weekStartOf(requested);
-if (requested !== '' && monday === null) return new Response('Not found', { status: 404 });
+if (requested !== '' && monday === null) return errorPage(Astro, 'not_found');
 if (monday !== null && !isWeekStart(requested)) return Astro.redirect(`/week/${monday}`, 302);
 const weekStart = monday ?? weekStartOf(todayIn(await timeZone(ctx.db), Date.now())) ?? '';
 
@@ -48,12 +49,7 @@ const addProjectId = options.some((o) => o.projectId === Astro.url.searchParams.
   : '';
 ---
 
-<Shell
-  title={`Week of ${writtenDate(weekStart)}`}
-  admin={ctx.admin}
-  accounting={ctx.accounting}
-  wide
->
+<Shell title={`Week of ${writtenDate(weekStart)}`} wide>
   <WeekStateBadge slot="badge" state={week.state} />
   <Fragment slot="lead">
     {session.name}, {writtenDate(weekStart)} to {writtenDate(days[6] ?? weekStart)}.

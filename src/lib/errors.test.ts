@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { BINDING_NAMES, errorText } from './error-text';
 import { secrets } from '../../test/helpers/probe-secrets';
 import { AppError, CATALOG, type ErrorCode } from './errors';
+import { refusalContext } from '../../test/helpers/refusal-context';
 import { errorPage, errorResponse, forAction } from '../middleware/error-responses';
 
 const CODES = Object.keys(CATALOG) as ErrorCode[];
@@ -24,17 +25,20 @@ function thrownWith(secret: string): unknown[] {
 }
 
 describe('errorPage', () => {
-  it('names the detail and links where it is told, escaping both', async () => {
-    const page = errorPage('invalid_input', '<b>a & b</b>', {
-      href: '/x?a=1&b="2"',
-      label: '<Back>',
+  it('hands the refusal to the error page, and the bare fallback names the detail, escaped', async () => {
+    const context = refusalContext();
+    const back = { href: '/x', label: 'Back' };
+    const page = await errorPage(context, 'invalid_input', '<b>a & b</b>', back);
+    expect(context.locals.refusal).toEqual({
+      code: 'invalid_input',
+      detail: '<b>a & b</b>',
+      back,
     });
+    expect(page.status).toBe(CATALOG.invalid_input.status);
     expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8');
     const html = await page.text();
     expect(html).toContain('&lt;b&gt;a &amp; b&lt;/b&gt;');
-    expect(html).toContain('<a href="/x?a=1&amp;b=&quot;2&quot;">&lt;Back&gt;</a>');
     expect(html).not.toContain('<b>');
-    expect(await errorPage('unauthenticated').text()).toContain('<a href="/login">Sign in</a>');
   });
 });
 
@@ -43,7 +47,10 @@ describe('the catalog carries no secret out', () => {
     for (const [kind, secret] of Object.entries(secrets())) {
       for (const code of CODES) {
         expect(await exposed(errorResponse(code)), `${code} ${kind}`).not.toContain(secret);
-        expect(await exposed(errorPage(code)), `${code} ${kind}`).not.toContain(secret);
+        expect(
+          await exposed(await errorPage(refusalContext(), code)),
+          `${code} ${kind}`,
+        ).not.toContain(secret);
       }
       for (const thrown of thrownWith(secret)) {
         const action = forAction(thrown);

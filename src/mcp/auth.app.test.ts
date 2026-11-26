@@ -199,11 +199,16 @@ describe('a bearer anywhere but /mcp is nothing', () => {
     const who = await agent();
     const bearer = { authorization: `Bearer ${who.token}` };
     const get = (path: string, withBearer: boolean) =>
-      exports.default.fetch(new Request(`${ORIGIN}${path}`, { headers: withBearer ? bearer : {} }));
+      exports.default.fetch(
+        new Request(`${ORIGIN}${path}`, {
+          headers: withBearer ? bearer : {},
+          redirect: 'manual',
+        }),
+      );
     for (const path of ['/approvals', '/account', '/week/2026-01-05', '/audit']) {
       const [a, b] = [await get(path, true), await get(path, false)];
       expect(a.status, path).toBe(b.status);
-      expect([401, 403], path).toContain(a.status);
+      expect([303, 403], path).toContain(a.status);
     }
     for (const name of [
       'submission.approve',
@@ -227,7 +232,7 @@ describe('a bearer anywhere but /mcp is nothing', () => {
       expect(a.status, name).toBe(401);
       expect(await a.json(), name).toEqual(await b.json());
     }
-    expect((await getPage('/account', null)).status).toBe(401);
+    expect((await getPage('/account', null)).status).toBe(303);
     expect((await rpc('submission.approve', null)).status).toBe(401);
   });
 });

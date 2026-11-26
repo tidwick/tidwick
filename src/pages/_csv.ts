@@ -22,7 +22,7 @@ export async function csvEndpoint(
     const file = await build(scope, parseRange(form.get('from'), form.get('to')));
     return csvDownload(file.text, file.filename);
   } catch (error) {
-    if (isAppError(error)) return errorPage(error.code, error.detail, back);
+    if (isAppError(error)) return errorPage(context, error.code, error.detail, back);
     throw error;
   }
 }

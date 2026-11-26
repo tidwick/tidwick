@@ -6,6 +6,7 @@ import { loadSeed } from '../../test/seed/load';
 import { secrets } from '../../test/helpers/probe-secrets';
 import { currentEnv } from '../lib/env';
 import { AppError, CATALOG } from '../lib/errors';
+import { refusalContext } from '../../test/helpers/refusal-context';
 import { errorPage } from './error-responses';
 import { errors } from './errors';
 import { setup, type SetupReport } from './setup';
@@ -20,15 +21,8 @@ const source = (more: Record<string, unknown> = {}): Record<string, unknown> => 
   ...more,
 });
 
-function context(method = 'GET'): APIContext {
-  const request = new Request(`${ADDRESS}/setup`, { method });
-  return {
-    routePattern: '/setup',
-    request,
-    url: new URL(request.url),
-    locals: {},
-  } as unknown as APIContext;
-}
+const context = (method = 'GET'): APIContext =>
+  refusalContext('/setup', `${ADDRESS}/setup`, method);
 
 const reached = new Response('page');
 const next = (): Promise<Response> => Promise.resolve(reached);
@@ -127,7 +121,9 @@ describe('the setup gate', () => {
     const c = context();
     const response = await errors(c, async () => (await gate(c, next)) as Response);
     expect(response instanceof Response && response.status).toBe(CATALOG.missing_binding.status);
-    expect(await (response as Response).text()).toBe(await errorPage('missing_binding').text());
+    expect(await (response as Response).text()).toBe(
+      await (await errorPage(refusalContext('/error'), 'missing_binding')).text(),
+    );
     expect(log).toHaveBeenCalledWith(
       'tidwick: request failed:',
       'missing_binding: BACKUP_RECIPIENT',
@@ -146,7 +142,9 @@ describe('the setup gate', () => {
   it('SEC-47 a configured Worker with history answers 404 on /setup, and so does a POST', async () => {
     const got = await exports.default.fetch(new Request(`${ADDRESS}/setup`));
     expect(got.status).toBe(404);
-    expect(await got.text()).toBe(await errorPage('not_found').text());
+    expect(await got.text()).toBe(
+      await (await exports.default.fetch(new Request(`${ADDRESS}/error`))).text(),
+    );
     const posted = await exports.default.fetch(
       new Request(`${ADDRESS}/setup`, { method: 'POST', body: '{}' }),
     );

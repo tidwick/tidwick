@@ -152,7 +152,7 @@ describe('a download that fails validation answers a page', () => {
       expect(response.headers.get('content-type'), path).toMatch(/^text\/html/);
       const html = await response.text();
       expect(html, path).toContain(reason);
-      expect(html, path).toContain(`<a href="${back}">`);
+      expect(html, path).toMatch(new RegExp(`<a[^>]*href="${back}"`));
       expect(html, path).not.toContain('"error"');
     }
     expect(await eventsAfter(before)).toEqual([]);

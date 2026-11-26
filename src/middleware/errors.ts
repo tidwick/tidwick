@@ -16,6 +16,6 @@ export const errors: MiddlewareHandler = async (context, next) => {
       console.error('tidwick: request failed:', errorText(error));
     const code = known?.code ?? 'internal';
     if (context.routePattern === MCP_PATTERN) return rpcRefusal(code);
-    return context.routePattern === RPC_PATTERN ? errorResponse(code) : errorPage(code);
+    return context.routePattern === RPC_PATTERN ? errorResponse(code) : errorPage(context, code);
   }
 };

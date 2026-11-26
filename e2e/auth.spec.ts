@@ -11,9 +11,14 @@ test('a person enrols a passkey, keeps the recovery codes, signs out and signs b
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  await page.goto('/clients');
+  await expect(page).toHaveURL(/\/login\?return=%2Fclients$/);
   await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
-  await expect(page).toHaveURL(/\/week/);
+  await expect(page).toHaveURL(/\/clients$/);
   await expect(page.getByText(`Signed in as Sample ${info.project.name} user`)).toBeVisible();
+  await page.goto('/clients/no-such-client');
+  await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
 });
 
 test('a used enrolment link is refused with a plain message', async ({ page }, info) => {

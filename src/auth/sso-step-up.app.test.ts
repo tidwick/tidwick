@@ -62,7 +62,7 @@ describe('SEC-43 a step-up needs the provider to have authenticated the person a
   it('a signed-in person can start no flow without their session: a cross-site start has no cookie', async () => {
     expect(
       (await through(idp, '/auth/sso/step-up?provider=tenant-a', { subject: 'x' })).status,
-    ).toBe(401);
+    ).toBe(303);
   });
 });
 
