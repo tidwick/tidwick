@@ -27,7 +27,9 @@ export interface RescueInput {
   readonly revokePasskeys?: boolean;
 }
 
-const noAdminSignsIn = (except = '') => `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
+const noAdminSignsIn = (
+  except = '',
+) => `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
 WHERE r.role = 'admin' AND p.offboarded_at IS NULL${except === '' ? '' : ` AND r.person_id <> ${except}`}
 AND EXISTS (SELECT 1 FROM credential c WHERE c.person_id = r.person_id AND c.revoked_at IS NULL))`;
 const NO_ADMIN_SIGNS_IN = noAdminSignsIn();
