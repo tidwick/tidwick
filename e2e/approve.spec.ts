@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enrol, tokenOf } from './enrol';
+import { hydrated } from './hydrated';
 
 // Written by test/e2e/prepare.ts: per Playwright project, a member with six hours on Monday of the week of
 // 2031-03-10 (`submit-<project>`) and an accounting admin (`acct-<project>`), each with an open enrolment link.
@@ -13,6 +14,7 @@ test('a member submits a week and an accounting admin approves it after a passke
   const project = info.project.name;
   await enrol(member, tokenOf(`submit-${project}`));
   await member.goto(`/week/${WEEK}`);
+  await hydrated(member);
   await member.getByRole('button', { name: 'Submit week' }).click();
   await expect(
     member.getByText('Submit 6 hours? The week locks until it is returned.'),
