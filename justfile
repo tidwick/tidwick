@@ -117,9 +117,9 @@ bootstrap email name firm out=".wrangler/bootstrap.sql":
     mkdir -p "$(dirname {{ quote(out) }})"
     node scripts/bootstrap.ts {{ quote(email) }} {{ quote(name) }} {{ quote(firm) }} {{ quote(out) }}
 
-rescue person seq hash out=".wrangler/rescue.sql":
+rescue person seq hash out=".wrangler/rescue.sql" *flags:
     mkdir -p "$(dirname {{ quote(out) }})"
-    node scripts/rescue.ts {{ quote(person) }} {{ quote(seq) }} {{ quote(hash) }} {{ quote(out) }}
+    node scripts/rescue.ts {{ quote(person) }} {{ quote(seq) }} {{ quote(hash) }} {{ quote(out) }} {{ flags }}
 
 gen-test-keys:
     node scripts/gen-test-keys.ts
@@ -133,6 +133,7 @@ backup-fixture:
     just db-migrate --config test/wrangler.test.jsonc --persist-to "$state/source" > "$state/migrate.log" 2>&1 || { cat "$state/migrate.log"; echo "FAIL backup-fixture: migrations did not apply to the drill source; fix the SQL named above"; exit 1; }
     node scripts/seed.ts > "$state/seed.sql"
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file "$state/seed.sql" > "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the synthetic seed did not load; fix test/seed/"; exit 1; }
+    npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file test/seed/hostile.sql >> "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the hostile-text rows did not load; fix test/seed/hostile.sql"; exit 1; }
     node scripts/backup-fixture.ts "$state/source" test/fixtures/backup-recipient.txt test/fixtures/backup.age
 
 restore file identity persist=".wrangler/restore":

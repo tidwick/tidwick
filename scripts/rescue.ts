@@ -1,6 +1,7 @@
 // Writes the SQL file that issues an admin a new 24-hour enrolment link when no admin can sign in (ADR 0003).
-// Reads SESSION_SECRET as a KEY=value line on standard input. The person id and the audit head come from the
-// id comes from the query in docs/ARCHITECTURE.md, Operate. Usage: node scripts/rescue.ts <person id> <head seq> <head hash> <out sql>
+// Reads SESSION_SECRET as a KEY=value line on standard input. The person id and the live audit head come from the
+// queries in docs/ARCHITECTURE.md, Operate. `--revoke-passkeys` also revokes that admin's passkeys (a lost device).
+// Usage: node scripts/rescue.ts <person id> <head seq> <head hash> <out sql> [--revoke-passkeys]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { keyedHash, randomToken } from '../src/auth/tokens.ts';
 import { rescueSql } from '../src/db/rescue.ts';
@@ -11,10 +12,13 @@ function stop(why: string): never {
   process.exit(1);
 }
 
-const [personId, seq, head, out] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const revokePasskeys = args.includes('--revoke-passkeys');
+const [personId, seq, head, out, extra] = args.filter((a) => a !== '--revoke-passkeys');
+if (extra !== undefined) stop(`unexpected argument "${extra}"; the only option is --revoke-passkeys`);
 if (personId === undefined || seq === undefined || head === undefined || out === undefined) {
   stop(
-    'usage: just rescue <person id> <head seq> <head hash>, with SESSION_SECRET on standard input',
+    'usage: just rescue <person id> <head seq> <head hash> [out sql] [--revoke-passkeys], with SESSION_SECRET on standard input',
   );
 }
 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(personId)) {
@@ -37,11 +41,15 @@ const { statements, hash } = await rescueSql({
   headHash: head,
   enrolmentHash: await keyedHash(secret, 'enrol', token),
   now: Date.now(),
+  revokePasskeys,
 });
 writeFileSync(out, `${statements.join('\n')}\n`, { mode: 0o600 });
-console.log(`PASS rescue: wrote ${out}; it writes nothing while any admin can sign in`);
+console.log(
+  `PASS rescue: wrote ${out}; it writes nothing while any admin can sign in${revokePasskeys ? ' (other than this person, whose passkeys it revokes)' : ''}`,
+);
 console.log(`apply it with: npx wrangler d1 execute tidwick --remote --file ${out}`);
 console.log(
-  `check it landed: npx wrangler d1 execute tidwick --remote --command "SELECT count(*) AS landed FROM audit_event WHERE hash = '${hash}'"`,
+  `check it: npx wrangler d1 execute tidwick --remote --command "SELECT CASE count(*) WHEN 1 THEN 'landed' ELSE 'no-op' END AS rescue FROM audit_event WHERE hash = '${hash}'"`,
 );
+console.log('no-op means the head moved or an admin can sign in: read the head again and re-run');
 console.log(`then open <ORIGIN>/enrol/${token} within 24 hours to enrol a passkey`);

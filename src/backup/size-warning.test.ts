@@ -12,7 +12,7 @@ import {
 } from '../db/test-support-backup';
 import { loadSeededWeek } from '../db/test-support-week';
 import { readEnv } from '../lib/env';
-import { BACKUP_DUMP_CHARS, BACKUP_WARN_CHARS } from '../lib/limits';
+import { BACKUP_DUMP_CHARS, BACKUP_WARN_CHARS, BACKUP_WARN_PERCENT } from '../lib/limits';
 import { recordingMailer } from '../../test/helpers/mail';
 import { FAILURE_SUBJECT, runCheck, WARNING_SUBJECT } from './check';
 import { objectKey, runBackup } from './export';
@@ -67,6 +67,8 @@ describe('SEC-35 the backup warns before its size ceiling', () => {
   it('SEC-35 the 09:00 check says nothing at 70% of the cap and warns by name just past it', async () => {
     const at70 = BACKUP_WARN_CHARS;
     expect(at70).toBe(16_800_000);
+    expect(BACKUP_WARN_PERCENT).toBe(70);
+    expect((at70 * 100) / BACKUP_DUMP_CHARS).toBe(BACKUP_WARN_PERCENT);
     await setGoodRunChars(env.DB, at70);
     const quiet = recordingMailer();
     expect(await runCheck(env.DB, quiet, NINE)).toEqual({ problems: [], alerted: false });

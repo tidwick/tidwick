@@ -7,7 +7,8 @@
 // `people.rescue` event onto the head the operator read, and only while the person is an active admin and no
 // admin holds an unrevoked passkey. Every later statement writes only while that event exists, by its hash, and
 // still no admin can sign in, so a deployment with a working admin, a moved head, or a link already used takes
-// no row. As re-enrolment does, it revokes the person's sessions, unused recovery codes and other open links.
+// no row. With `revokePasskeys` the lost-device case is covered too: the person's own passkeys are revoked by
+// the second statement, and the first needs no admin other than that person to hold one. As re-enrolment does, it revokes the person's sessions, unused recovery codes and other open links.
 import { eventHash } from '../lib/chain.ts';
 import type { Cell } from '../lib/backup-format.ts';
 import { BOOTSTRAP_ENROLMENT_MS } from './bootstrap.ts';
@@ -22,11 +23,14 @@ export interface RescueInput {
   readonly now: number;
   /** The setup claim's re-issue: also only while this person is the sole admin and has no linked identity. */
   readonly reclaim?: boolean;
+  /** The lost-device lockout: also revoke this person's passkeys, as long as no other admin holds one. */
+  readonly revokePasskeys?: boolean;
 }
 
-const NO_ADMIN_SIGNS_IN = `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
-WHERE r.role = 'admin' AND p.offboarded_at IS NULL
+const noAdminSignsIn = (except = '') => `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
+WHERE r.role = 'admin' AND p.offboarded_at IS NULL${except === '' ? '' : ` AND r.person_id <> ${except}`}
 AND EXISTS (SELECT 1 FROM credential c WHERE c.person_id = r.person_id AND c.revoked_at IS NULL))`;
+const NO_ADMIN_SIGNS_IN = noAdminSignsIn();
 
 /** The one admin the setup page may re-issue a link to: the only admin, active, with no passkey and no linked identity. */
 export async function lockedOutAdmin(
@@ -65,7 +69,12 @@ export async function rescueSql(
     before_json: null,
     after_json: JSON.stringify({
       enrolment_expires_at: expiresAt,
-      revoked: ['sessions', 'unused recovery codes', 'open enrolment links'],
+      revoked: [
+        ...(input.revokePasskeys === true ? ['passkeys'] : []),
+        'sessions',
+        'unused recovery codes',
+        'open enrolment links',
+      ],
     }),
   };
   const hash = await eventHash(input.headHash, event);
@@ -75,12 +84,14 @@ export async function rescueSql(
 AND (SELECT count(*) FROM person_role WHERE role = 'admin') = 1
 AND NOT EXISTS (SELECT 1 FROM person_identity i WHERE i.person_id = ${person} AND i.revoked_at IS NULL)`
     : '';
+  const gate = input.revokePasskeys === true ? noAdminSignsIn(person) : NO_ADMIN_SIGNS_IN;
   const eligible = `(SELECT max(seq) FROM audit_event) = ${q(input.headSeq)}
 AND EXISTS (SELECT 1 FROM audit_event WHERE seq = ${q(input.headSeq)} AND hash = ${q(input.headHash)})
 AND EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
   WHERE r.person_id = ${person} AND r.role = 'admin' AND p.offboarded_at IS NULL)
-AND ${NO_ADMIN_SIGNS_IN}${sole}`;
+AND ${gate}${sole}`;
   const ours = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${NO_ADMIN_SIGNS_IN}${sole}`;
+  const oursBeforeRevoke = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${gate}${sole}`;
   const values: Cell[] = [
     event.seq,
     event.at,
@@ -99,6 +110,12 @@ AND ${NO_ADMIN_SIGNS_IN}${sole}`;
     statements: [
       line(`INSERT INTO audit_event (seq, at, actor_id, action, client_id, target, before_json, after_json, prev_hash, hash)
 SELECT ${values.map(q).join(', ')} WHERE ${eligible}`),
+      ...(input.revokePasskeys === true
+        ? [
+            line(`UPDATE credential SET revoked_at = ${q(now)}
+WHERE person_id = ${person} AND revoked_at IS NULL AND ${oursBeforeRevoke}`),
+          ]
+        : []),
       line(`UPDATE session SET revoked_at = ${q(now)}
 WHERE person_id = ${person} AND revoked_at IS NULL AND ${ours}`),
       line(`UPDATE recovery_code SET used_at = ${q(now)}

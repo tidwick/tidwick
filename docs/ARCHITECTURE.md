@@ -117,7 +117,7 @@ Lab checklist, run by hand each release, on a fresh account. Order: merge the re
 - Lost first enrolment link, `SETUP_TOKEN` still set: the `/setup` form. Otherwise, no admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Update as in step 8 of §9; your `wrangler.jsonc` edits merge with the release there. v0.1.0 squashed the first eleven migrations into `0001_init.sql`; an instance deployed from `main` before it deploys the last `next` commit before the squash once (it then holds all eleven), runs `wrangler d1 execute DB --remote --command "INSERT INTO d1_migrations (name) VALUES ('0001_init.sql')"` to mark the squash applied (same schema), then deploys the release. A backup taken under `0011_sso.sql` is refused by restore; take a new one.
-- Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.
+- `just backup-size` runs the size estimate against the live D1. Past 70% of the backup cap (`BACKUP_WARN_PERCENT` in `src/lib/limits.ts`, the same line the 09:00 check warns at), plan the streaming backup.
 
 Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just restore` decrypts it and rebuilds a SQLite database, the same path the restore drill in `just check` exercises on every change. Keep the age identity, export the CSV too, and run the Worker, or any SQLite reader, elsewhere.
 

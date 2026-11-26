@@ -56,7 +56,7 @@ const CAP = String(BACKUP_DUMP_CHARS);
 
 /**
  * One statement: the estimated characters of a backup and that as a percentage of the cap. An operator runs it
- * against the live D1; when `percent_of_cap` passes 60, plan the streaming backup before the estimate reaches 100.
+ * against the live D1; when `percent_of_cap` passes `BACKUP_WARN_PERCENT`, plan the streaming backup before the estimate reaches 100.
  */
 export const ESTIMATE_SQL = `SELECT chars, chars * 100 / ${CAP} AS percent_of_cap FROM (SELECT
   (${ENTRY}) +
