@@ -2,7 +2,7 @@
 // again, and the start routes refuse a provider that is not configured.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { storedFor } from '../../test/helpers/auth';
-import { caller } from '../../test/helpers/callers';
+import { caller, getPage } from '../../test/helpers/callers';
 import type { MockIdp, MockLogin } from '../../test/helpers/mock-idp';
 import {
   callback,
@@ -43,7 +43,18 @@ describe('SEC-43 a step-up needs the provider to have authenticated the person a
     const begun = await start('/auth/sso/step-up?provider=tenant-a', who);
     const done = await callback(idp.authorize(begun.location, login(subject)), begun.flow);
     expect(done.status).toBe(403);
+    expect(await done.text()).toContain('cannot confirm you again');
     expect(await stamp(who.personId)).toBe(before);
+  });
+
+  it('a provider that sends no auth_time is not offered, and its start route refuses with the specific error', async () => {
+    const who = await caller([], { stepUpAgo: 30 * 60_000 });
+    await link(who.personId, 'google', `step-${who.personId}`);
+    const page = await (await getPage('/account', who)).text();
+    expect(page).not.toContain('/auth/sso/step-up?provider=google');
+    const begun = await start('/auth/sso/step-up?provider=google', who);
+    expect(begun.response.status).toBe(403);
+    expect(await begun.response.text()).toContain('cannot confirm you again');
   });
 
   it('an identity that is another person’s leaves the session unconfirmed', async () => {

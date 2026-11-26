@@ -5,6 +5,7 @@ import { DANGER, PRIMARY, SECONDARY } from '../components/auth/classes';
 import SsoLinks from '../components/auth/sso-links.astro';
 import { confirmLinks } from '../components/auth/sso-links';
 import Status from '../components/auth/status.astro';
+import CodesStep from '../components/passkey/codes-step.astro';
 import SavedLine from '../components/saved-line.astro';
 import SignOutForm from '../components/sign-out-form.astro';
 import { Alert } from '../components/ui/alert';
@@ -13,6 +14,7 @@ import { listedCredentialsOf } from '../db/credentials';
 import { liveIdentitiesOf } from '../db/identities';
 import { unusedCodeCount } from '../db/recovery-codes';
 import { clockUtc } from '../lib/dates';
+import { currentEnv } from '../lib/env';
 import { cn } from 'cn';
 import AccountFrame from '../components/admin/account-frame.astro';
 import { pageContext, problemOf, savedAt, succeeded } from './_context';
@@ -34,6 +36,7 @@ const identities = await liveIdentitiesOf(ctx.db, session.personId);
 const sso = await confirmLinks(session.personId, '/account');
 // A last passkey can go while another way in remains; the server also keeps one admin with a passkey.
 const spare = passkeys.length > 1 || identities.length > 0;
+const providerLabel = (id: string) => currentEnv().SSO.find((p) => p.id === id)?.label ?? id;
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const confirmed = session.stepUpAt + STEP_UP_MS > Date.now();
 const recovery = session.mustEnrol;
@@ -48,7 +51,7 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
   problem={problem}
   lead={`Signed in as ${session.name}.`}
 >
-  <div class="grid max-w-xl gap-section">
+  <div class="grid max-w-xl gap-section" data-enrol-start>
     {recovery && (
       <section>
         <Heading text="Your account">Signed in as {session.name}.</Heading>
@@ -72,10 +75,12 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         {passkeys.length === 0 && (
           <li class="p-4 text-sm text-muted-foreground">No passkeys yet.</li>
         )}
-        {passkeys.map((p) => (
+        {passkeys.map((p, i) => (
           <li class="flex flex-wrap items-center justify-between gap-3 p-4">
             <div class="text-sm">
-              <p class="font-medium">Added {day(p.created_at)}</p>
+              <p class="font-medium">
+                Passkey {i + 1}, added {day(p.created_at)}
+              </p>
               <p class="text-muted-foreground">
                 {p.last_used_at === null
                   ? 'Never used to sign in'
@@ -117,6 +122,28 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       </p>
     </section>
 
+    {identities.length > 0 && (
+      <section aria-labelledby="linked-h" class="grid gap-3">
+        <h2 id="linked-h" class="text-lg font-semibold">
+          Linked sign-ins
+        </h2>
+        <ul class="divide-y divide-border rounded-md border border-border">
+          {identities.map((i) => (
+            <li class="p-4 text-sm">
+              <p class="font-medium">{providerLabel(i.provider)}</p>
+              <p class="text-muted-foreground">
+                {i.email ?? 'No email on file'}
+                {' · '}
+                {i.last_used_at === null
+                  ? 'Never used to sign in'
+                  : `Last used ${day(i.last_used_at)}`}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
     {!session.mustEnrol && (
       <section aria-labelledby="confirm-h" class="grid gap-3">
         <h2 id="confirm-h" class="text-lg font-semibold">
@@ -125,9 +152,9 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         <p class="text-sm text-muted-foreground">
           {confirmed
             ? `Confirmed until ${clockUtc(session.stepUpAt + STEP_UP_MS)} UTC.`
-            : 'Removing a passkey, making new recovery codes and similar changes need a passkey confirmation from the last 15 minutes.'}
+            : 'Removing a passkey, making new recovery codes and similar changes need a confirmation from the last 15 minutes.'}
         </p>
-        {(passkeys.length > 0 || sso.length === 0) && (
+        {passkeys.length > 0 && (
           <button type="button" data-passkey="step-up" data-csrf={ctx.csrf} class={CONFIRM}>
             Confirm with your passkey
           </button>
@@ -135,6 +162,12 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         <div class="max-w-sm">
           <SsoLinks links={sso} />
         </div>
+        {passkeys.length === 0 && sso.length === 0 && (
+          <p class="text-sm text-muted-foreground">
+            Your sign-in provider cannot confirm again here. Add a passkey to make sensitive
+            changes.
+          </p>
+        )}
       </section>
     )}
 
@@ -164,13 +197,11 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         )}
         <form method="POST" action={`/account${actions.auth.regenerateCodes}`}>
           <input type="hidden" name="_csrf" value={ctx.csrf} />
-          <button type="submit" class={SECONDARY}>
+          <button type="submit" data-passkey="regen" data-csrf={ctx.csrf} class={SECONDARY}>
             Make new recovery codes
           </button>
         </form>
-        {!confirmed && (
-          <p class="text-sm text-muted-foreground">Confirm with your passkey below first.</p>
-        )}
+        {!confirmed && <p class="text-sm text-muted-foreground">Confirm above first.</p>}
       </section>
     )}
 
@@ -194,10 +225,12 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
 
     {recovery && <SignOutForm />}
   </div>
+  <CodesStep next="/account" />
 </AccountFrame>
 
 <script>
-  import { wireAddPasskey, wireStepUp } from '../components/passkey/ceremony';
+  import { wireAddPasskey, wireRegenerate, wireStepUp } from '../components/passkey/ceremony';
   wireAddPasskey();
   wireStepUp();
+  wireRegenerate();
 </script>

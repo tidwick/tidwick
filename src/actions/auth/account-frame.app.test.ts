@@ -10,7 +10,8 @@ describe('the account page keeps a normal session in the app and a recovery sess
     expect(html).toMatch(
       /<a[^>]*href="\/account"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/account"/,
     );
-    expect([...html.matchAll(/<h1[ >]/g)]).toHaveLength(1);
+    // One shown, and one in the hidden recovery-codes step.
+    expect([...html.matchAll(/<h1[ >]/g)]).toHaveLength(2);
     expect(html).not.toContain('Back to your week');
     expect(html).not.toMatch(/<button[^>]*class="[^"]*\bw-full\b/);
   });
@@ -19,7 +20,8 @@ describe('the account page keeps a normal session in the app and a recovery sess
     const html = await (await getPage('/account', await caller([], { mustEnrol: true }))).text();
     expect(html).not.toContain('<nav aria-label="Main"');
     expect(html).toContain('You signed in with a recovery code');
-    expect([...html.matchAll(/<h1[ >]/g)]).toHaveLength(1);
+    // One shown, and one in the hidden recovery-codes step.
+    expect([...html.matchAll(/<h1[ >]/g)]).toHaveLength(2);
     expect(html).toContain('Sign out');
     expect(html).not.toContain('Make new recovery codes');
   });

@@ -204,3 +204,21 @@ describe('SEC-09 the agent tools are gated by member rows and nothing else', () 
     expect(PAGES['/mcp']).toEqual({ GET: PUBLIC_ROW, POST: PUBLIC_ROW });
   });
 });
+
+describe('SEC-09 a recovery session can still add a passkey after 15 minutes', () => {
+  const stale = { stepUpAgo: 16 * 60_000 };
+
+  it('passes the gate on the add-passkey rows, where a signed-in member with the same age does not', async () => {
+    const recovering = await caller([], { mustEnrol: true, ...stale });
+    const member = await caller([], stale);
+    for (const name of ['auth.addPasskeyOptions', 'auth.addPasskeyVerify']) {
+      expect(await denial(await rpc(name, recovering)), name).toBeNull();
+      expect(await denial(await rpc(name, member)), name).toBe('step_up_required');
+    }
+  });
+
+  it('still refuses a recovery session on a step-up row that is not marked for recovery', async () => {
+    const recovering = await caller([], { mustEnrol: true, ...stale });
+    expect(await denial(await rpc('auth.revokePasskey', recovering))).toBe('forbidden');
+  });
+});
