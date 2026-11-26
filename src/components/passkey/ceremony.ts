@@ -40,13 +40,17 @@ async function asserted(options: unknown): Promise<PublicKeyCredential | null> {
   return credential instanceof PublicKeyCredential ? credential : null;
 }
 
-/** Runs one ceremony from a button: disables it, reports progress and errors in the status line. */
-function wire(selector: string, run: (button: HTMLButtonElement) => Promise<string | null>): void {
+/** Runs one ceremony from a button (`needsPasskey` false for one that uses no WebAuthn): disables it, reports progress and errors in the status line. */
+function wire(
+  selector: string,
+  run: (button: HTMLButtonElement) => Promise<string | null>,
+  needsPasskey = true,
+): void {
   const button = document.querySelector<HTMLButtonElement>(selector);
   if (!button) return;
   button.addEventListener('click', (event) => {
     event.preventDefault();
-    if (!supported()) {
+    if (needsPasskey && !supported()) {
       say(UNSUPPORTED, 'error');
       return;
     }
@@ -160,12 +164,16 @@ export function wireStepUp(): void {
 
 /** Makes new recovery codes and shows them through the same step enrolment uses, so they are copied or printed first. */
 export function wireRegenerate(): void {
-  wire('[data-passkey="regen"]', async (button) => {
-    const body = new FormData();
-    body.set('_csrf', button.dataset.csrf ?? '');
-    const done = await actions.auth.regenerateCodes(body);
-    if (done.error) return done.error.message;
-    showCodes(done.data.codes);
-    return null;
-  });
+  wire(
+    '[data-passkey="regen"]',
+    async (button) => {
+      const body = new FormData();
+      body.set('_csrf', button.dataset.csrf ?? '');
+      const done = await actions.auth.regenerateCodes(body);
+      if (done.error) return done.error.message;
+      showCodes(done.data.codes);
+      return null;
+    },
+    false,
+  );
 }

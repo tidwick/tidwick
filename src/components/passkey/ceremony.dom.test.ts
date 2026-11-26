@@ -12,7 +12,9 @@ import { wireRegenerate, wireStepUp } from './ceremony';
 const PAGE = `
   <div data-enrol-start>
     <button type="button" data-passkey="step-up" data-csrf="t">Confirm</button>
-    <button type="submit" data-passkey="regen" data-csrf="t">Make new codes</button>
+    <form data-regen-form>
+      <button type="submit" data-passkey="regen" data-csrf="t">Make new codes</button>
+    </form>
     <p data-passkey-status></p>
   </div>
   <section data-enrol-done hidden><h1>Codes</h1><ol data-codes></ol></section>`;
@@ -65,6 +67,32 @@ describe('regenerated recovery codes go through the codes step', () => {
     expect(document.querySelectorAll('[data-codes] > li')).toHaveLength(10);
     expect(document.querySelector('[data-enrol-done]')?.hasAttribute('hidden')).toBe(false);
     expect(document.querySelector('[data-enrol-start]')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('stops the form submitting, and works in a browser without WebAuthn JSON helpers', async () => {
+    vi.stubGlobal('PublicKeyCredential', undefined);
+    actions.regenerateCodes.mockResolvedValue({ data: { codes: ['AAAA-BBBB-CCCC-0000'] } });
+    const submitted = vi.fn((e: Event) => {
+      e.preventDefault();
+    });
+    document.querySelector('[data-regen-form]')?.addEventListener('submit', submitted);
+    wireRegenerate();
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    button('regen')?.dispatchEvent(click);
+    await settle();
+    expect(click.defaultPrevented).toBe(true);
+    expect(submitted).not.toHaveBeenCalled();
+    expect(actions.regenerateCodes).toHaveBeenCalledTimes(1);
+    expect(status()).not.toMatch(/cannot use passkeys/);
+  });
+
+  it('still tells a passkey button the browser is unsupported', async () => {
+    vi.stubGlobal('PublicKeyCredential', undefined);
+    wireStepUp();
+    button('step-up')?.click();
+    await settle();
+    expect(actions.stepUpOptions).not.toHaveBeenCalled();
+    expect(status()).toMatch(/cannot use passkeys/);
   });
 
   it('leaves the page alone and re-enables the button when the action fails', async () => {
