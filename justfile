@@ -237,9 +237,6 @@ deploy env="":
     eval "$(just _wr {{ quote(env) }})"
     env ${flags:+CLOUDFLARE_ENV=demo} just build
     npx --no-install wrangler deploy ${flags:+--env demo} --dry-run
-    # One-time: delete with scripts/demo-squash-once.sh after the first green demo deploy. The demo applied 0001 to 0004,
-    # which the squash folded into 0001_init.sql; this drops what the new file lacks, and only from the demo-marked database.
-    if [ -n "$flags" ]; then ./scripts/demo-squash-once.sh "$mig" --remote $flags; fi
     npx --no-install wrangler d1 migrations apply "$mig" --remote $flags
     npx --no-install wrangler deploy ${flags:+--env demo}
 
@@ -295,18 +292,11 @@ guard:
       base=FETCH_HEAD
     fi
     changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
-    # One-time: DELETE ME in the PR after the first green demo deploy. 0002 to 0004 and the agent tables fold into 0001_init.sql.
-    # Pinned to the exact migrations trees before and after, so it excuses no other edit.
-    if [ -n "$changed" ] && [ "$(git rev-parse "$base:migrations")" = 7a6cdd547496641a56bbafbbe208c84c7894da52 ] \
-      && [ "$(git rev-parse HEAD:migrations)" = 47e29fa82d9ceb5c1a86abcf8e4f9eaa96132bdc ] && git diff --quiet HEAD -- migrations/; then
-      echo "PASS migrations (the squash of 0002-0004 and the agent cut)"; changed=
-    fi
     [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
     echo "PASS migrations"
     ./scripts/restore-target.test.sh
     ./scripts/restore-errors.test.sh
     ./scripts/deploy-check.test.sh
-    ./scripts/demo-squash-once.test.sh
     ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh
     ./scripts/colour-literals.sh
