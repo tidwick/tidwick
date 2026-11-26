@@ -42,7 +42,7 @@ One D1 database, STRICT tables, hand-written SQL under `src/db/`, forward-only m
 
 ![A week is a draft until submitted, then approved or returned, and only an accounting admin edits through the lock.](arch/week-state.svg)
 
-A week with no row is a draft. The dashed loops are the audited admin edit. Submit locks it to its owner; an approver returns or approves it. Only an accounting admin edits through the lock, with step-up, and each edit is audited (ADR 0009).
+A week with no row is a draft. The dashed loops are the audited admin edit. Submit locks it to its owner; an approver returns or approves it. Only an accounting admin edits through the lock, with step-up, and each edit is audited (ADR 0009). A return carries its reason to the owner. Submit, approve and return carry the fingerprint of the week as read (entry count, hours and newest edit) and are a `conflict` once it has changed. An accounting admin may approve the draft or returned week of an offboarded person on their behalf, with step-up; the audit event is marked `onBehalf`.
 
 ## 7. Backup and restore
 
