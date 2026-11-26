@@ -1,8 +1,10 @@
 // Runs in the `app` project: a step-up through the provider needs the provider to have authenticated the person
 // again, and the start routes refuse a provider that is not configured.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { csrfToken } from './tokens';
+import { currentEnv } from '../lib/env';
 import { storedFor } from '../../test/helpers/auth';
-import { caller, getPage } from '../../test/helpers/callers';
+import { caller, getPage, rpc } from '../../test/helpers/callers';
 import type { MockIdp, MockLogin } from '../../test/helpers/mock-idp';
 import {
   callback,
@@ -10,7 +12,9 @@ import {
   link,
   linked,
   nowSeconds,
+  LOGIN,
   provider,
+  signedInAs,
   start,
   through,
 } from '../../test/helpers/sso';
@@ -74,6 +78,39 @@ describe('SEC-43 a step-up needs the provider to have authenticated the person a
     expect(
       (await through(idp, '/auth/sso/step-up?provider=tenant-a', { subject: 'x' })).status,
     ).toBe(303);
+  });
+});
+
+let logins = 0;
+
+describe('SEC-67 an SSO sign-in is a fresh confirmation only when the provider authenticated the person just now', () => {
+  async function signedInWith(login: (subject: string) => MockLogin) {
+    const subject = `login-${String(++logins)}`;
+    const id = await linked(subject);
+    const response = await through(idp, LOGIN, login(subject));
+    expect(response.status).toBe(200);
+    const who = signedInAs(response, id);
+    return { ...who, token: await csrfToken(currentEnv().SESSION_SECRET, who.raw) };
+  }
+
+  it.each([
+    [
+      'an auth_time from before the flow began',
+      (s: string): MockLogin => ({ subject: s, authTime: nowSeconds() - 3600 }),
+    ],
+    ['no auth_time', (s: string): MockLogin => ({ subject: s, authTime: null })],
+  ])('%s leaves the new session needing a step-up', async (_name, login) => {
+    const who = await signedInWith(login);
+    expect((await storedFor('session', who.personId))[0]?.step_up_at).toBe(0);
+    const refused = await rpc('auth.addPasskeyOptions', who);
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: 'step_up_required' });
+    expect((await getPage('/account', who)).status).toBe(200);
+  });
+
+  it('a sign-in the provider authenticated just now passes a step-up row at once', async () => {
+    const who = await signedInWith((s) => ({ subject: s, authTime: nowSeconds() }));
+    expect((await rpc('auth.addPasskeyOptions', who)).status).toBe(200);
   });
 });
 

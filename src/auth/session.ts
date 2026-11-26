@@ -45,7 +45,11 @@ export function cookieValue(header: string | null, name: string): string | null 
   return null;
 }
 
-/** A fresh session id and the insert for it, to ride the batch of the ceremony that earned it. */
+/**
+ * A fresh session id and the insert for it, to ride the batch of the ceremony that earned it. `steppedUp` is false
+ * when the ceremony proved no fresh gesture (a single sign-on the provider answered from its own session), so the
+ * session meets the step-up prompt before any row that needs one.
+ */
 export async function newSession(
   db: D1Database,
   secret: string,
@@ -53,11 +57,18 @@ export async function newSession(
   now: number,
   mustEnrol = false,
   demo = false,
+  steppedUp = true,
 ): Promise<{ rawId: string; statement: D1PreparedStatement }> {
   const rawId = randomToken();
   const idHash = await keyedHash(secret, 'session', rawId);
   const expiresAt = now + (demo ? DEMO_SESSION_MS : ABSOLUTE_MS);
-  const row = { idHash, personId, expiresAt, mustEnrol, stepUpAt: demo ? expiresAt : now };
+  const row = {
+    idHash,
+    personId,
+    expiresAt,
+    mustEnrol,
+    stepUpAt: demo ? expiresAt : steppedUp ? now : 0,
+  };
   return { rawId, statement: insertSession(db, row, now) };
 }
 
