@@ -82,7 +82,7 @@ describe('SEC-15 backup failure modes', () => {
   });
 
   it('SEC-28 a good run dated in the future sends one alert and turns /healthz 503, and one inside the skew allowance does not', async () => {
-    const latest = (await readHealth(env.DB, AT)).body.backup_at ?? 0;
+    const latest = (await readHealth(env.DB, AT)).backupAt ?? 0;
     const ahead = recordingMailer();
     const result = await runCheck(env.DB, ahead, latest - 2 * HOUR);
     expect(ahead.sent).toHaveLength(1);

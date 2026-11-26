@@ -1,13 +1,6 @@
-// /healthz: the last good backup's time and age and the audit chain head it recorded, and nothing else.
+// /healthz: public, so it answers only whether the last good backup is fresh. Times, ages and the chain head stay behind the admin session.
 import { latestGoodRun } from '../db/backup-runs';
 import { backupMaxAgeHours } from '../db/settings';
-
-export interface Health {
-  backup_at: number | null;
-  backup_age_seconds: number | null;
-  chain_seq: number | null;
-  chain_head: string | null;
-}
 
 const HOUR = 60 * 60 * 1000;
 
@@ -22,33 +15,20 @@ export function isFutureDated(finishedAt: number, now: number): boolean {
   return finishedAt > now + CLOCK_SKEW_MS;
 }
 
-/** The body and whether it is healthy: a good backup no older than `backup_max_age_hours` and not future-dated. */
+/** Whether it is healthy (a good backup no older than `backup_max_age_hours` and not future-dated), and when that backup finished. */
 export async function readHealth(
   db: D1Database,
   now: number,
-): Promise<{ ok: boolean; body: Health }> {
+): Promise<{ ok: boolean; backupAt: number | null }> {
   const run = await latestGoodRun(db);
-  if (run === null) {
-    return {
-      ok: false,
-      body: { backup_at: null, backup_age_seconds: null, chain_seq: null, chain_head: null },
-    };
-  }
+  if (run === null) return { ok: false, backupAt: null };
   const age = Math.max(0, now - run.finished_at);
   const ok = !isFutureDated(run.finished_at, now) && age <= (await backupMaxAgeHours(db)) * HOUR;
-  return {
-    ok,
-    body: {
-      backup_at: run.finished_at,
-      backup_age_seconds: Math.floor(age / 1000),
-      chain_seq: run.chain_seq,
-      chain_head: run.chain_head,
-    },
-  };
+  return { ok, backupAt: run.finished_at };
 }
 
 /** 200 while the last good backup is fresh, 503 past the threshold, when it is future-dated, or before the first one. */
 export async function healthResponse(db: D1Database, now: number): Promise<Response> {
-  const { ok, body } = await readHealth(db, now);
-  return Response.json(body, { status: ok ? 200 : 503 });
+  const { ok } = await readHealth(db, now);
+  return Response.json({ ok }, { status: ok ? 200 : 503 });
 }

@@ -31,33 +31,20 @@ async function health(now: number): Promise<{ status: number; body: Record<strin
 
 // One file, one database: the cases run in order and each adds the run it needs.
 describe('SEC-26 health endpoint', () => {
-  it('SEC-26 before any good backup /healthz answers 503 with every field null', async () => {
+  it('SEC-26 before any good backup /healthz answers 503 with only ok false', async () => {
     await recordRun(env.DB, run({ status: 'failed', error: 'sink down', bytes: 0 }));
-    expect(await health(AT)).toEqual({
-      status: 503,
-      body: { backup_at: null, backup_age_seconds: null, chain_seq: null, chain_head: null },
-    });
+    expect(await health(AT)).toEqual({ status: 503, body: { ok: false } });
   });
 
-  it('SEC-26 /healthz returns the last good backup time, its age and the chain head, and nothing else', async () => {
+  it('SEC-26 /healthz answers 200 with only ok true: no time, age, sequence or chain head', async () => {
     await recordRun(env.DB, run({}));
     const { status, body } = await health(AT + 2 * HOUR);
     expect(status).toBe(200);
-    expect(Object.keys(body).toSorted()).toEqual([
-      'backup_age_seconds',
-      'backup_at',
-      'chain_head',
-      'chain_seq',
-    ]);
-    expect(body).toEqual({
-      backup_at: AT,
-      backup_age_seconds: 2 * 60 * 60,
-      chain_seq: 42,
-      chain_head: HEAD,
-    });
+    expect(body).toEqual({ ok: true });
     const text = JSON.stringify(body);
-    expect(text).not.toContain('backups/');
-    expect(text).not.toContain('1234');
+    for (const leak of ['backups/', '1234', HEAD, String(AT), '42']) {
+      expect(text).not.toContain(leak);
+    }
   });
 
   it('SEC-26 /healthz answers 503 past the 26 hour default and 200 again inside a longer saved limit', async () => {
@@ -72,6 +59,6 @@ describe('SEC-26 health endpoint', () => {
     await recordRun(env.DB, run({ finished_at: AT + 50 * HOUR, status: 'failed', error: 'x' }));
     const { status, body } = await health(AT + 50 * HOUR);
     expect(status).toBe(503);
-    expect(body.backup_at).toBe(AT);
+    expect(body).toEqual({ ok: false });
   });
 });
