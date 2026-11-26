@@ -373,6 +373,8 @@ live:
     want /mcp "$(get "$t/mcp" $demo/mcp)" 404
     want /.well-known/oauth-protected-resource "$(get "$t/prm" $demo/.well-known/oauth-protected-resource)" 404
     want /oauth/authorize "$(get "$t/authorize" $demo/oauth/authorize)" 404
+    want /oauth/token "$(get "$t/token" $demo/oauth/token)" 404
+    want /.well-known/oauth-authorization-server "$(get "$t/asm" $demo/.well-known/oauth-authorization-server)" 404
     want /setup "$(get "$t/setup" $demo/setup)" 404
     want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
     echo "PASS live"
