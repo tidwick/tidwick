@@ -13,7 +13,8 @@ Scattered role checks drift, and one missed check leaks client data. Roles must 
 - `src/routes.ts` is the only place roles meet paths; anything not listed is denied.
 - The table is proven against the built route manifest.
 - Step-up is a flag on a route row, enforced by middleware.
-- A member sees a client through assignment or by having created it.
+- A member sees a client through an assigned project. Only an admin or accounting admin creates clients and projects, so a refused name or number tells a member nothing about what exists.
+- A step-up that depends on the input (an email change) is checked inside the Action with the same gate, `requireStepUp`.
 
 ## Consequences
 

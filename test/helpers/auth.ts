@@ -35,7 +35,7 @@ export async function addPerson(
   const email = `person${n}@practice.example`;
   const lines = [
     "INSERT OR IGNORE INTO client (id, name, created_at) VALUES ('c-home', 'Example Practice', 1);",
-    "INSERT OR IGNORE INTO firm (id, name, client_id) VALUES ('f-home', 'Example Practice', 'c-home');",
+    "INSERT OR IGNORE INTO firm (id, client_id) VALUES ('f-home', 'c-home');",
     `INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('${id}', 'f-home', '${email}', 'Person ${n}', 1);`,
   ];
   for (const role of grants)

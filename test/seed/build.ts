@@ -145,7 +145,7 @@ export function seedStatements(): string[] {
     name,
     CREATED,
   ]);
-  const firms = FIRMS.map((f, i) => [id('f1', i + 1), f.name, id('c1', i + 1)]);
+  const firms = FIRMS.map((_f, i) => [id('f1', i + 1), id('c1', i + 1)]);
   const people: Value[][] = [];
   FIRMS.forEach((firm, f) => {
     for (let k = 0; k < firm.people; k++) {
@@ -187,7 +187,7 @@ export function seedStatements(): string[] {
   });
   return [
     insert('client', ['id', 'name', 'created_at'], clients),
-    insert('firm', ['id', 'name', 'client_id'], firms),
+    insert('firm', ['id', 'client_id'], firms),
     insert('person', ['id', 'firm_id', 'email', 'name', 'external_code', 'created_at'], people),
     insert('person_role', ['person_id', 'role', 'granted_at'], roles),
     insert('task_code', ['id', 'code', 'name', 'created_at'], tasks),

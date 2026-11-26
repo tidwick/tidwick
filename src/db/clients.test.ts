@@ -4,6 +4,7 @@ import { adminScope, T0 } from '../../test/helpers/auth';
 import { clientWithProject, memberScope, unique } from '../../test/helpers/reference';
 import { currentEnv } from '../lib/env';
 import { unwrapClientKey } from '../lib/note-crypto';
+import { addAssignment } from './assignments';
 import { archiveClient, clientById, createClient, listClients, renameClient } from './clients';
 import { scopeFor } from './scope';
 
@@ -30,32 +31,36 @@ describe('clients', () => {
     expect(plain).toHaveLength(32);
   });
 
-  it('a taken client name is name_taken whether or not the caller can see the existing client', async () => {
+  it('a taken client name is name_taken ignoring case, and a member scope cannot create or probe one', async () => {
     const admin = await adminScope();
     const { scope: member } = await memberScope();
     const name = unique('Taken');
     await createClient(admin, env.DB, kek(), name, T0);
-    for (const who of [admin, member]) {
-      await expect(createClient(who, env.DB, kek(), name.toUpperCase(), T0)).rejects.toMatchObject({
-        code: 'name_taken',
+    await expect(createClient(admin, env.DB, kek(), name.toUpperCase(), T0)).rejects.toMatchObject({
+      code: 'name_taken',
+    });
+    for (const probe of [name, unique('Free')]) {
+      await expect(createClient(member, env.DB, kek(), probe, T0)).rejects.toMatchObject({
+        code: 'forbidden',
       });
     }
   });
 
-  it('a member sees a client only through an assigned project or as its creator, never another member client', async () => {
+  it('a member sees a client only through an assigned project, never an unassigned one', async () => {
+    const admin = await adminScope();
     const one = await memberScope();
     const two = await memberScope();
-    const mine = await clientWithProject(one.scope);
-    const bare = await createClient(one.scope, env.DB, kek(), unique('Bare'), T0);
+    const mine = await clientWithProject(admin);
+    const bare = await createClient(admin, env.DB, kek(), unique('Bare'), T0);
+    await addAssignment(admin, env.DB, mine.project.id, one.id, T0);
     const fresh = await scopeFor(env.DB, one.id);
     const seen = (await listClients(fresh, env.DB)).map((c) => c.id);
     expect(seen).toContain(mine.clientId);
-    expect(seen).toContain(bare.id);
+    expect(seen).not.toContain(bare.id);
     const other = await scopeFor(env.DB, two.id);
     expect((await listClients(other, env.DB)).map((c) => c.id)).not.toContain(mine.clientId);
     expect(await clientById(other, env.DB, mine.clientId)).toBeNull();
-    expect(await clientById(other, env.DB, bare.id)).toBeNull();
-    const admin = await adminScope();
+    expect(await clientById(fresh, env.DB, bare.id)).toBeNull();
     expect(await clientById(admin, env.DB, bare.id)).not.toBeNull();
   });
 

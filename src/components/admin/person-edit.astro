@@ -1,0 +1,67 @@
+---
+import { actions } from 'astro:actions';
+import type { FirmRow } from '../../db/firms';
+import Field from './field.astro';
+import PostForm from './post-form.astro';
+import SelectField from './select-field.astro';
+// The edit form for an active person: name, email, accounting code and firm. A changed email needs a fresh passkey
+// confirmation, said in its hint; the rest saves without one. `typed` holds what a refused save posted.
+interface Props {
+  csrf: string;
+  person: {
+    id: string;
+    name: string;
+    email: string;
+    external_code: string | null;
+    firm_id: string;
+  };
+  firms: FirmRow[];
+  typed: Record<string, string> | null;
+  errors: Readonly<Record<string, readonly string[]>>;
+}
+const { csrf, person, firms, typed, errors } = Astro.props;
+const shown = (name: string, now: string) => typed?.[name] ?? now;
+---
+
+<section aria-labelledby="edit-h" class="grid max-w-md gap-3">
+  <h2 id="edit-h" class="text-lg font-semibold">
+    Details
+  </h2>
+  <PostForm
+    action={actions.people.update}
+    csrf={csrf}
+    label="Save details"
+    fields={{ id: person.id }}
+  >
+    <Field
+      label="Name"
+      field="name"
+      required
+      value={shown('name', person.name)}
+      errors={errors.name ?? []}
+    />
+    <Field
+      label="Email"
+      field="email"
+      type="email"
+      required
+      hint="Changing it needs a fresh passkey confirmation."
+      value={shown('email', person.email)}
+      errors={errors.email ?? []}
+    />
+    <Field
+      label="Accounting system code"
+      field="externalCode"
+      hint="Optional"
+      value={shown('externalCode', person.external_code ?? '')}
+      errors={errors.externalCode ?? []}
+    />
+    <SelectField
+      label="Firm"
+      field="firmId"
+      required
+      value={shown('firmId', person.firm_id)}
+      options={firms.map((f) => ({ value: f.id, label: f.name }))}
+    />
+  </PostForm>
+</section>

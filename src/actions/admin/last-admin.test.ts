@@ -2,8 +2,10 @@
 // admin counts as a replacement only with an unrevoked passkey, so each replacement here enrols one.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { addPerson, T0, ACCOUNTING, ADMIN, withPasskey } from '../../../test/helpers/auth';
+import { addPerson, deps, T0, ACCOUNTING, ADMIN, withPasskey } from '../../../test/helpers/auth';
 import { offboard } from '../../auth/offboard';
+import { reenrol } from '../../auth/revoke';
+import { revokeCredentialsKeepingAdmin } from '../../db/credentials';
 import { isLastAdmin, offboardStatement } from '../../db/admins';
 import { setGrants } from '../../db/role-grants';
 import { grantsOf } from '../../db/roles';
@@ -80,5 +82,28 @@ describe('SEC-11 the last admin stays', () => {
     expect(await isLastAdmin(env.DB, a.id)).toBe(false);
     await offboard(a.scope, env.DB, a.id, T0);
     expect(await offboardedAt(env.DB, a.id)).toBe(T0);
+  });
+
+  it('SEC-11 the last admin cannot be re-enrolled, and keeps the passkey; a second admin lifts the refusal', async () => {
+    const a = await soleAdmin();
+    const d = deps();
+    await expect(reenrol(a.scope, d.db, d.secret, a.id, T0)).rejects.toMatchObject({
+      code: 'last_admin',
+    });
+    expect(await isLastAdmin(env.DB, a.id)).toBe(true);
+    await enrolledAdmin();
+    await expect(reenrol(a.scope, d.db, d.secret, a.id, T0)).resolves.toEqual(expect.any(String));
+    expect(await isLastAdmin(env.DB, a.id)).toBe(false);
+  });
+
+  it('SEC-11 a re-enrolment whose read raced still cannot revoke the last signed-in admin', async () => {
+    const a = await soleAdmin();
+    const b = await enrolledAdmin();
+    await offboardStatement(env.DB, b.id, T0).run();
+    expect((await revokeCredentialsKeepingAdmin(env.DB, a.id, T0).run()).meta.changes).toBe(0);
+    expect(await isLastAdmin(env.DB, a.id)).toBe(true);
+    const c = await enrolledAdmin();
+    expect((await revokeCredentialsKeepingAdmin(env.DB, a.id, T0).run()).meta.changes).toBe(1);
+    expect(await isLastAdmin(env.DB, c.id)).toBe(true);
   });
 });

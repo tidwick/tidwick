@@ -163,7 +163,7 @@ export function demoReferenceStatements(): string[] {
   const clients = [...DEMO_FIRMS.map((f) => f.name), ...DEMO_CLIENTS.map((c) => c.name)].map(
     (name, i) => [demoClientIds[i] ?? null, name, CREATED],
   );
-  const firms = DEMO_FIRMS.map((f, i) => [demoId('5a', i + 1), f.name, demoId('5b', i + 1)]);
+  const firms = DEMO_FIRMS.map((_f, i) => [demoId('5a', i + 1), demoId('5b', i + 1)]);
   const people: Value[][] = demoPeople().map((p, n) => [
     p.id,
     demoId('5a', firmOf(n) + 1),
@@ -182,7 +182,7 @@ export function demoReferenceStatements(): string[] {
   );
   return [
     insert('client', ['id', 'name', 'created_at'], clients),
-    insert('firm', ['id', 'name', 'client_id'], firms),
+    insert('firm', ['id', 'client_id'], firms),
     insert('person', ['id', 'firm_id', 'email', 'name', 'external_code', 'created_at'], people),
     insert('person_role', ['person_id', 'role', 'granted_at'], roles),
     insert(

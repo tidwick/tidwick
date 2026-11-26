@@ -99,9 +99,8 @@ async function runTaken(batch: AuditedBatch): Promise<void> {
 }
 
 /**
- * Creates a project under a client the caller can see and assigns the creator, in one batch with one
- * `projects.create` event. A client outside the caller's scope is `not_found`; an archived one is `archived`.
- * A name taken in the client answers before the number is tried, so a refused create reveals no number.
+ * Creates a project under a client and assigns the creator, in one batch with one `projects.create` event.
+ * Stewards only: a member scope is forbidden. An unknown client is `not_found`; an archived one is `archived`.
  */
 export async function createProject(
   scope: Scope,
@@ -110,6 +109,7 @@ export async function createProject(
   input: ProjectInput,
   now: number,
 ): Promise<ProjectRow> {
+  requireAll(scope);
   const actor = scope.actorId ?? fail('forbidden');
   const number = await cleanNumber(db, input.number);
   const id = newId();

@@ -20,8 +20,12 @@ import type { Scope } from './scope';
 import { archiveTaskCode, createTaskCode, renameTaskCode } from './task-codes';
 
 const kek = () => currentEnv().NOTE_KEK;
-// `addAll` appends `assignments.add`; `unlinkSso`'s event and the agents it ends are asserted in src/auth/sso-revoke.test.ts.
-const EXEMPT = new Set(['assignments.addAll', 'people.unlinkSso']);
+const EXEMPT = new Set([
+  'assignments.addAll',
+  'people.unlinkSso',
+  'people.update',
+  'people.reinstate',
+]);
 const REVOKES = [
   'people.revokeCredentials',
   'people.revokeSessions',

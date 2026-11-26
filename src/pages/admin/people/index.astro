@@ -87,6 +87,7 @@ const roleNames = (roles: string) =>
           label="Firm"
           field="firmId"
           blank="New firm, named below"
+          value={shown('firmId')}
           options={firms.map((f) => ({ value: f.id, label: f.name }))}
         />
         <Field

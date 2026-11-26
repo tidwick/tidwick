@@ -22,7 +22,7 @@ async function signedIn(): Promise<{ raw: string; token: string }> {
   await env.DB.exec(
     [
       "INSERT OR IGNORE INTO client (id, name, created_at) VALUES ('c-home', 'Example Practice', 1);",
-      "INSERT OR IGNORE INTO firm (id, name, client_id) VALUES ('f-home', 'Example Practice', 'c-home');",
+      "INSERT OR IGNORE INTO firm (id, client_id) VALUES ('f-home', 'c-home');",
       `INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('${id}', 'f-home', 'm${String(serial)}@practice.example', 'Member', 1);`,
     ].join('\n'),
   );

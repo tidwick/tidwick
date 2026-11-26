@@ -1,7 +1,12 @@
 // Revoking a person's access: every credential, identity, session, unused recovery code, open link and agent grant, each audited.
 import { liveGrantIdsOf, revokeGrantsOf } from '../db/agent-grants';
+import { isLastAdmin } from '../db/admins';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
-import { activeCredentialsOf, revokeCredentialsOf } from '../db/credentials';
+import {
+  activeCredentialsOf,
+  revokeCredentialsKeepingAdmin,
+  revokeCredentialsOf,
+} from '../db/credentials';
 import { closeEnrolmentsOf, openEnrolmentCount } from '../db/enrolments';
 import { liveIdentitiesOf, revokeIdentitiesOf } from '../db/identities';
 import { personById } from '../db/people';
@@ -67,6 +72,7 @@ export async function recordRevocations(
   db: D1Database,
   personId: string,
   now: number,
+  keepLastAdmin = false,
 ): Promise<void> {
   const credentials = (await activeCredentialsOf(db, personId)).map((c) => c.id);
   const sessions = await liveSessionCount(db, personId, now);
@@ -74,7 +80,7 @@ export async function recordRevocations(
   const links = await openEnrolmentCount(db, personId, now);
   const event = { at: now, clientId: null, target: `person:${personId}` };
   await batch.record(
-    revokeCredentialsOf(db, personId, now),
+    (keepLastAdmin ? revokeCredentialsKeepingAdmin : revokeCredentialsOf)(db, personId, now),
     { ...event, action: 'people.revokeCredentials', before: { credentials } },
     credentials.length,
   );
@@ -111,7 +117,10 @@ export async function revokeAccess(
   });
 }
 
-/** Re-enrolment: revokes all of a person's access and issues one new link in the same batch; returns its token. */
+/**
+ * Re-enrolment: revokes all of a person's access and issues one new link in the same batch; returns its token.
+ * The last admin who can sign in is refused as `last_admin`, as offboarding does: it would leave no one to sign in.
+ */
 export async function reenrol(
   scope: Scope,
   db: D1Database,
@@ -120,11 +129,12 @@ export async function reenrol(
   now: number,
 ): Promise<string> {
   requireAll(scope);
-  const person = await personById(db, personId);
-  if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {
+    const person = await personById(db, personId);
+    if (!person || person.offboarded_at !== null) fail('not_found');
+    if (await isLastAdmin(db, personId)) fail('last_admin');
     const batch = await auditedBatch(scope, db);
-    await recordRevocations(batch, db, personId, now);
+    await recordRevocations(batch, db, personId, now, true);
     const token = await recordEnrolment(batch, db, secret, personId, 'people.reenrol', now);
     await batch.run();
     return token;

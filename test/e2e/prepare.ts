@@ -26,7 +26,7 @@ const { secret, kek } = vars;
 const tokens: Record<string, string> = {};
 const sql = [
   "INSERT OR IGNORE INTO client (id, name, created_at) VALUES ('e2e-client', 'Example Practice', 1);",
-  "INSERT OR IGNORE INTO firm (id, name, client_id) VALUES ('e2e-firm', 'Example Practice', 'e2e-client');",
+  "INSERT OR IGNORE INTO firm (id, client_id) VALUES ('e2e-firm', 'e2e-client');",
 ];
 // One admin per project too, whose enrolment link the admin spec uses; they hold the admin grant only.
 const ADMINS = PROJECTS.map((project) => `admin-${project}`);

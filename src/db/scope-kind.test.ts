@@ -93,17 +93,19 @@ describe('the domain refuses privileged calls by scope kind', () => {
     }
   });
 
-  it('a member scope can still create a client and a project, which are member rows', async () => {
-    const client = await createClient(member, env.DB, kek(), 'Member made', NOW);
-    expect(client.name).toBe('Member made');
+  it('a member scope cannot create a client or a project', async () => {
+    await expect(createClient(member, env.DB, kek(), 'Member made', NOW)).rejects.toMatchObject({
+      code: 'forbidden',
+    });
     const own = await env.DB.prepare(
       'SELECT p.client_id FROM assignment a JOIN project p ON p.id = a.project_id WHERE a.person_id = ?1 LIMIT 1',
     )
       .bind(MEMBER)
       .first<{ client_id: string }>();
     const clientId = own?.client_id ?? expect.unreachable('member has no project');
-    const project = await createProject(member, env.DB, clientId, { name: 'P', number: '' }, NOW);
-    expect(project.client_id).toBe(clientId);
+    await expect(
+      createProject(member, env.DB, clientId, { name: 'P', number: '' }, NOW),
+    ).rejects.toMatchObject({ code: 'forbidden' });
   });
 
   it('an all-clients scope reads people', async () => {

@@ -4,7 +4,6 @@ import { clientWithProject, memberScope, unique } from '../../test/helpers/refer
 import { adminScope, T0 } from '../../test/helpers/auth';
 import { currentEnv } from '../lib/env';
 import { archiveClient, createClient } from './clients';
-import { scopeFor } from './scope';
 import {
   archiveProject,
   createProject,
@@ -99,49 +98,25 @@ describe('projects', () => {
     await createProject(scope, env.DB, await clientId(), { name: 'Alpha', number: '' }, T0);
   });
 
-  it('the creator is assigned, so a member sees the project they made', async () => {
-    const { id, scope } = await memberScope();
-    const { clientId: cid, project } = await clientWithProject(scope);
+  it('the creator is assigned, and a member scope cannot create a project', async () => {
+    const admin = await adminScope();
+    const { clientId: cid, project } = await clientWithProject(admin);
     const rows = await env.DB.prepare('SELECT person_id FROM assignment WHERE project_id = ?1')
       .bind(project.id)
       .all<{ person_id: string }>();
-    expect(rows.results.map((r) => r.person_id)).toEqual([id]);
-    const fresh = await scopeFor(env.DB, id);
-    expect((await listProjects(fresh, env.DB, cid)).map((p) => p.id)).toEqual([project.id]);
-  });
-
-  it('a member creating a project learns nothing about numbers outside their scope', async () => {
-    const admin = await adminScope();
-    await createProject(
-      admin,
-      env.DB,
-      await clientId(),
-      { name: unique('Hidden'), number: '26-0901' },
-      T0,
-    );
-    const { id, scope } = await memberScope();
-    const { clientId: own, project } = await clientWithProject(scope);
-    const member = await scopeFor(env.DB, id);
-    const codes: (string | undefined)[] = [];
-    for (const number of ['26-0901', '26-0902']) {
-      const refused = await createProject(
-        member,
-        env.DB,
-        own,
-        { name: project.name, number },
-        T0,
-      ).catch((error: unknown) => error);
-      codes.push((refused as { code?: string }).code);
-    }
-    expect(codes).toEqual(['name_taken', 'name_taken']);
-  });
-
-  it('a project cannot be created under an archived or an unseen client', async () => {
-    const admin = await adminScope();
+    expect(rows.results.map((r) => r.person_id)).toEqual([admin.actorId]);
     const { scope: member } = await memberScope();
+    await expect(
+      createProject(member, env.DB, cid, { name: unique('Nope'), number: '26-0902' }, T0),
+    ).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(listProjects(member, env.DB, cid)).resolves.toEqual([]);
+  });
+
+  it('a project cannot be created under an archived or an unknown client', async () => {
+    const admin = await adminScope();
     const id = await clientId();
     await expect(
-      createProject(member, env.DB, id, { name: 'Nope', number: '' }, T0),
+      createProject(admin, env.DB, 'missing', { name: 'Nope', number: '' }, T0),
     ).rejects.toMatchObject({ code: 'not_found' });
     await archiveClient(admin, env.DB, id, false, T0);
     await expect(

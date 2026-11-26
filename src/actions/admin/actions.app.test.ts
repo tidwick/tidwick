@@ -41,13 +41,12 @@ async function does(
 describe('the admin data Actions', () => {
   it('each Action writes once, is audited once, and the whole reference-data journey works', async () => {
     const admin = await caller([ADMIN]);
-    const member = await caller([]);
     const other = await caller([]);
     const tag = String(Date.now() % 10000).padStart(4, '0');
 
-    await does('clients.create', member, { name: `Moss Bank ${tag}` });
+    await does('clients.create', admin, { name: `Moss Bank ${tag}` });
     const clientId = await idOf(env.DB, 'client', `Moss Bank ${tag}`);
-    await does('projects.create', member, {
+    await does('projects.create', admin, {
       clientId,
       name: 'Roof',
       number: `26-${tag}`,
@@ -82,18 +81,19 @@ describe('the admin data Actions', () => {
     const admin = await caller([ADMIN]);
     const member = await caller([]);
     const name = `Taken ${String(Date.now() % 100000)}`;
-    expect((await rpcForm('clients.create', member, { name })).status).toBe(200);
+    expect((await rpcForm('clients.create', admin, { name })).status).toBe(200);
+    expect((await rpcForm('clients.create', member, { name })).status).toBe(403);
     const seq = await headSeq();
     const clash = await rpcForm('clients.create', admin, { name: name.toLowerCase() });
     expect(clash.status).toBe(409);
     const clientId = await idOf(env.DB, 'client', name);
     expect(
-      (await rpcForm('projects.create', member, { clientId, name: 'X', number: '26-12' })).status,
+      (await rpcForm('projects.create', admin, { clientId, name: 'X', number: '26-12' })).status,
     ).toBe(400);
     expect(
-      (await rpcForm('projects.create', await caller([]), { clientId, name: 'X' })).status,
+      (await rpcForm('projects.create', admin, { clientId: 'missing', name: 'X' })).status,
     ).toBe(404);
-    expect((await rpcForm('clients.create', member, { name: '   ' })).status).toBe(400);
+    expect((await rpcForm('clients.create', admin, { name: '   ' })).status).toBe(400);
     expect(
       (await rpcForm('people.create', admin, { name: 'A', email: 'not-an-email', newFirm: 'F' }))
         .status,
@@ -106,17 +106,36 @@ describe('the admin data Actions', () => {
 });
 
 describe('the admin pages without script', () => {
-  it('a member creates a client from the form and lands on it; another member cannot open it', async () => {
+  it('an admin creates a client from the form and lands on it; a member sees it only once assigned, and no form', async () => {
+    const admin = await caller([ADMIN]);
     const member = await caller([]);
     const name = `Pine Row ${String(Date.now() % 100000)}`;
-    const posted = await formPost('/clients', 'clients.create', member, { name });
+    const posted = await formPost('/clients', 'clients.create', admin, { name });
     expect(posted.status).toBe(303);
     const clientId = await idOf(env.DB, 'client', name);
     expect(posted.headers.get('location')).toBe(`/clients/${clientId}?saved=1`);
-    expect(await (await getPage(`/clients/${clientId}`, member)).text()).toContain(name);
-    expect((await getPage(`/clients/${clientId}`, await caller([]))).status).toBe(404);
-    expect(await (await getPage('/clients', member)).text()).toContain(name);
-    expect(await (await getPage('/clients', await caller([]))).text()).not.toContain(name);
+    expect(await (await getPage(`/clients/${clientId}`, admin)).text()).toContain(name);
+    expect(await (await getPage('/clients', admin)).text()).toContain('Add client');
+    expect((await getPage(`/clients/${clientId}`, member)).status).toBe(404);
+    const list = await (await getPage('/clients', member)).text();
+    expect(list).not.toContain(name);
+    expect(list).not.toContain('Add client');
+    const refused = await formPost('/clients', 'clients.create', member, { name: `${name} 2` });
+    expect(refused.status).toBe(403);
+  });
+
+  it('a refused New project keeps the chosen client selected', async () => {
+    const admin = await caller([ADMIN]);
+    const tag = String(Date.now() % 100000);
+    for (const n of ['Aster', 'Birch'])
+      await rpcForm('clients.create', admin, { name: `${n} ${tag}` });
+    const second = await idOf(env.DB, 'client', `Birch ${tag}`);
+    const page = await formPost('/clients', 'projects.create', admin, {
+      clientId: second,
+      name: 'X',
+      number: 'bad',
+    });
+    expect(await page.text()).toContain(`value="${second}" selected`);
   });
 
   it('a form error shows the catalog message on the page', async () => {

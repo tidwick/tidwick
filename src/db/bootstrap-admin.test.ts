@@ -7,7 +7,7 @@ describe('first admin bootstrap against an admin', () => {
   it('SEC-29 a bootstrap writes nothing into a database with an admin grant and an empty log', async () => {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO client (id, name, created_at) VALUES ('c0', 'Home', 1)"),
-      env.DB.prepare("INSERT INTO firm (id, name, client_id) VALUES ('f0', 'Home', 'c0')"),
+      env.DB.prepare("INSERT INTO firm (id, client_id) VALUES ('f0', 'c0')"),
       env.DB.prepare(
         "INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p0', 'f0', 'owner@example.test', 'Owner', 1)",
       ),

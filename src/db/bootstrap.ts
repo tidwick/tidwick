@@ -79,7 +79,7 @@ async function statements(input: BootstrapInput): Promise<Statement[]> {
       'client_key (client_id, version, wrapped, iv, kek_id, created_at)',
       [input.clientId, 1, input.key.wrapped, input.key.iv, input.key.kekId, now],
     ],
-    ['firm (id, name, client_id)', [input.firmId, input.firm, input.clientId]],
+    ['firm (id, client_id)', [input.firmId, input.clientId]],
     [
       'person (id, firm_id, email, name, created_at)',
       [input.personId, input.firmId, input.email, input.name, now],

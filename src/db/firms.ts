@@ -1,5 +1,5 @@
 // Firms: a person belongs to one, and each firm is booked as a client, which holds its internal and
-// overhead projects. A firm is created with its client and that client's first data key.
+// overhead projects and gives the firm its name. A firm is created with its client and that client's first data key.
 import type { AuditedBatch } from './audit';
 import { insertClient, insertClientKey } from './clients';
 import { newClientKey } from '../lib/note-crypto';
@@ -7,13 +7,15 @@ import { newId } from '../lib/ids';
 
 export interface FirmRow {
   id: string;
+  /** The firm's client's name: renaming the client renames the firm. */
   name: string;
   client_id: string;
 }
 
-const LIST = 'SELECT id, name, client_id FROM firm ORDER BY name';
-const ONE = 'SELECT id, name, client_id FROM firm WHERE id = ?1';
-const INSERT = 'INSERT INTO firm (id, name, client_id) VALUES (?1, ?2, ?3)';
+const FROM = 'FROM firm f JOIN client c ON c.id = f.client_id';
+const LIST = `SELECT f.id, c.name, f.client_id ${FROM} ORDER BY c.name`;
+const ONE = `SELECT f.id, c.name, f.client_id ${FROM} WHERE f.id = ?1`;
+const INSERT = 'INSERT INTO firm (id, client_id) VALUES (?1, ?2)';
 
 export async function listFirms(db: D1Database): Promise<FirmRow[]> {
   return (await db.prepare(LIST).all<FirmRow>()).results;
@@ -35,6 +37,6 @@ export async function addFirm(
   const key = await newClientKey(kek, firm.client_id, 1);
   batch.also(insertClient(db, firm.client_id, name, now));
   batch.also(insertClientKey(db, firm.client_id, key, now));
-  batch.also(db.prepare(INSERT).bind(firm.id, name, firm.client_id));
+  batch.also(db.prepare(INSERT).bind(firm.id, firm.client_id));
   return firm;
 }
