@@ -71,6 +71,21 @@ describe('import Actions', () => {
     expect(await eventsAfter(before)).toEqual([]);
   });
 
+  it('SEC-25 a file that is not UTF-8 is refused with a clear message, in preview and apply, and writes nothing', async () => {
+    const who = await fresh();
+    const before = await headSeq();
+    const latin1 = new File(
+      [new Uint8Array([...new TextEncoder().encode(`${header}\r\n01/05/2026,x,Caf`), 0xe9, 0x0a])],
+      'a.csv',
+    );
+    for (const name of ['import.preview', 'import.apply']) {
+      const refused = await rpcFile(name, who, latin1);
+      expect(refused.status, name).toBe(400);
+      expect(await messageOf(refused), name).toContain('not UTF-8');
+    }
+    expect(await eventsAfter(before)).toEqual([]);
+  });
+
   it('a fresh accounting admin applies the file, and applying it again writes no second entry', async () => {
     const who = await fresh();
     const entries = await countOf(env.DB, 'entries');

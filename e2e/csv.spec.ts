@@ -36,6 +36,10 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   await expect(page.getByRole('heading', { name: 'Preview' })).toBeVisible();
   await expect(page.getByText('unknown person nobody@practice.example')).toBeVisible();
   await expect(page.getByText('Rows read')).toBeVisible();
+  // The preview totals what it would write: the one row that resolves has 3.5 hours on one day.
+  await expect(page.getByText('Hours to write')).toBeVisible();
+  await expect(page.getByText('3.50', { exact: true })).toBeVisible();
+  await expect(page.getByText('2031-03-17 to 2031-03-17')).toBeVisible();
 
   await page.goto('/account');
   // The page already says "Confirmed until" from sign-in, so the proof is the reload the confirmation causes.

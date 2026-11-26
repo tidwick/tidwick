@@ -65,18 +65,29 @@ export interface ImportPlan {
   rejected: Rejection[];
   alreadyApplied: number;
   roundedRows: number;
-  newClients: string[];
-  newProjects: { client: string; name: string; number: string | null }[];
-  /** Person and existing project, to assign. */
+  /** Clients the file names that do not exist; the id is the one its planned projects and entries carry until created. */
+  newClients: { id: string; name: string }[];
+  /** Projects the file names that do not exist, with the tasks its rows name; they are created allowing those tasks. */
+  newProjects: {
+    id: string;
+    clientId: string;
+    client: string;
+    name: string;
+    number: string | null;
+    taskIds: string[];
+  }[];
+  /** Person and project, new or existing, to assign. */
   assignments: { personId: string; projectId: string }[];
-  /** Person and a project that does not exist yet, named by client and project, to assign once it does. */
-  pendingAssignments: { personId: string; client: string; project: string }[];
   /** What an admin must add before the rejected rows that need it can land. */
   needsAdmin: string[];
   /** Every person-week the import writes into, with the submission state it was planned against. */
   weeks: { personId: string; weekStart: string; state: string | null }[];
   /** Person-weeks with no submission that hold only this file's entries; they become approved. */
   approveWeeks: { personId: string; weekStart: string }[];
+  /** Approved person-weeks that hold only this file's entries, written to again by this same file. */
+  ownApprovedWeeks: { personId: string; weekStart: string }[];
+  /** First and last date of the entries, or null with none. */
+  span: { from: string; to: string } | null;
   /** Person-weeks with no submission that also hold entries the file did not write; they stay draft. */
   draftWeeks: { personId: string; weekStart: string }[];
 }

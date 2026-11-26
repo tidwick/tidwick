@@ -1,6 +1,8 @@
 // Matching each read row to a person, client, project and task, rejecting what cannot be matched and noting what
-// is new or what an admin must add. Pure.
+// is new or what an admin must add. A client or project the file names that does not exist is planned under a new
+// id, and the tasks its rows name become the project's allowed tasks, so a first import lands in one apply. Pure.
 import type { ImportRow } from './import';
+import { newId } from './ids';
 import type { ImportPlan, ImportReference } from './import-types';
 
 const lower = (text: string): string => text.toLowerCase();
@@ -32,7 +34,7 @@ export function resolveRows(
   for (const t of ref.tasks) taskOf.set(lower(t.name), t);
   for (const t of ref.tasks) taskOf.set(lower(t.code), t);
   const allowed = new Set(ref.allowed.map((a) => key(a.projectId, a.taskId)));
-  const newClients = new Set<string>();
+  const newClients = new Map<string, ImportPlan['newClients'][number]>();
   const newProjects = new Map<string, ImportPlan['newProjects'][number]>();
   const out: Resolved[] = [];
   for (const row of rows) {
@@ -84,19 +86,35 @@ export function resolveRows(
         continue;
       }
       const clientName = client?.name ?? row.client;
-      if (client === undefined) newClients.add(row.client);
-      newProjects.set(key(lower(clientName), lower(row.project)), {
+      let owner = client === undefined ? newClients.get(lower(row.client)) : undefined;
+      if (client === undefined && owner === undefined) {
+        owner = { id: newId(), name: row.client };
+        newClients.set(lower(row.client), owner);
+      }
+      const clientId = client?.id ?? owner?.id ?? '';
+      const planned = newProjects.get(key(lower(clientName), lower(row.project))) ?? {
+        id: newId(),
+        clientId,
         client: clientName,
         name: row.project,
         number: row.projectNumber,
-      });
-      plan.pendingAssignments.push({
-        personId: person.id,
-        client: clientName,
-        project: row.project,
-      });
-      reject([row.line], `task ${task.code} is not allowed on the new project "${row.project}"`);
-      plan.needsAdmin.push(`allow ${task.code} on project "${row.project}"`);
+        taskIds: [],
+      };
+      newProjects.set(key(lower(clientName), lower(row.project)), planned);
+      if (
+        row.projectNumber !== null &&
+        planned.number !== null &&
+        planned.number !== row.projectNumber
+      ) {
+        reject(
+          [row.line],
+          `project "${planned.name}" is ${planned.number}, not ${row.projectNumber}`,
+        );
+        continue;
+      }
+      planned.number ??= row.projectNumber;
+      if (!planned.taskIds.includes(task.id)) planned.taskIds.push(task.id);
+      out.push({ row, personId: person.id, clientId, projectId: planned.id, taskId: task.id });
       continue;
     }
     if (!allowed.has(key(project.id, task.id))) {
@@ -112,7 +130,7 @@ export function resolveRows(
       taskId: task.id,
     });
   }
-  plan.newClients = [...newClients];
+  plan.newClients = [...newClients.values()];
   plan.newProjects = [...newProjects.values()];
   return out;
 }

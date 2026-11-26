@@ -26,8 +26,13 @@ export interface ImportReport {
   newClients: string[];
   newProjects: { client: string; name: string }[];
   needsAdmin: string[];
+  /** The hours of the entries, in hundredths. */
   hundredths: number;
+  /** First and last date of the entries, or null with none. */
+  span: { from: string; to: string } | null;
   weeksApproved: number;
+  /** The weeks the apply approves, by the person's email, as far as `MAX_SHOWN`. */
+  approvedWeeks: { email: string; weekStart: string }[];
   /** Touched weeks with no submission that also hold the owner's own entries, so they stay draft. */
   weeksLeftDraft: number;
   /** Person and project pairs the import assigns that were not assigned before. */
@@ -42,8 +47,8 @@ export interface Run {
   read: ReadResult;
   plan: ImportPlan;
   mappingChanged: ImportReport['mappingChanged'];
-  clientIds: Map<string, string>;
-  projectIds: Map<string, { id: string; clientId: string }>;
+  /** Each person's email by id, for listing weeks. */
+  emails: Map<string, string>;
 }
 
 async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
@@ -59,6 +64,15 @@ function canonicalJson(value: unknown): string {
   );
 }
 
+/** The file as text; bytes that are not UTF-8 are refused, since a lenient decode would store replacement characters as names. */
+function decodeUtf8(bytes: Uint8Array<ArrayBuffer>): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    fail('invalid_input', 'the file is not UTF-8 text; save it as CSV (UTF-8) and try again');
+  }
+}
+
 export async function planFile(db: D1Database, bytes: Uint8Array<ArrayBuffer>): Promise<Run> {
   if (bytes.byteLength > MAX_IMPORT_BYTES)
     fail('invalid_input', 'the file is over 2 MB; split it by date range');
@@ -66,7 +80,7 @@ export async function planFile(db: D1Database, bytes: Uint8Array<ArrayBuffer>): 
   const mapping = await loadImportMapping(db);
   const mappingHash = await sha256Hex(new TextEncoder().encode(canonicalJson(mapping)));
   const prior = await priorBatch(db, hash);
-  const read = readImport(new TextDecoder().decode(bytes), mapping);
+  const read = readImport(decodeUtf8(bytes), mapping);
   const ref = await loadReference(db);
   const existing = await loadExisting(db, read.rows, ref);
   const plan = planImport(read.rows, ref, existing, hash);
@@ -82,13 +96,7 @@ export async function planFile(db: D1Database, bytes: Uint8Array<ArrayBuffer>): 
             appliedOn: new Date(prior.finishedAt ?? 0).toISOString().slice(0, 10),
             entries: prior.entries,
           },
-    clientIds: new Map(ref.clients.map((c) => [c.name.toLowerCase(), c.id])),
-    projectIds: new Map(
-      ref.projects.map((p) => [
-        `${p.clientId}|${p.name.toLowerCase()}`,
-        { id: p.id, clientId: p.clientId },
-      ]),
-    ),
+    emails: new Map(ref.people.map((p) => [p.id, p.email])),
   };
 }
 
@@ -120,11 +128,16 @@ export function reportOf(run: Run, applied: boolean, assignmentsAdded: number): 
     roundedRows: run.plan.roundedRows,
     rejectedCount: rejected.length,
     rejected: rejected.slice(0, MAX_SHOWN),
-    newClients: run.plan.newClients,
+    newClients: run.plan.newClients.map((c) => c.name),
     newProjects: run.plan.newProjects.map((p) => ({ client: p.client, name: p.name })),
     needsAdmin: run.plan.needsAdmin,
     hundredths: run.plan.entries.reduce((sum, e) => sum + e.hundredths, 0),
+    span: run.plan.span,
     weeksApproved: run.plan.approveWeeks.length,
+    approvedWeeks: run.plan.approveWeeks.slice(0, MAX_SHOWN).map((w) => ({
+      email: run.emails.get(w.personId) ?? w.personId,
+      weekStart: w.weekStart,
+    })),
     weeksLeftDraft: run.plan.draftWeeks.length,
     assignmentsAdded,
     mappingChanged: run.mappingChanged,

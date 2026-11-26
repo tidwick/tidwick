@@ -10,15 +10,18 @@ import {
   TableRowHead,
 } from '../ui/table';
 import type { ImportReport } from '../../db/import-run';
+import { formatHoursFixed } from '../../lib/hours';
 // What a preview or an apply found, in the order a person reads it: the counts, what needs an admin, then every
 // rejected line with its reason.
 interface Props {
   report: ImportReport;
 }
 const { report } = Astro.props;
-const stats: [string, number][] = [
+const stats: [string, number | string][] = [
   ['Rows read', report.rowsRead],
   [report.applied ? 'Entries created' : 'Entries to create', report.entries],
+  [report.applied ? 'Hours written' : 'Hours to write', formatHoursFixed(report.hundredths)],
+  ['Dates', report.span === null ? 'none' : `${report.span.from} to ${report.span.to}`],
   ['Already written by this file', report.alreadyApplied],
   ['Rows with hours rounded', report.roundedRows],
   ['Rows rejected', report.rejectedCount],
@@ -44,7 +47,7 @@ const stats: [string, number][] = [
     {stats.map(([name, value]) => (
       <div
         class="rounded-lg border border-border p-3"
-        data-rejected={name === 'Rows rejected' && value > 0 ? 'yes' : undefined}
+        data-rejected={name === 'Rows rejected' && value !== 0 ? 'yes' : undefined}
       >
         <dt class="text-xs text-muted-foreground">{name}</dt>
         <dd class="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
@@ -58,6 +61,29 @@ const stats: [string, number][] = [
       {report.mappingChanged.entries} entries. Apply will refuse it; correct those weeks by editing
       them, or save that mapping again.
     </p>
+  )}
+  {report.approvedWeeks.length > 0 && (
+    <details class="text-sm">
+      <summary class="cursor-pointer font-medium">
+        {report.applied ? 'Weeks approved by this import' : 'Weeks this import would approve'}
+      </summary>
+      <p class="mt-1 text-muted-foreground">
+        A week with no submission that holds only this file’s hours is approved. A week already
+        approved takes hours from this file only when this file approved it.
+      </p>
+      <ul class="mt-1 list-disc pl-6">
+        {report.approvedWeeks.map((w) => (
+          <li>
+            {w.email}, week of {w.weekStart}
+          </li>
+        ))}
+      </ul>
+      {report.weeksApproved > report.approvedWeeks.length && (
+        <p class="text-muted-foreground">
+          Showing the first {report.approvedWeeks.length} of {report.weeksApproved}.
+        </p>
+      )}
+    </details>
   )}
   {report.newClients.length > 0 && (
     <p class="text-sm">
