@@ -58,7 +58,8 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   page.on('download', () => (downloaded = true));
   await page.getByLabel('To').press('Enter');
   await expect(page).toHaveURL(/kind=week/);
-  await expect(page.getByText('No hours in that range')).toBeVisible();
+  await expect(page.getByRole('table', { name: /^Hours by week, 2031-03-10/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /^Hours by week/ })).toBeVisible();
   expect(downloaded).toBe(false);
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download CSV' }).click();
