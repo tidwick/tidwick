@@ -14,6 +14,7 @@ const week: WeekView = {
       projectId: 'p',
       taskCode: 'T',
       task: 'Task',
+      assigned: true,
       removable: false,
       cells: [
         { hundredths: 400, note: 'x'.repeat(NOTE_SHOWN + 20) },

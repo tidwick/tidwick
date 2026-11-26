@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { dayTotals, rowTotal, weekTotal, type GridRow } from '../../lib/week';
 import { cellField } from '../../lib/week-form';
-import { dirtyFields, draftKey, hoursInvalid, hoursText, settled, withDrafts } from './drafts';
+import {
+  dirtyFields,
+  draftKey,
+  draftsOf,
+  hoursInvalid,
+  hoursText,
+  settled,
+  withDrafts,
+} from './drafts';
 
 function row(rowId: string, hours: number[]): GridRow {
   return {
@@ -11,6 +19,7 @@ function row(rowId: string, hours: number[]): GridRow {
     projectId: 'p',
     taskCode: 'T',
     task: 'Task',
+    assigned: true,
     removable: false,
     cells: Array.from({ length: 7 }, (_, dow) => ({ hundredths: hours[dow] ?? 0, note: '' })),
   };
@@ -74,5 +83,19 @@ describe('unsaved edits in the grid', () => {
       [cellField('a', 2, 'note')]: '',
     };
     expect(settled(drafts, posted)).toEqual({ [draftKey('a', 2)]: { hours: '4.5' } });
+  });
+});
+
+describe('draftsOf', () => {
+  it('reads cell fields back into drafts by cell and ignores the rest', () => {
+    expect(
+      draftsOf({
+        'cell.r1.2.hours': '7.5',
+        'cell.r1.2.note': 'x',
+        'cell.r2.0.hours': '1',
+        weekStart: '2026-01-05',
+        'cell.bad': '1',
+      }),
+    ).toEqual({ 'r1|2': { hours: '7.5', note: 'x' }, 'r2|0': { hours: '1' } });
   });
 });

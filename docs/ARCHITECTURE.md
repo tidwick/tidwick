@@ -162,7 +162,6 @@ Numbers live in code; see the cited ADR.
 - Restoring revives access revoked after the backup was taken. A backup is encrypted, not authenticated.
 - The chain check is beaten by a writer who recomputes it; keep a head off-database (backup header, `/healthz`).
 - Export and backup are built in memory under caps (ADR 0010, 0008); the CSV formula escape assumes comma separators.
-- The week edit view omits an edit that cleared a cell through the lock; the audit log has it.
 - Workers invocation logs are off. The 09:00 alert needs `alert_to` and `MAIL` on.
 - Clients, projects and task codes are archived, never deleted.
 - A wrong mapping on import cannot be undone as a batch; correct cell by cell.

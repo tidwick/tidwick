@@ -4,33 +4,25 @@
 // decides nothing: the caps, the scope, the lock and removability are enforced by the Actions. With no script
 // the same markup is a form posting the whole grid to `entries.save`. In `for` mode an accounting admin views
 // another person's week, and edits it through the lock with `entriesFor.save` once they choose to.
-import { useRef, useState } from 'react';
 import {
   isEditable,
   weekTotal,
   type GridRow,
+  type LoadedWeek,
   type EmptyCause,
   type ProjectOption,
   type WeekState,
 } from '../../lib/week';
 import { AddRow } from './add-row';
-import {
-  addRow,
-  copyLastWeek,
-  removeRow,
-  saveCells,
-  saveCellsFor,
-  submitWeek,
-  type Base,
-  type Outcome,
-} from './api';
+import { addRow, copyLastWeek, removeRow, submitWeek, type Base } from './api';
 import { DecideForms, decisionsFor } from './decide-forms';
-import { dayCapMessage, overDays } from './day-cap';
-import { dirtyFields, draftKey, settled, withDrafts, type Drafts } from './drafts';
+import { dirtyFields, withDrafts, type Drafts } from './drafts';
 import { GridActions } from './grid-actions';
-import { GridNotice, type Message } from './grid-messages';
+import { GridNotice } from './grid-messages';
 import { GridTable } from './grid-table';
+import type { Done } from './use-week-state';
 import { useUnsavedGuard } from './use-unsaved-guard';
+import { useWeekState } from './use-week-state';
 
 export interface WeekGridProps {
   /** The page's path, which every no-script form posts back to. */
@@ -45,6 +37,8 @@ export interface WeekGridProps {
   empty?: EmptyCause | null;
   /** The project picked in step one of add row when script is off. */
   addProjectId: string;
+  /** The cells a refused no-script post carried, which the page shows again as unsaved edits. */
+  typed?: Drafts;
   /** The message from a posted form that the Action refused, shown on the re-rendered page. */
   problem: string | null;
   /** `own`: the caller's week. `for`: `personId`'s week, seen by an accounting admin. */
@@ -61,6 +55,18 @@ export interface WeekGridProps {
   /** The export mapping's note limit, which a counter beside each note shows; null for none. */
   noteLimit: number | null;
 }
+
+const rowsAdded = (week: LoadedWeek, before: readonly GridRow[]): number =>
+  week.rows.length - before.length;
+
+const copied: Done = (week, before) => {
+  const n = rowsAdded(week, before);
+  if (n === 0) return 'Nothing to copy: last week has no rows, or they are all here already';
+  return `Copied ${String(n)} ${n === 1 ? 'row' : 'rows'} from last week`;
+};
+
+const added: Done = (week, before) =>
+  rowsAdded(week, before) === 0 ? 'That row is already in the week' : 'Row added';
 
 const LOCKED: Record<WeekGridProps['mode'], Record<WeekState, string>> = {
   own: {
@@ -81,82 +87,17 @@ export function WeekGrid(props: WeekGridProps) {
   const { path, csrf, weekStart, days, options, personId } = props;
   const own = props.mode === 'own';
   const base: Base = { csrf, weekStart };
-  const [rows, setRows] = useState(props.rows);
-  const [state, setState] = useState(props.state);
-  const [print, setPrint] = useState(props.fingerprint);
-  const [drafts, setDrafts] = useState<Drafts>({});
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<Message | null>(
-    props.problem ? { kind: 'error', text: props.problem } : null,
-  );
-  const latest = useRef({ rows, drafts });
-  const running = useRef(false);
-  const again = useRef(false);
-  latest.current = { rows, drafts };
+  const { rows, state, print, drafts, busy, message, latest, flush, settle, edit } = useWeekState({
+    base,
+    own,
+    personId,
+    rows: props.rows,
+    state: props.state,
+    fingerprint: props.fingerprint,
+    typed: props.typed ?? {},
+    problem: props.problem,
+  });
   const editable = own ? isEditable(state) : props.editing;
-
-  const apply = (result: Outcome, done?: string): boolean => {
-    if (!result.ok) {
-      setMessage({ kind: 'error', text: result.message });
-      return false;
-    }
-    setRows(result.week.rows);
-    setState(result.week.state);
-    setPrint(result.week.fingerprint);
-    latest.current.rows = result.week.rows;
-    setMessage(done ? { kind: 'info', text: done } : null);
-    return true;
-  };
-
-  const run = async (work: () => Promise<Outcome>, done?: string): Promise<boolean> => {
-    setBusy(true);
-    try {
-      return apply(await work(), done);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const flush = async (): Promise<void> => {
-    if (running.current) {
-      again.current = true;
-      return;
-    }
-    const posted = dirtyFields(latest.current.rows, latest.current.drafts);
-    if (Object.keys(posted).length === 0) return;
-    const over = overDays(withDrafts(latest.current.rows, latest.current.drafts))[0];
-    if (over !== undefined) {
-      setMessage({ kind: 'error', text: dayCapMessage(over) });
-      return;
-    }
-    running.current = true;
-    try {
-      const save = own ? () => saveCells(base, posted) : () => saveCellsFor(base, personId, posted);
-      const saved = await run(save, 'Saved');
-      if (saved) {
-        const left = settled(latest.current.drafts, posted);
-        latest.current.drafts = left;
-        setDrafts(left);
-      }
-    } finally {
-      running.current = false;
-      if (again.current) {
-        again.current = false;
-        await flush();
-      }
-    }
-  };
-
-  const edit = (rowId: string, dow: number, part: 'hours' | 'note', value: string): void => {
-    const key = draftKey(rowId, dow);
-    const next = {
-      ...latest.current.drafts,
-      [key]: { ...latest.current.drafts[key], [part]: value },
-    };
-    latest.current.drafts = next;
-    setDrafts(next);
-    setMessage(null);
-  };
 
   const returned = own && state === 'returned' && props.returnReason ? props.returnReason : null;
   const notice =
@@ -197,7 +138,7 @@ export function WeekGrid(props: WeekGridProps) {
           onEdit={edit}
           onLeave={() => void flush()}
           onRemove={
-            own ? (rowId) => void run(() => removeRow(base, rowId), 'Row removed') : undefined
+            own ? (rowId) => void settle(() => removeRow(base, rowId), 'Row removed') : undefined
           }
         />
         <GridActions
@@ -210,9 +151,12 @@ export function WeekGrid(props: WeekGridProps) {
           decisions={choices}
           weekTotal={weekTotal(shown)}
           onSubmitWeek={() =>
-            void run(() => submitWeek(base, print), 'Submitted; the week is locked')
+            void settle(
+              () => submitWeek(base, latest.current.print),
+              'Submitted; the week is locked',
+            )
           }
-          onCopyLastWeek={() => void run(() => copyLastWeek(base), 'Copied last week\u2019s rows')}
+          onCopyLastWeek={() => void settle(() => copyLastWeek(base), copied)}
         />
       </form>
       {!own && (
@@ -233,9 +177,8 @@ export function WeekGrid(props: WeekGridProps) {
           csrf={csrf}
           weekStart={weekStart}
           initialProjectId={props.addProjectId}
-          busy={busy}
           onAdd={(projectId, taskCodeId) =>
-            void run(() => addRow(base, projectId, taskCodeId), 'Row added')
+            void settle(() => addRow(base, projectId, taskCodeId), added)
           }
         />
       )}

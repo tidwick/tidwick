@@ -41,7 +41,6 @@ export function GridActions(props: GridActionsProps) {
               <SubmitWeek
                 action={`${path}?_action=submission.submit`}
                 total={props.weekTotal}
-                disabled={busy || unsaved}
                 className={`${tall} border-control`}
                 onConfirm={props.onSubmitWeek}
               />
@@ -50,7 +49,6 @@ export function GridActions(props: GridActionsProps) {
                 variant="outline"
                 className={`${tall} border-control`}
                 formAction={`${path}?_action=entries.copyLastWeek`}
-                disabled={busy}
                 onClick={(event) => {
                   event.preventDefault();
                   props.onCopyLastWeek();

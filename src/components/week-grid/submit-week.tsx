@@ -9,12 +9,11 @@ export interface SubmitWeekProps {
   action: string;
   /** The week's hours in hundredths. */
   total: number;
-  disabled: boolean;
   className: string;
   onConfirm: () => void;
 }
 
-export function SubmitWeek({ action, total, disabled, className, onConfirm }: SubmitWeekProps) {
+export function SubmitWeek({ action, total, className, onConfirm }: SubmitWeekProps) {
   const [asking, setAsking] = useState(false);
   const confirm = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -27,7 +26,6 @@ export function SubmitWeek({ action, total, disabled, className, onConfirm }: Su
         variant="outline"
         className={className}
         formAction={action}
-        disabled={disabled}
         onClick={(event) => {
           event.preventDefault();
           setAsking(true);
@@ -48,7 +46,6 @@ export function SubmitWeek({ action, total, disabled, className, onConfirm }: Su
         ref={confirm}
         type="button"
         className={className}
-        disabled={disabled}
         onClick={() => {
           setAsking(false);
           onConfirm();

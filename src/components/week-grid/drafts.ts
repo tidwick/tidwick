@@ -2,7 +2,7 @@
 // whether it is allowed, the Action does. These functions are pure so the totals and the dirty set are testable.
 import { formatHours, parseHours } from '../../lib/hours';
 import { DAYS_IN_WEEK, type Cell, type GridRow } from '../../lib/week';
-import { cellField } from '../../lib/week-form';
+import { cellField, cellOfField } from '../../lib/week-form';
 
 export interface Draft {
   hours?: string;
@@ -81,4 +81,16 @@ export function settled(drafts: Drafts, posted: Readonly<Record<string, string>>
     if (!unchanged) left[key] = draft;
   }
   return left;
+}
+
+/** The drafts a refused no-script post leaves behind: every cell field it carried, as typed, so the page shows them again. */
+export function draftsOf(fields: Readonly<Record<string, string>>): Drafts {
+  const drafts: Record<string, Draft> = {};
+  for (const [name, value] of Object.entries(fields)) {
+    const cell = cellOfField(name);
+    if (!cell) continue;
+    const key = draftKey(cell.rowId, cell.dow);
+    drafts[key] = { ...drafts[key], [cell.part]: value };
+  }
+  return drafts;
 }

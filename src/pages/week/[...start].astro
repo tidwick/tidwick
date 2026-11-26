@@ -4,6 +4,7 @@ import Shell from '../../components/admin/shell.astro';
 import WeekStateBadge from '../../components/admin/week-state-badge.astro';
 import MyWeeks from '../../components/admin/my-weeks.astro';
 import { LINK } from '../../components/auth/classes';
+import { draftsOf } from '../../components/week-grid/drafts';
 import { WeekGrid } from '../../components/week-grid/week-grid';
 import { exportNoteLimit } from '../../db/csv-settings';
 import { recentWeeks } from '../../db/my-weeks';
@@ -22,7 +23,7 @@ import {
   weekStartOf,
 } from '../../lib/week';
 import { errorPage } from '../../middleware/error-responses';
-import { pageContext, problemOf, savedAt, succeeded } from '../_context';
+import { pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
 const session = Astro.locals.session;
 if (!session) return Astro.redirect('/login');
@@ -47,6 +48,9 @@ const posted = [
   Astro.getActionResult(actions.submission.submit),
 ];
 if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+// A refused no-script post keeps what was typed, so the person fixes it instead of retyping the week.
+const problem = problemOf(posted);
+const typed = problem === null ? {} : draftsOf(await postedFields(Astro));
 
 const [week, options, noteLimit, decision, recent] = await Promise.all([
   loadWeek(ctx.scope, ctx.db, noteKeks(), ctx.personId, weekStart),
@@ -104,7 +108,8 @@ const addProjectId = options.some((o) => o.projectId === Astro.url.searchParams.
     options={options}
     empty={empty}
     addProjectId={addProjectId}
-    problem={problemOf(posted)}
+    problem={problem}
+    typed={typed}
     noteLimit={noteLimit}
   />
 </Shell>

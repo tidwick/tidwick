@@ -30,6 +30,8 @@ export interface GridRow {
   projectId: string;
   taskCode: string;
   task: string;
+  /** False once the person is no longer assigned to the project: the row is shown, read-only. */
+  assigned: boolean;
   /** Whether the server would accept removing this row now. */
   removable: boolean;
   /** Seven cells, Monday first. */

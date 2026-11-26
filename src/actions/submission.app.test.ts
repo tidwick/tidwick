@@ -99,8 +99,8 @@ describe('SEC-13 edits through the lock', () => {
     ]);
     const changes = events.map((e) => [parsed(e.before_json), parsed(e.after_json)]);
     expect(changes).toContainEqual([
-      { hundredths: 400, note_ct: null },
-      { hundredths: 600, note_ct: null },
+      expect.objectContaining({ hundredths: 400, note_ct: null, dow: 0 }),
+      expect.objectContaining({ hundredths: 600, note_ct: null, dow: 0 }),
     ]);
     const added = changes.find(([before]) => before === null)?.[1] as {
       hundredths: number;

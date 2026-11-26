@@ -75,6 +75,7 @@ export function missingNotes(cells: readonly Cell[]): string | null {
 export function GridRowView(props: GridRowViewProps) {
   const { row, shown, index, drafts, days, readOnly, path, over, capIds, onRemove } = props;
   const label = `${row.project}, ${row.task}`;
+  const locked = readOnly || !row.assigned;
   const hint = missingNotes(shown.cells);
   const notes = noteCount(shown.cells);
   return (
@@ -91,6 +92,11 @@ export function GridRowView(props: GridRowViewProps) {
         <span className="block text-muted-foreground">
           {row.client} &middot; {row.taskCode} &middot; {row.task}
         </span>
+        {!row.assigned && (
+          <span className="mt-1 block text-xs font-medium text-notice">
+            No longer assigned: these hours still count, and cannot be changed here
+          </span>
+        )}
         {hint && <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>}
         <div className="flex items-center gap-x-4 max-md:gap-x-6">
           {!readOnly && onRemove && (
@@ -132,7 +138,8 @@ export function GridRowView(props: GridRowViewProps) {
               invalid={hoursInvalid(draft)}
               over={over[dow] ?? false}
               capId={capIds[dow] ?? ''}
-              readOnly={readOnly}
+              readOnly={locked}
+              assigned={row.assigned}
               noteLimit={props.noteLimit}
               onEdit={(part, value) => {
                 props.onEdit(row.rowId, dow, part, value);

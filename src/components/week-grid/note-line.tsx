@@ -22,6 +22,7 @@ export interface NoteLineProps {
   hours: string;
   note: string;
   readOnly: boolean;
+  assigned: boolean;
   /** The export mapping's note limit, or null when it sets none and no counter shows. */
   limit: number | null;
   onEdit: (value: string) => void;
@@ -62,7 +63,7 @@ export function NoteLine(props: NoteLineProps) {
         {hours === '' ? '–' : hours}
       </span>
       <Textarea
-        name={cellField(rowId, dow, 'note')}
+        name={props.assigned ? cellField(rowId, dow, 'note') : undefined}
         value={note}
         rows={1}
         maxLength={NOTE_MAX}

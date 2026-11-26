@@ -89,12 +89,14 @@ export async function removeRow(
   rowId: string,
 ): Promise<void> {
   const personId = scope.actorId ?? fail('forbidden');
+  // A member may clear a blank row of a project they no longer have, which the grid shows read-only.
+  const every = scope.kind === 'member';
   const removed = await db
     .prepare(REMOVE)
-    .bind(rowId, personId, weekStart, projectsParam(scope))
+    .bind(rowId, personId, weekStart, every ? null : projectsParam(scope))
     .run();
   if (removed.meta.changes === 1) return;
-  const rows = await readRows(scope, db, personId, weekStart);
+  const rows = await readRows(scope, db, personId, weekStart, every);
   if (!rows.some((row) => row.row_id === rowId))
     fail('forbidden', 'that row is not yours to remove');
   await requireOpen(scope, db, personId, weekStart);

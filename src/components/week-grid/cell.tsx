@@ -23,6 +23,8 @@ export interface CellProps {
   over: boolean;
   capId: string;
   readOnly: boolean;
+  /** False for a row whose project the person has lost: it posts no field, so a save never names it. */
+  assigned: boolean;
   noteLimit: number | null;
   onEdit: (part: 'hours' | 'note', value: string) => void;
   onLeave: () => void;
@@ -59,7 +61,7 @@ export function GridCell(props: CellProps) {
           {props.day}
         </span>
         <Input
-          name={cellField(rowId, dow, 'hours')}
+          name={props.assigned ? cellField(rowId, dow, 'hours') : undefined}
           value={hours}
           inputMode="decimal"
           autoComplete="off"
@@ -99,6 +101,7 @@ export function GridCell(props: CellProps) {
         hours={hours}
         note={note}
         readOnly={readOnly}
+        assigned={props.assigned}
         limit={props.noteLimit}
         onEdit={(value) => {
           props.onEdit('note', value);

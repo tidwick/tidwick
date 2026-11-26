@@ -56,10 +56,10 @@ const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace('T
               {edit.before === null ? 'Blank' : formatHours(edit.before)}
             </TableCell>
             <TableCell data-label="After" className="font-medium tabular-nums">
-              {formatHours(edit.after)}
+              {edit.after === null ? 'Cleared' : formatHours(edit.after)}
             </TableCell>
             <TableCell data-label="Change" className="tabular-nums">
-              {formatSignedHours(edit.after - (edit.before ?? 0))}
+              {formatSignedHours((edit.after ?? 0) - (edit.before ?? 0))}
               {edit.noteChanged && (
                 <span class="ml-2 text-xs text-muted-foreground">note changed</span>
               )}
