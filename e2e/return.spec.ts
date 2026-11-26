@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enrol, tokenOf } from './enrol';
+import { hydrated } from './hydrated';
 
 // Written by test/e2e/prepare.ts: per Playwright project, a member with six hours on Monday of the week of
 // 2031-03-17 (`ret-<project>`) and an accounting admin (`retacct-<project>`), each with an open enrolment link.
@@ -15,6 +16,7 @@ test('a returned week shows its reason to the owner, who edits and resubmits it 
   const person = `Sample ret-${project} user`;
   await enrol(member, tokenOf(`ret-${project}`));
   await member.goto(`/week/${WEEK}`);
+  await hydrated(member);
   await member.getByRole('button', { name: 'Submit week' }).click();
   await member.getByRole('button', { name: 'Confirm submit' }).click();
   await expect(member.getByText('Submitted; the week is locked')).toBeVisible();
@@ -38,6 +40,7 @@ test('a returned week shows its reason to the owner, who edits and resubmits it 
 
   // The owner reads the reason, the week is open again, and an edit plus a resubmit puts it back in the queue.
   await member.reload();
+  await hydrated(member);
   await expect(member.getByText(`returned to you: “${REASON}”`)).toBeVisible();
   const monday = member.getByLabel('Hours, Grid pavilion, Design, Monday');
   await expect(monday).toBeEditable();

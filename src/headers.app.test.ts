@@ -6,7 +6,7 @@ import { formOriginFor } from '../test/helpers/browser';
 import { caller, formPost, getPage } from '../test/helpers/callers';
 import { stampSubmission } from './db/test-support-csv';
 
-const ORIGIN = 'https://timesheet.example';
+const ORIGIN = 'http://localhost:4321';
 const VOLATILE = new Set([
   'date',
   'content-length',

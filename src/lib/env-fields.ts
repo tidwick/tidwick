@@ -131,3 +131,14 @@ export function clientPrefixes(source: Source): readonly string[] {
   }
   return prefixes;
 }
+
+/**
+ * `MCP=on` needs an https `ORIGIN`: the OAuth client-document fetch treats an http loopback `ORIGIN` as a development
+ * machine, so a deploy left on the shipped http default must not open the agent routes. `LOCAL_DEV=on` (the generated
+ * `.dev.vars` and the test bindings) allows it.
+ */
+export function mcpOrigin(source: Source): void {
+  if (choice(source, 'MCP', ['', 'on'], '') !== 'on') return;
+  if (choice(source, 'LOCAL_DEV', ['', 'on'], '') === 'on') return;
+  if (!origin(source, 'ORIGIN').startsWith('https://')) fail('missing_binding', 'ORIGIN');
+}

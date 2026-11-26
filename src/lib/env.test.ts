@@ -26,6 +26,7 @@ function complete(): Record<string, unknown> {
 const LOCAL_SWITCHES = [
   'DEMO_BANNER',
   'MCP',
+  'LOCAL_DEV',
   'MCP_NOTES',
   'MCP_CLIENTS',
   'SSO_PROVIDERS',
@@ -167,7 +168,7 @@ describe('typed env', () => {
   it('MCP is off by default and its notes withheld: only "on" opens the agent routes, only "read" shows notes', () => {
     expect(readEnv(complete()).MCP).toBe(false);
     expect(readEnv({ ...complete(), MCP: '' }).MCP).toBe(false);
-    expect(readEnv({ ...complete(), MCP: 'on' }).MCP).toBe(true);
+    expect(readEnv({ ...complete(), MCP: 'on', LOCAL_DEV: 'on' }).MCP).toBe(true);
     for (const MCP of ['ON', 'true', '1', 'off'])
       expect(caught({ ...complete(), MCP }).detail).toBe('MCP');
     expect(readEnv(complete()).MCP_NOTES).toBe('off');

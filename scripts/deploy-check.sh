@@ -11,6 +11,12 @@ case "${1:-}" in
     need='SESSION_SECRET NOTE_KEK BACKUP_RECIPIENT'
     # The top-level BACKUP_COPY only (the lines before "env", comments skipped): exactly s3 or none, else FAIL.
     copy="$(sed '/"env"/q' wrangler.jsonc | grep -vE '^[[:space:]]*//' | sed -nE 's/.*"BACKUP_COPY"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p' | head -1)"
+    # A custom-domain ORIGIN with workers.dev still on: the app answers only on ORIGIN, but the second hostname stays up.
+    top="$(sed '/"env"/q' wrangler.jsonc | grep -vE '^[[:space:]]*//')"
+    host="$(sed -nE 's/.*"ORIGIN"[[:space:]]*:[[:space:]]*"https?:\/\/([^"\/:]*).*/\1/p' <<< "$top" | head -1)"
+    if grep -qE '"workers_dev"[[:space:]]*:[[:space:]]*true' <<< "$top" && [[ "$host" != *.workers.dev ]]; then
+      echo "WARN deploy-check: workers_dev is still true with ORIGIN on $host; set \"workers_dev\": false in wrangler.jsonc now that the custom domain serves it"
+    fi
     case "$copy" in
       none) ;;
       s3) need="$need BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_KEY_ID BACKUP_S3_SECRET" ;;

@@ -92,6 +92,8 @@ export default defineConfig({
                 SETUP_TOKEN: randomBytes(32).toString('base64url'),
                 // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
                 MCP: 'on',
+                // The built config's ORIGIN is the http localhost default; MCP=on refuses that without this (src/lib/env.test.ts).
+                LOCAL_DEV: 'on',
                 MCP_NOTES: '',
                 // Policy knobs set off their defaults, so an app test proves a deploy variable reaches the Action or page that
                 // reads it (src/lib/policy.test.ts holds every knob's parsing and bounds); the unit and demo projects keep the defaults.
