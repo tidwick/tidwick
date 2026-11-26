@@ -237,6 +237,8 @@ deploy env="":
     eval "$(just _wr {{ quote(env) }})"
     env ${flags:+CLOUDFLARE_ENV=demo} just build
     npx --no-install wrangler deploy ${flags:+--env demo} --dry-run
+    # Pre-release only: a demo that ran an older 0001_init.sql is reset first (scripts/demo-schema-sync.sh); never any other database.
+    if [ -n "$flags" ]; then ./scripts/demo-schema-sync.sh "$mig" $flags; fi
     npx --no-install wrangler d1 migrations apply "$mig" --remote $flags
     npx --no-install wrangler deploy ${flags:+--env demo}
 
@@ -284,19 +286,12 @@ guard:
     extra="$(git ls-files '*.md' | grep -Ev '^(README|CONTRIBUTING|AGENTS|CLAUDE|LICENSE)\.md$|^docs/ARCHITECTURE\.md$|^docs/adr/|^\.github/pull_request_template\.md$' || true)"
     [ -z "$extra" ] || { echo "FAIL docs-bar: $extra; fold it into docs/ARCHITECTURE.md or an ADR and delete it"; exit 1; }
     echo "PASS docs-bar"
-    # A shipped migration never changes. CI compares with the commit a pull request merges into or a push follows
-    # (a tag, schedule or dispatch: next); a laptop compares with origin/next.
-    base=origin/next
-    if [ -n "${GITHUB_EVENT_PATH:-}" ]; then
-      git fetch -q --depth=1 origin "$(node -p 'const e = require(process.env.GITHUB_EVENT_PATH); e.pull_request?.base.sha ?? (/^0*$/.test(e.before ?? "") ? "next" : e.before)')"
-      base=FETCH_HEAD
-    fi
-    changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
-    [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
-    echo "PASS migrations"
+    ./scripts/migrations-guard.test.sh
+    ./scripts/migrations-guard.sh
     ./scripts/restore-target.test.sh
     ./scripts/restore-errors.test.sh
     ./scripts/deploy-check.test.sh
+    ./scripts/demo-schema-sync.test.sh
     ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh
     ./scripts/colour-literals.sh

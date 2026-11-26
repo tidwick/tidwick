@@ -4,6 +4,12 @@
 // recipe runs this file. `src/db/demo-reset.test.ts` proves the list leaves no table behind.
 
 /**
+ * The setting that holds the SHA-256 of the migrations/0001_init.sql a demo was reset with. `scripts/demo-schema-sync.sh`
+ * writes it (it names the key itself) and compares it at each deploy; the nightly wipe keeps it.
+ */
+export const INIT_SHA_KEY = 'demo_init_sha';
+
+/**
  * Every table the migrations create, in an order that drops each before any table it references. The audit log
  * goes first: it names people and clients, and a database migrated before ADR 0006 still holds it to them by key.
  */

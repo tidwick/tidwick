@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { INIT_SHA_KEY } from '../../test/demo/reset';
 import { demoSeedStatements } from '../../test/demo/seed';
 import { demoSignIn } from '../auth/demo';
 import { DEMO_RESET_CRON, scheduled } from '../backup/scheduled';
@@ -79,6 +80,17 @@ describe('the nightly demo wipe', () => {
     expect((await checkChain(env.DB)).ok).toBe(true);
     await demoSignIn(OPEN, 'a-long-demo-password', DEMO_PERSONAS[0].key, NOW);
     await expect(env.DB.exec('DELETE FROM audit_event')).rejects.toThrow();
+  });
+
+  it('keeps the recorded init-migration hash, so the next deploy does not reset a demo the wipe just refreshed', async () => {
+    await env.DB.exec((await demoSeedStatements(currentEnv().NOTE_KEK, '2026-11-16')).join('\n'));
+    await env.DB.exec(`INSERT INTO setting (key, value_json) VALUES ('${INIT_SHA_KEY}', '"abc"')`);
+    await wipeDemo(env.DB, currentEnv().NOTE_KEK, NOW);
+    const kept = await env.DB.prepare('SELECT value_json AS v FROM setting WHERE key = ?1')
+      .bind(INIT_SHA_KEY)
+      .first<{ v: string }>();
+    expect(kept?.v).toBe('"abc"');
+    expect((await counts())[6]).toBe(4);
   });
 
   it('leaves the seed admin in place, so the setup gate stays shut after a wipe', async () => {
