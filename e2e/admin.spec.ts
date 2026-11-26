@@ -53,4 +53,19 @@ test('an admin adds a client and a project with two allowed tasks and assigns a 
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+
+  // The settings page says how backups and alerts stand, and the two buttons prove the paths on demand.
+  await page.goto('/admin/settings');
+  const status = page.locator('[data-backup-status]');
+  await expect(status.getByText('Never sent.')).toBeVisible();
+  await expect(status.getByText('No backup has run yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Send test alert', exact: true }).click();
+  await expect(status.locator('[data-status="test-alert"]')).toContainText('Failed');
+  await expect(status.locator('[data-status="test-alert"]')).toContainText('No alert address');
+  await page.getByRole('button', { name: 'Back up now', exact: true }).click();
+  await expect(status.locator('[data-run]').first()).toBeVisible();
+  const wide = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(wide).toBeLessThanOrEqual(0);
 });

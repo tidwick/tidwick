@@ -34,7 +34,7 @@ const copyVars = (s: FakeSettings) => ({
 
 async function backupAt(bucket: FakeBucket, at: number, vars: object = copyVars(bucket.settings)) {
   const controller = createScheduledController({ cron: BACKUP_CRON, scheduledTime: at });
-  await scheduled(controller, { ...env, ...vars }, recordingMailer(), (r) => bucket.fetch(r));
+  await scheduled(controller, { ...env, ...vars }, recordingMailer(), (r) => bucket.fetch(r), 0);
   return (await backupRuns(env.DB)).at(-1);
 }
 
@@ -102,7 +102,12 @@ describe('SEC-15 the off-account copy', () => {
     const forged = s3Copy({ ...bucket.settings, secret: `${bucket.settings.secret}0` }, (r) =>
       bucket.fetch(r),
     );
-    const deps = { db: env.DB, sink: env.BACKUPS, recipient: readEnv(env).BACKUP_RECIPIENT };
+    const deps = {
+      db: env.DB,
+      sink: env.BACKUPS,
+      recipient: readEnv(env).BACKUP_RECIPIENT,
+      retryPauseMs: 0,
+    };
     const bad = await runBackup({ ...deps, copy: forged }, AT + 4 * DAY);
     expect(bad.error).toBe(
       'copying off the account failed: the off-account bucket refused the write: HTTP 403 SignatureDoesNotMatch',
@@ -143,6 +148,7 @@ describe('SEC-15 the off-account copy', () => {
         sink,
         recipient: readEnv(env).BACKUP_RECIPIENT,
         copy: s3Copy(bucket.settings, (r) => bucket.fetch(r)),
+        retryPauseMs: 0,
       },
       at,
     );

@@ -14,13 +14,14 @@ export const DEMO_RESET_CRON = '0 4 * * *';
 
 /**
  * Runs the job for `controller.cron`, and logs a cron it does not know; in tests `mailer` replaces the send-email
- * binding and `fetcher` the network the off-account copy goes out on. With `MAIL` off the check gets no mailer.
+ * binding and `fetcher` the network the off-account copy goes out on, `retryPauseMs` the wait between a write's tries. With `MAIL` off the check gets no mailer.
  */
 export async function scheduled(
   controller: ScheduledController,
   source: object,
   mailer?: Mailer,
   fetcher: Fetcher = (request) => fetch(request),
+  retryPauseMs?: number,
 ): Promise<void> {
   if (controller.cron === BACKUP_CRON && !('BACKUPS' in source)) {
     console.error('tidwick: no BACKUPS bucket is bound here; the backup did not run');
@@ -32,6 +33,7 @@ export async function scheduled(
         sink: env.BACKUPS,
         recipient: env.BACKUP_RECIPIENT,
         copy: offsiteCopy(env.copy, fetcher),
+        ...(retryPauseMs === undefined ? {} : { retryPauseMs }),
       },
       controller.scheduledTime,
     );

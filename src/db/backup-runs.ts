@@ -52,3 +52,11 @@ export async function latestRun(
 ): Promise<Pick<BackupRun, 'status' | 'finished_at' | 'error'> | null> {
   return db.prepare(LATEST).first<Pick<BackupRun, 'status' | 'finished_at' | 'error'>>();
 }
+
+const RECENT = `SELECT id, started_at, finished_at, object_key, bytes, chars, chain_seq, chain_head, status, error
+FROM backup_run ORDER BY finished_at DESC LIMIT ?1`;
+
+/** The newest `count` runs of either status, newest first, for the settings page's status block. */
+export async function recentRuns(db: D1Database, count: number): Promise<BackupRun[]> {
+  return (await db.prepare(RECENT).bind(count).all<BackupRun>()).results;
+}

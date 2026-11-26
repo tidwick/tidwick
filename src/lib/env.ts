@@ -126,7 +126,7 @@ function copyOf(s: Source): CopySettings {
 /**
  * What the 03:00 backup reads: the recipient and the copy's settings as configured, each empty when unset, so a
  * missing or malformed one becomes a failed `backup_run` the 09:00 check reports rather than a cron that stops
- * before recording one. No request reads any of them.
+ * before recording one. Only the 03:00 cron and the admin's "Back up now" read them.
  */
 export function backupEnv(source: object): {
   DB: D1Database;
@@ -141,6 +141,21 @@ export function backupEnv(source: object): {
     BACKUP_RECIPIENT: configured(s, 'BACKUP_RECIPIENT'),
     copy: copyOf(s),
   };
+}
+
+/** The off-account copy's settings as the running Worker has them, for the status block; never a request's path to the bucket. */
+export function currentCopy(): CopySettings {
+  return copyOf(workersEnv as unknown as Source);
+}
+
+/** Whether this Worker has the `BACKUPS` bucket bound; the demo has none, so it offers no on-demand backup. */
+export function backupsBound(): boolean {
+  return hasMethods((workersEnv as unknown as Source)['BACKUPS'], ['put', 'get', 'list']);
+}
+
+/** The 03:00 backup's env as the running Worker has it, for the admin's on-demand run. */
+export function currentBackupEnv(): ReturnType<typeof backupEnv> {
+  return backupEnv(workersEnv);
 }
 
 /**

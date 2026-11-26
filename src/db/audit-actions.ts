@@ -45,6 +45,8 @@ export const AUDIT_EVENTS = [
   'settings.save',
   'settings.saveCsv',
   'keys.rewrap',
+  'alerts.test',
+  'backup.run',
   'export.clientCsv',
   'reports.download',
   'submission.submit',
@@ -131,6 +133,8 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'people.update': ['people.update'],
   'settings.save': ['settings.save'],
   'keys.rewrap': ['keys.rewrap'],
+  'alerts.test': ['alerts.test'],
+  'backup.run': ['backup.run'],
 };
 
 /**
