@@ -70,4 +70,18 @@ git checkout -q -b side v0.1.0
 echo '-- edit' >> migrations/0001_init.sql
 refuses 'an edit on a branch whose newest ancestor tag is v0.1.0'
 back
+fresh
+git tag -a v0.1.0 -m v0.1.0
+echo '-- more' >> migrations/0001_init.sql
+git commit -q -am more
+cd "$work"
+git clone -q --depth 1 "file://$work/repo" shallow
+cd shallow
+refuses 'a shallow clone, which cannot show the tags'
+grep -q 'shallow' out.txt || fail 'the shallow failure does not say why'
+back
+
+fresh
+GITHUB_ACTIONS=true refuses 'CI with no release tag visible'
+back
 echo 'PASS migrations-guard self-test'

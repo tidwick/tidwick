@@ -4,8 +4,10 @@
 # the tag passes; a modified, deleted or renamed one fails, in the working tree or in a commit. Renames are checked as
 # a delete plus an add (--no-renames), so moving a shipped file cannot slip through. CI needs the tags: see ci.yml.
 set -euo pipefail
+[ "$(git rev-parse --is-shallow-repository)" = false ] || { echo "FAIL migrations: shallow clone cannot show the release tags; run git fetch --unshallow --tags origin"; exit 1; }
 tag="$(git describe --abbrev=0 --match 'v[0-9]*' HEAD 2> /dev/null || true)"
 if [ -z "$tag" ]; then
+  [ -z "${GITHUB_ACTIONS:-}" ] || [ -n "$(git tag -l 'v[0-9]*')" ] || { echo "FAIL migrations: CI sees no release tags; fetch them with git fetch --tags origin"; exit 1; }
   echo "PASS migrations (pre-release: no tag yet)"
   exit 0
 fi
