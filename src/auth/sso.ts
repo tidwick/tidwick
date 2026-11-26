@@ -25,7 +25,7 @@ import { keyedHash, randomToken, sameText } from './tokens';
 import * as oauth from 'oauth4webapi';
 
 export const SSO_COOKIE = '__Host-tidwick-sso';
-export const FLOW_MS = 10 * 60 * 1000;
+export const FLOW_MS = 10 * 60 * 1000; // fixed (security floor): a flow is single-use and short
 /** How far before the flow began a provider's `auth_time` may sit and still count as signing in for it. */
 const SKEW_S = 30;
 const DEFAULT_RETURN = '/week';
@@ -119,21 +119,25 @@ async function refuseTaken(env: Env, provider: SsoProvider, claims: Claims, pers
   if (held.some((identity) => identity.issuer === provider.issuer)) fail('sso_taken');
 }
 
-/** Links the identity, uses the link, closes the person's others, audits and opens a session, in one batch. */
-async function enrol(env: Env, provider: SsoProvider, claims: Claims, flow: FlowRow, now: number) {
-  const { DB: db } = env;
-  const { person_id: personId, enrol_hash: tokenHash } = flow;
-  if (personId === null || tokenHash === null) fail('sso_failed');
-  const session = await newSession(
-    db,
+/** A session for a single sign-on sign-in or enrolment, with the deploy's absolute life. */
+const openSession = (env: Env, personId: string, now: number, steppedUp: boolean) =>
+  newSession(
+    env.DB,
     env.SESSION_SECRET,
     personId,
     now,
     env.POLICY.sessionMaxMs,
     false,
     false,
-    fresh(claims, flow),
+    steppedUp,
   );
+
+/** Links the identity, uses the link, closes the person's others, audits and opens a session, in one batch. */
+async function enrol(env: Env, provider: SsoProvider, claims: Claims, flow: FlowRow, now: number) {
+  const { DB: db } = env;
+  const { person_id: personId, enrol_hash: tokenHash } = flow;
+  if (personId === null || tokenHash === null) fail('sso_failed');
+  const session = await openSession(env, personId, now, fresh(claims, flow));
   const stillOpen = async () => (await openEnrolment(db, tokenHash, now))?.person_id === personId;
   await retryWhileOpen(
     async () => {
@@ -176,16 +180,7 @@ async function signIn(env: Env, provider: SsoProvider, claims: Claims, flow: Flo
   const { DB: db, SESSION_SECRET: secret } = env;
   const found = await identityOfSubject(db, provider.issuer, claims.subject);
   if (!found || found.offboarded_at !== null) fail('sso_unlinked');
-  const session = await newSession(
-    db,
-    secret,
-    found.person_id,
-    now,
-    env.POLICY.sessionMaxMs,
-    false,
-    false,
-    fresh(claims, flow),
-  );
+  const session = await openSession(env, found.person_id, now, fresh(claims, flow));
   const [used] = await db.batch([useIdentity(db, found.id, now), session.statement]);
   if (used?.meta.changes !== 1) {
     await revokeSession(db, await keyedHash(secret, 'session', session.rawId), now).run();

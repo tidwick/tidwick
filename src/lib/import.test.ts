@@ -193,4 +193,32 @@ describe('import files', () => {
     ]);
     expect(read.rows[0]?.projectNumber).toBeNull();
   });
+
+  it('IMPORT_MAX_ROWS: a file one row over the configured limit is refused, one at it reads', () => {
+    const header = 'Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo';
+    const file = (rows: number) =>
+      `${header}\n${Array(rows).fill('01/05/2026,ada@import.example,C,P,,DES,1,').join('\n')}`;
+    expect(() => readImport(file(4), IMPORT_MAPPING, 3)).toThrow(/more than 3 rows/);
+    expect(readImport(file(3), IMPORT_MAPPING, 3).rows).toHaveLength(3);
+  });
+
+  it('IMPORT_MAX_NEW: a file naming more new clients and projects than the limit is refused whole, and applies at the limit', async () => {
+    const head = 'Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo\r\n';
+    const file = bytes(
+      `${head}01/05/2026,${PEOPLE[0]?.email ?? ''},KnobClient,KnobJob,,DES,1,\r\n`,
+    );
+    const clients = await countOf(env.DB, 'clients');
+    const limit = (importMaxNew: number) => ({
+      importMaxRows: DEFAULT_POLICY.importMaxRows,
+      importMaxNew,
+    });
+    const refused = await applyImport(ctx.admin, env.DB, ctx.keks, file, T0, limit(1)).catch(
+      (e: unknown) => e,
+    );
+    expect(isAppError(refused, 'invalid_input')).toBe(true);
+    expect((refused as Error).message).toContain('more than 1 new clients and projects');
+    expect(await countOf(env.DB, 'clients')).toBe(clients);
+    await applyImport(ctx.admin, env.DB, ctx.keks, file, T0, limit(2));
+    expect(await countOf(env.DB, 'clients')).toBe(clients + 1);
+  });
 });

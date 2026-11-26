@@ -12,7 +12,7 @@ export interface Health {
 const HOUR = 60 * 60 * 1000;
 
 /**
- * How far past now a good run may say it finished. Further ahead means a clock set forward or a hand-written
+ * Fixed (security floor): how far past now a good run may say it finished. Further ahead means a clock set forward or a hand-written
  * row, and since the newest run is the one read, it would hide every real backup after it.
  */
 export const CLOCK_SKEW_MS = 5 * 60 * 1000;

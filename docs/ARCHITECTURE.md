@@ -20,7 +20,7 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 
 - Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007). `/setup` on an unconfigured, empty instance shows binding names only; keys are made in the browser and never sent. Once it is configured and still empty, `/setup` can create the first admin once: the form needs `SETUP_TOKEN` (compared in constant time), counts against the login bucket and writes only into an empty database.
 - Signed-in member: cross-client reads, role escalation, writes to a locked week. Closed by the routes table and `Scope` (ADR 0004, 0005, 0009).
-- Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
+- Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes at most) gates high-impact routes; the rest stays open until the session ends.
 - Agent, or whoever holds its token: a program acting for a person, a stolen token, text that other people wrote and the agent reads (names, notes, a return reason). It is the person at a member's reach on assigned projects, through seven whitelisted tools (TOOLS, §4), and nothing it can call approves, exports or administers. Tokens are shown once, stored hashed, short-lived, capped and revoked with every cut of the person's own access; its changes carry `via` in the audit. Open: the agent holds the token, so the `submit_week` confirmation is not a human gate, and a hijacked agent can change or submit its person's open weeks until an accountant returns them (ADR 0014).
 - Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed). One exception: a person's new plain recovery codes sit in `pending_codes` for ten minutes, until acknowledged, readable only by the creating session; backups exclude them.
 - Database writer: audit triggers and the chain catch edits unless the writer recomputes the chain (ADR 0006).
@@ -144,7 +144,7 @@ Lab checklist, run by hand each release, on a fresh Cloudflare account that has 
 
 ## 10. Operate
 
-- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys under NOTE_KEK" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (40 days).
+- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys under NOTE_KEK" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (`BACKUP_KEEP_DAYS`, 40 by default).
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.
@@ -160,6 +160,34 @@ Lab checklist, run by hand each release, on a fresh Cloudflare account that has 
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Update as in step 8 of §9; your `wrangler.jsonc` edits merge with the release there. v0.1.0 squashed every pre-release migration into `0001_init.sql`, the last four of them (0002 to 0004) and the removal of the agent tables included. An instance deployed before the squash has no automatic path. If it is on `next` at or after migration 0004, it runs once, before the deploy, `wrangler d1 execute DB --remote --command "DELETE FROM d1_migrations WHERE name <> '0001_init.sql'; DROP TABLE IF EXISTS agent_token; DROP TABLE IF EXISTS agent_grant"`, and then holds the squashed schema. An instance from `main` before it deploys the last `next` commit before the squash once (it then holds all eleven), runs `wrangler d1 execute DB --remote --command "INSERT INTO d1_migrations (name) VALUES ('0001_init.sql')"`, deploys the last `next` commit before this squash (it applies 0002 to 0004), and then runs the command above. A backup taken before the squash is refused by restore; take a new one.
 - `just backup-size` runs the size estimate against the live D1. Past 70% of the backup cap (`BACKUP_WARN_PERCENT` in `src/lib/limits.ts`, the same line the 09:00 check warns at), plan the streaming backup.
+
+### Policy knobs
+
+Numbers a firm may reasonably set differently are deploy variables (`wrangler.jsonc` vars, or `.dev.vars` locally), parsed once in `src/lib/env.ts` from the table in `src/lib/policy-table.ts`. Unset or empty is the default below, so an unconfigured deploy behaves as before. A value that is not a whole number, or is outside its bounds, fails every request and the backup cron with `missing_binding` naming the variable; `/setup` lists it. The bounds are what the platform and the security model allow: step-up can be shortened, never past 15 minutes, and `SESSION_IDLE_HOURS` may not exceed `SESSION_MAX_DAYS`. Numbers that stay constants carry a comment at the code saying why they are fixed (D1's 1,000-query budget, request and isolate memory, code and challenge lifetimes, lockout, the metadata fetch). Rate limits are the `ratelimits` entries in `wrangler.jsonc`. The audit-age alert and the time zone are settings in `/admin/settings`. A test holds this table to the code.
+
+| Variable                   | Default | Min | Max   | Governs                                                                                                                     |
+| -------------------------- | ------- | --- | ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_TOKEN_DAYS`         | 7,30,90 | 1   | 365   | the lives, in days, offered when a person mints an agent token: 1 to 6 distinct whole numbers, comma separated              |
+| `AGENT_TOKEN_MAX`          | 5       | 1   | 50    | live agent tokens and connected clients one person may hold                                                                 |
+| `AGENT_TOKEN_DEFAULT_DAYS` | 30      | 1   | 365   | the life preselected when a person mints a token; must be one of AGENT_TOKEN_DAYS (unset: 30 when listed, else the longest) |
+| `MCP_ACCESS_MINUTES`       | 60      | 5   | 1440  | minutes a connected client's access token lives before it must refresh                                                      |
+| `MCP_REFRESH_DAYS`         | 30      | 1   | 90    | days a connected client may sit unused before its refresh token ends                                                        |
+| `MCP_GRANT_DAYS`           | 90      | 1   | 365   | days until a connected client must be approved again, however busy it is                                                    |
+| `SESSION_IDLE_HOURS`       | 8       | 1   | 72    | hours a session may sit unused before it ends                                                                               |
+| `SESSION_MAX_DAYS`         | 14      | 1   | 90    | days a session lasts at most, however busy it is                                                                            |
+| `STEP_UP_MINUTES`          | 15      | 1   | 15    | minutes a passkey confirmation unlocks a sensitive action; it can be shortened, never past 15                               |
+| `ENROLMENT_HOURS`          | 24      | 1   | 168   | hours an enrolment or recovery link stays open                                                                              |
+| `PENDING_CODES_MINUTES`    | 10      | 1   | 60    | minutes a person can re-read freshly issued recovery codes before they are erased                                           |
+| `AUDIT_PAGE_ROWS`          | 50      | 10  | 500   | audit events per page of the log                                                                                            |
+| `APPROVALS_PAGE_ROWS`      | 500     | 50  | 2000  | rows the approvals queue and the not-submitted list load before saying there are more                                       |
+| `NOT_SUBMITTED_WEEKS`      | 4       | 1   | 12    | finished weeks back the approvals page looks for people who have not submitted                                              |
+| `REPORT_MAX_DAYS`          | 366     | 31  | 1830  | days one report or export range may span                                                                                    |
+| `REPORT_MAX_BARS`          | 40      | 5   | 100   | bars the /reports chart draws before folding the rest into one                                                              |
+| `IMPORT_MAX_ROWS`          | 5000    | 100 | 10000 | rows one CSV import may hold                                                                                                |
+| `IMPORT_MAX_NEW`           | 50      | 1   | 100   | clients and projects one import may create that did not exist                                                               |
+| `BACKUP_TRIES`             | 3       | 1   | 6     | tries a backup write gets, the first included                                                                               |
+| `BACKUP_RETRY_SECONDS`     | 2       | 0   | 30    | seconds before a backup write's second try (twice that before its third)                                                    |
+| `BACKUP_KEEP_DAYS`         | 40      | 1   | 400   | days the off-account bucket keeps a backup; a retired NOTE_KEK is kept as long                                              |
 
 ### Restore
 
@@ -188,7 +216,7 @@ Numbers live in code; see the cited ADR.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.
 - Add-row lists every live project to an admin or accounting admin; picking one assigns them through the audited assignment write. A member sees only assigned projects.
 - Single sign-on has no back-channel logout: disabling a person at the provider stops new sign-ins, and offboarding in tidwick ends their sessions. A provider that sends no `auth_time` cannot confirm a step-up: Entra ID needs the `auth_time` optional claim added to the ID token, and Google may not honour `prompt=login`, so an SSO-only person there may be unable to step up. A provider sign-in with no recent `auth_time` opens an unconfirmed session, so those people meet the prompt, or the need for a passkey, on the first step-up row. A person who enrolled through a provider has no recovery codes until they make some on `/account`; until then an admin recovers them. At least one admin keeps a passkey, since an expired secret or provider outage must not lock the firm out.
-- An accounting admin can approve their own week (audited). Roles are not per client. Step-up lasts 15 minutes and includes sign-in.
+- An accounting admin can approve their own week (audited). Roles are not per client. Step-up lasts at most 15 minutes (`STEP_UP_MINUTES`) and includes sign-in.
 - Restoring revives access revoked after the backup was taken. A backup is encrypted, not authenticated.
 - The chain check is beaten by a writer who recomputes it; keep a head off-database (backup header, `/healthz`).
 - Export and backup are built in memory under caps (ADR 0010, 0008); the CSV formula escape assumes comma separators.

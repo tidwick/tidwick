@@ -15,7 +15,6 @@ import { todayIn, weekStartOf } from '../../lib/week';
 import { completedWeeks, weekEndsAt } from '../../lib/week-end';
 import { pageContext } from '../_context';
 
-const LOOKS_BACK = 4;
 const ctx = pageContext(Astro);
 const query = Astro.url.searchParams;
 const term = searchTerm(query.get('q'));
@@ -23,7 +22,7 @@ const asked = query.get('state') ?? '';
 const state = LISTED_STATES.find((s): s is ListedState => s === asked) ?? 'submitted';
 const monday = (name: string) => weekStartOf(query.get(name) ?? '') ?? '';
 const [from, to] = [monday('from'), monday('to')];
-const pageRows = currentEnv().POLICY.approvalsPage;
+const { approvalsPage: pageRows, notSubmittedWeeks: looksBack } = currentEnv().POLICY;
 const { weeks, found } = await approvalWeeks(
   ctx.scope,
   ctx.db,
@@ -36,7 +35,7 @@ const missing =
     ? await notSubmittedWeeks(
         ctx.scope,
         ctx.db,
-        completedWeeks(todayIn(zone, Date.now()), LOOKS_BACK).map((weekStart) => ({
+        completedWeeks(todayIn(zone, Date.now()), looksBack).map((weekStart) => ({
           weekStart,
           endsAt: weekEndsAt(weekStart, zone),
         })),
@@ -97,5 +96,5 @@ const status = `${found === 1 ? '1 week' : `${String(found)} weeks`} from ${peop
     <ApprovalsTable weeks={weeks} found={found} state={state} open={open} />
   )}
 
-  {missing && <NotSubmitted list={missing} open={open} looksBack={LOOKS_BACK} />}
+  {missing && <NotSubmitted list={missing} open={open} looksBack={looksBack} />}
 </Shell>

@@ -7,6 +7,29 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // Policy knobs, all optional, each a plain var below (a number, or for AGENT_TOKEN_DAYS a string such as "7,30"):
+  // unset is the default. The same table, with what each governs, is in docs/ARCHITECTURE.md, Policy knobs.
+  // AGENT_TOKEN_DAYS 7,30,90 (1 to 6 lives, each 1 to 365)
+  // AGENT_TOKEN_MAX 5 (1 to 50)
+  // AGENT_TOKEN_DEFAULT_DAYS 30 (1 to 365)
+  // MCP_ACCESS_MINUTES 60 (5 to 1440)
+  // MCP_REFRESH_DAYS 30 (1 to 90)
+  // MCP_GRANT_DAYS 90 (1 to 365)
+  // SESSION_IDLE_HOURS 8 (1 to 72)
+  // SESSION_MAX_DAYS 14 (1 to 90)
+  // STEP_UP_MINUTES 15 (1 to 15)
+  // ENROLMENT_HOURS 24 (1 to 168)
+  // PENDING_CODES_MINUTES 10 (1 to 60)
+  // AUDIT_PAGE_ROWS 50 (10 to 500)
+  // APPROVALS_PAGE_ROWS 500 (50 to 2000)
+  // NOT_SUBMITTED_WEEKS 4 (1 to 12)
+  // REPORT_MAX_DAYS 366 (31 to 1830)
+  // REPORT_MAX_BARS 40 (5 to 100)
+  // IMPORT_MAX_ROWS 5000 (100 to 10000)
+  // IMPORT_MAX_NEW 50 (1 to 100)
+  // BACKUP_TRIES 3 (1 to 6)
+  // BACKUP_RETRY_SECONDS 2 (0 to 30)
+  // BACKUP_KEEP_DAYS 40 (1 to 400)
   "vars": {
     "ORIGIN": "http://localhost:4321",
     "RP_ID": "localhost",

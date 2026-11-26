@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ACCOUNTING, offboard, T0 } from '../../test/helpers/auth';
 import { bookedWeek } from '../../test/helpers/booking';
 import { caller, getPage, type Caller } from '../../test/helpers/callers';
+import { currentEnv } from '../lib/env';
 import { scopeFor } from '../db/scope';
 import { submitWeek } from '../db/submissions';
 
@@ -23,7 +24,7 @@ describe('the Not submitted section', () => {
     const links = [
       ...html.matchAll(new RegExp(`/approvals/${here.who.personId}/(\\d{4}-\\d{2}-\\d{2})`, 'g')),
     ];
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(currentEnv().POLICY.notSubmittedWeeks);
     expect(html).not.toContain(`/approvals/${gone.who.personId}/`);
   });
 

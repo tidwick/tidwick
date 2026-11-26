@@ -80,12 +80,31 @@ describe('SEC-60 making an agent token', () => {
     expect(days).toBe(7);
   });
 
+  it('AGENT_TOKEN_DAYS and AGENT_TOKEN_DEFAULT_DAYS: the form offers the configured lives and preselects the configured default', async () => {
+    const who = await caller();
+    const page = await (await getPage('/account', who)).text();
+    const offered = [...page.matchAll(/<option value="(\d+)"( selected)?/g)].map((m) => [
+      m[1],
+      m[2],
+    ]);
+    expect(offered).toEqual([
+      ['7', undefined],
+      ['30', undefined],
+      ['180', ' selected'],
+    ]);
+    const long = await rpcForm('agents.mint', who, { ...fields, days: '180' });
+    expect(long.status).toBe(200);
+    const grant = (await rowsOf(env.DB, 'agent_grant')).find((g) => g.person_id === who.personId);
+    expect(((grant?.expires_at as number) - (grant?.created_at as number)) / 86_400_000).toBe(180);
+  });
+
   it('refuses a label that is empty or too long, a life that is not offered, and no scope, writing nothing', async () => {
     const who = await caller();
     for (const bad of [
       { label: ' ' },
       { label: 'x'.repeat(61) },
       { days: '365' },
+      { days: '90' },
       { days: '0' },
       { days: 'soon' },
       { scopes: [] },
@@ -100,7 +119,7 @@ describe('SEC-60 making an agent token', () => {
     ).toEqual([]);
   });
 
-  it('SEC-60 holds at most five live tokens, and a revoked one makes room (negative case: the sixth is refused)', async () => {
+  it('SEC-60 holds at most AGENT_TOKEN_MAX live tokens, and a revoked one makes room (negative case: the next is refused)', async () => {
     const who = await caller();
     for (let n = 0; n < currentEnv().POLICY.agentTokenMax; n += 1) {
       expect(

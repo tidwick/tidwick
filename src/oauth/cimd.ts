@@ -7,8 +7,10 @@
 import { OauthError } from './error';
 import { parseRedirect } from './redirect';
 
+/** Fixed (security floor): a client's metadata document is fetched from a stranger's URL, so its size and wait are held small whatever the deploy. */
 export const MAX_DOCUMENT_BYTES = 5 * 1024;
 export const FETCH_TIMEOUT_MS = 5000;
+/** Fixed: a bound on one untrusted document's list, not a policy. */
 const MAX_REDIRECTS_LISTED = 10;
 const NAME_MAX = 100;
 const IPV4 = /^\d+\.\d+\.\d+\.\d+$/;

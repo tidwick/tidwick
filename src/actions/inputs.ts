@@ -11,7 +11,7 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '../au
 /** The synchronizer token; the CSRF middleware checks it before the Action runs, the handler ignores it. */
 export const csrfField = { _csrf: z.string().max(128).optional() };
 
-/** The longest credential id, in base64url characters, that enrolment, add, sign-in and removal accept. */
+/** Fixed (platform limit): the longest credential id, in base64url characters, that enrolment, add, sign-in and removal accept. */
 export const MAX_CREDENTIAL_ID = 1024;
 
 /** A stored credential id as the account page posts it back for removal. */

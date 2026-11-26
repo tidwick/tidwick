@@ -7,7 +7,6 @@ import { csrfToken } from '../../auth/tokens';
 import { pendingCodesOf } from '../../db/pending-codes';
 import { expireAllPending, pendingRowPeople } from '../../db/test-support-pending';
 import { currentEnv } from '../../lib/env';
-import { DEFAULT_POLICY } from '../../lib/policy';
 
 const CODE = /[0-9A-Z]{4}(?:-[0-9A-Z]{4}){3}/g;
 const secret = () => currentEnv().SESSION_SECRET;
@@ -44,7 +43,7 @@ describe('new recovery codes outlive the POST that made them', () => {
   it('shows nothing once the record is ten minutes old', async () => {
     const who = await caller();
     await rpcForm('auth.regenerateCodes', who);
-    const later = Date.now() + DEFAULT_POLICY.pendingCodesMs + 1000;
+    const later = Date.now() + currentEnv().POLICY.pendingCodesMs + 1000;
     expect(await pendingOf(who, later)).toEqual([]);
     expect(await pendingRowPeople(env.DB)).not.toContain(who.personId);
   });
@@ -66,7 +65,7 @@ describe('new recovery codes outlive the POST that made them', () => {
       SESSION_SECRET,
       who.personId,
       Date.now(),
-      DEFAULT_POLICY.sessionMaxMs,
+      currentEnv().POLICY.sessionMaxMs,
     );
     await other.statement.run();
     const second: Caller = {

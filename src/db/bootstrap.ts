@@ -14,7 +14,7 @@ import { EMPTY } from './empty.ts';
 import type { Scope } from './scope.ts';
 import { hex, literal } from './sql-text.ts';
 
-/** How long the first admin's enrolment link stays open; the same as every other enrolment link. */
+/** Fixed: the first admin's link is made by a CLI that reads no deploy variable; it matches the `ENROLMENT_HOURS` default. */
 export const BOOTSTRAP_ENROLMENT_MS = 24 * 60 * 60 * 1000;
 
 export interface BootstrapInput {

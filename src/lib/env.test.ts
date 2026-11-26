@@ -1,7 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { COPY_NAMES, readEnv, setupEnv } from './env';
+import { backupEnv, COPY_NAMES, readEnv, setupEnv } from './env';
 import { AppError } from './errors';
+import { POLICY_NAMES } from './policy-table';
 
 function complete(): Record<string, unknown> {
   return {
@@ -22,7 +23,14 @@ function complete(): Record<string, unknown> {
 }
 
 /** Vars a local run may set in .dev.vars that wrangler.jsonc sets only for the demo environment. */
-const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES', 'MCP_CLIENTS', 'SSO_PROVIDERS'];
+const LOCAL_SWITCHES = [
+  'DEMO_BANNER',
+  'MCP',
+  'MCP_NOTES',
+  'MCP_CLIENTS',
+  'SSO_PROVIDERS',
+  ...POLICY_NAMES,
+];
 
 function caught(source: object): AppError {
   try {
@@ -215,5 +223,18 @@ describe('typed env', () => {
     const found = setupEnv(source);
     expect(found?.missing).toEqual(['RP_ID', 'SESSION_SECRET', 'NOTE_KEK']);
     expect(JSON.stringify(found)).not.toContain('not-a-kek');
+  });
+
+  it('reads the policy knobs with the rest, refusing a bad one by name for every request and the backup, and listing it for /setup', () => {
+    expect(readEnv({ ...complete(), SESSION_MAX_DAYS: '30' }).POLICY.sessionMaxMs).toBe(
+      30 * 86_400_000,
+    );
+    expect(readEnv(complete()).POLICY.auditPage).toBe(50);
+    expect(caught({ ...complete(), AUDIT_PAGE_ROWS: '9' }).detail).toBe('AUDIT_PAGE_ROWS');
+    expect(caught({ ...complete(), AGENT_TOKEN_DAYS: '0' }).detail).toBe('AGENT_TOKEN_DAYS');
+    const found = setupEnv({ ...complete(), AUDIT_PAGE_ROWS: '9', BACKUP_TRIES: 'x' });
+    expect(found?.missing).toEqual(['AUDIT_PAGE_ROWS', 'BACKUP_TRIES']);
+    expect(backupEnv({ ...complete(), BACKUP_TRIES: '2' }).policy.backupTries).toBe(2);
+    expect(() => backupEnv({ ...complete(), BACKUP_TRIES: '9' })).toThrow(AppError);
   });
 });

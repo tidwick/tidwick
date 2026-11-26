@@ -7,7 +7,9 @@ import type { SsoProvider } from '../lib/sso-config';
 import { fail, isAppError } from '../lib/errors';
 
 export const SCOPE = 'openid email profile';
+/** Fixed: how long a provider's published keys are reused, a request-cost bound; a rotation is picked up within the hour. */
 const CACHE_MS = 60 * 60 * 1000;
+/** Fixed (platform limit): the wait on a provider, kept well inside a Worker request. */
 const TIMEOUT_MS = 8000;
 const SUBJECT_MAX = 255;
 

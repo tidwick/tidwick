@@ -134,6 +134,15 @@ export const KNOBS = [
     what: 'rows the approvals queue and the not-submitted list load before saying there are more',
   },
   {
+    name: 'NOT_SUBMITTED_WEEKS',
+    key: 'notSubmittedWeeks',
+    def: 4,
+    min: 1,
+    max: 12,
+    scale: 1,
+    what: 'finished weeks back the approvals page looks for people who have not submitted',
+  },
+  {
     name: 'REPORT_MAX_DAYS',
     key: 'reportMaxDays',
     def: 366,

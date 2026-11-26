@@ -21,4 +21,15 @@ describe('the range an export or report opens on is the last full calendar month
       expect(parseRange(from, to, DEFAULT_POLICY.reportMaxDays)).toEqual({ from, to });
     }
   });
+
+  it('REPORT_MAX_DAYS: a range as long as the limit is refused, one day shorter is not', () => {
+    expect(parseRange('2026-01-01', '2026-01-31', 31)).toEqual({
+      from: '2026-01-01',
+      to: '2026-01-31',
+    });
+    expect(() => parseRange('2026-01-01', '2026-02-01', 31)).toThrow(/at most 31 days/);
+    expect(() =>
+      parseRange('2026-01-01', '2026-02-01', DEFAULT_POLICY.reportMaxDays),
+    ).not.toThrow();
+  });
 });

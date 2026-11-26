@@ -15,6 +15,7 @@ RETURNING failures`;
 const PRUNE =
   'DELETE FROM recovery_attempt WHERE failed_at < ?1 AND coalesce(locked_until, 0) <= ?2';
 
+/** Fixed: housekeeping for the failure counters, no policy; the lockout itself is in `lockout.ts`. */
 export const PRUNE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const LOCK = `UPDATE recovery_attempt SET locked_until = max(coalesce(locked_until, 0), ?2)

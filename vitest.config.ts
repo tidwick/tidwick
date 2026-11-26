@@ -93,6 +93,19 @@ export default defineConfig({
                 // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
                 MCP: 'on',
                 MCP_NOTES: '',
+                // Policy knobs set off their defaults, so an app test proves a deploy variable reaches the Action or page that
+                // reads it (src/lib/policy.test.ts holds every knob's parsing and bounds); the unit and demo projects keep the defaults.
+                AGENT_TOKEN_MAX: '4',
+                AGENT_TOKEN_DAYS: '7,30,180',
+                AGENT_TOKEN_DEFAULT_DAYS: '180',
+                MCP_ACCESS_MINUTES: '45',
+                MCP_REFRESH_DAYS: '20',
+                MCP_GRANT_DAYS: '60',
+                AUDIT_PAGE_ROWS: '20',
+                ENROLMENT_HOURS: '48',
+                PENDING_CODES_MINUTES: '5',
+                NOT_SUBMITTED_WEEKS: '3',
+                BACKUP_KEEP_DAYS: '30',
                 SSO_PROVIDERS: ssoProviders,
                 ...ssoSecrets(),
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),

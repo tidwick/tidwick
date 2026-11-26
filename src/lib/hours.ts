@@ -1,6 +1,6 @@
 // Hours are integer hundredths: 7.5 hours is 750. Parsing and formatting are string and integer work only.
 
-/** The most one person may book to one date. */
+/** Fixed: the most one person may book to one date, 24 hours, and the schema's `day_cap` trigger holds the same number. */
 export const DAY_CAP = 2400;
 
 const DECIMAL = /^(\d{0,4})(?:[.,](\d*))?$/;

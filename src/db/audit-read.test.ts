@@ -145,4 +145,16 @@ describe('reading the audit log', () => {
     });
     await expect(auditChoices(scope, env.DB)).rejects.toMatchObject({ code: 'forbidden' });
   });
+
+  it('AUDIT_PAGE_ROWS: a page holds the configured number of events and points at the next', async () => {
+    const admin = await adminScope();
+    for (let n = 0; n < 25; n++) await write(admin, T0 + n, 'test.rows', `row:${String(n)}`);
+    const filter = { ...NONE, action: synthetic('test.rows') };
+    const small = await readAuditPage(admin, env.DB, filter, null, 10);
+    expect(small.events).toHaveLength(10);
+    expect(small.next).toBe(small.events.at(-1)?.seq);
+    const all = await readAuditPage(admin, env.DB, filter, null, 30);
+    expect(all.events).toHaveLength(25);
+    expect(all.next).toBeNull();
+  });
 });

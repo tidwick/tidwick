@@ -13,7 +13,7 @@ export const TEST_SUBJECT = 'tidwick: test alert';
 /** The audit target of every test, and what the status block looks the latest one up by. */
 export const TEST_TARGET = 'alert:test';
 
-/** Least gap between two sends; the action is admin-only without step-up, so it must not become a mail flood. */
+/** Fixed (abuse bound): least gap between two sends; the action is admin-only without step-up, so it must not become a mail flood. */
 export const TEST_COOLDOWN_MS = 60_000;
 
 export interface TestAlert {

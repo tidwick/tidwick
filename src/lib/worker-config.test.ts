@@ -18,9 +18,9 @@ interface Config {
   triggers?: { crons?: string[] };
 }
 
-/** wrangler.jsonc without the trailing commas JSON refuses; it carries no comments. */
+/** wrangler.jsonc without its comment lines and the trailing commas JSON refuses. */
 function config(text: string): Config {
-  return JSON.parse(text.replace(/,(\s*[}\]])/g, '$1')) as Config;
+  return JSON.parse(text.replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1')) as Config;
 }
 
 const observability = (text: string): Observability | undefined => config(text).observability;
@@ -49,7 +49,10 @@ describe('cron triggers', () => {
 
 describe('deployable default', () => {
   const parsed = (text: string): Record<string, unknown> =>
-    JSON.parse(text.replace(/,(\s*[}\]])/g, '$1')) as Record<string, unknown>;
+    JSON.parse(text.replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1')) as Record<
+      string,
+      unknown
+    >;
   const text = files['../../wrangler.jsonc'] ?? '';
   const dbs = (c: Record<string, unknown>): Record<string, unknown>[] =>
     (c['d1_databases'] ?? []) as Record<string, unknown>[];

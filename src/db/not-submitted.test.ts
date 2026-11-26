@@ -105,6 +105,14 @@ describe('the weeks nobody has submitted', () => {
       (await notSubmittedWeeks(w.admin, env.DB, [AFTER], DEFAULT_POLICY.approvalsPage, '%')).weeks,
     ).toEqual([]);
   });
+
+  it('APPROVALS_PAGE_ROWS: the missing-weeks list is cut at the configured page and says so', async () => {
+    const w = await bookedWeek();
+    const cut = await notSubmittedWeeks(w.admin, env.DB, [AFTER, LATER], 1);
+    expect(cut.weeks).toHaveLength(1);
+    expect(cut.cut).toBe(true);
+    expect((await notSubmittedWeeks(w.admin, env.DB, [AFTER, LATER], 500)).cut).toBe(false);
+  });
 });
 
 describe('my weeks', () => {

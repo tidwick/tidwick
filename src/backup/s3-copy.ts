@@ -17,7 +17,7 @@ export interface S3Target {
 
 export type Fetcher = (request: Request) => Promise<Response>;
 
-/** How long one PUT may take before the run records the bucket as unreachable, well inside the cron's limit. */
+/** Fixed (platform limit): how long one PUT may take before the run records the bucket as unreachable, well inside the cron's limit. */
 export const COPY_TIMEOUT_MS = 2 * 60 * 1000;
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);

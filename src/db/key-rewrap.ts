@@ -9,7 +9,7 @@ import { blobBytes } from './credentials';
 import type { Scope } from './scope';
 
 /**
- * Keys per batch, and batches per run. A page costs its read, the audit head and two statements a key, so a run
+ * Fixed (platform limit): keys per batch, and batches per run. A page costs its read, the audit head and two statements a key, so a run
  * is about 410 statements, and stays under D1's 1,000 even when every page loses a race and is sent twice.
  */
 export const REWRAP_PAGE = 50;

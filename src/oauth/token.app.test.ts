@@ -18,7 +18,7 @@ import {
   token,
 } from '../../test/helpers/oauth';
 import { rowsOf } from '../db/test-support-agents';
-import { DEFAULT_POLICY } from '../lib/policy';
+import { currentEnv } from '../lib/env';
 
 let stub: ReturnType<typeof stubDocuments>;
 beforeEach(() => {
@@ -42,12 +42,12 @@ describe('exchanging a code', () => {
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(tokens).toMatchObject({
       token_type: 'Bearer',
-      expires_in: DEFAULT_POLICY.mcpAccessMs / 1000,
+      expires_in: currentEnv().POLICY.mcpAccessMs / 1000,
       scope: 'read write',
     });
     expect((await list(tokens.access_token ?? '')).status).toBe(200);
     const grant = await grantOf(who.personId);
-    expect(grant?.expires_at).toBe(Number(grant?.created_at) + DEFAULT_POLICY.mcpGrantMs);
+    expect(grant?.expires_at).toBe(Number(grant?.created_at) + currentEnv().POLICY.mcpGrantMs);
   });
 
   it('SEC-63 holds the code to its PKCE verifier, client, redirect address and resource (negative case: the right ones pass)', async () => {

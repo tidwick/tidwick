@@ -10,6 +10,7 @@ import { fail } from '../lib/errors';
 import { newId } from '../lib/ids';
 import type { AuthRequest, ToolScope } from './authorize';
 
+/** Fixed (security floor): an authorization code is single-use and lasts a minute, as OAuth 2.1 advises. */
 export const CODE_MS = 60 * 1000;
 
 /** Stores a grant for `scopes` and returns its single-use code, which the caller hands to the client's redirect. */

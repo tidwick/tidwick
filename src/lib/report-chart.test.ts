@@ -55,4 +55,11 @@ describe('reportChart', () => {
     );
     expect(chart?.bars[0]?.label).toHaveLength(24);
   });
+
+  it('REPORT_MAX_BARS: the chart draws the configured number of bars and counts the rest', () => {
+    const chart = reportChart(lines(9), 5);
+    expect(chart?.bars).toHaveLength(5);
+    expect(chart?.omitted).toBe(4);
+    expect(reportChart(lines(9), 9)?.omitted).toBe(0);
+  });
 });

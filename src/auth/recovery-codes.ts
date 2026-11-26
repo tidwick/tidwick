@@ -6,6 +6,7 @@ import type { Scope } from '../db/scope';
 import { DEFAULT_POLICY } from '../lib/policy';
 import { keyedHash } from './tokens';
 
+/** Fixed: ten codes a person, so the count is never a guessing aid or a burden to store. */
 export const CODES_PER_PERSON = 10;
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const CODE = /^[0-9A-HJKMNP-TV-Z]{16}$/;

@@ -112,4 +112,15 @@ describe('the next week waiting', () => {
       code: 'not_found',
     });
   });
+
+  it('APPROVALS_PAGE_ROWS: a list is cut at the configured page and still reports how many there are', async () => {
+    const w = await bookedWeek();
+    await env.DB.exec(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3) INSERT INTO week_submission (person_id, week_start, state, submitted_at) SELECT '${w.who.personId}', date('2089-12-26', '+' || (i * 7) || ' days'), 'approved', 1 FROM n;`,
+    );
+    const filter = { state: 'approved', from: '2090-01-02', to: '2090-02-01' } as const;
+    const cut = await approvalWeeks(w.admin, env.DB, filter, 2);
+    expect([cut.weeks.length, cut.found]).toEqual([2, 3]);
+    expect((await approvalWeeks(w.admin, env.DB, filter, 3)).weeks).toHaveLength(3);
+  });
 });

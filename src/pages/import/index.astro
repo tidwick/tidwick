@@ -4,9 +4,11 @@ import ImportReport from '../../components/admin/import-report.astro';
 import Shell from '../../components/admin/shell.astro';
 import StepUp from '../../components/admin/step-up.astro';
 import { Button } from '../../components/ui/button';
+import { currentEnv } from '../../lib/env';
 import { pageContext, problemOf } from '../_context';
 
 const ctx = pageContext(Astro);
+const rows = currentEnv().POLICY.importMaxRows.toLocaleString('en-US');
 const previewed = Astro.getActionResult(actions.import.preview);
 const applied = Astro.getActionResult(actions.import.apply);
 const report = applied?.data ?? previewed?.data ?? null;
@@ -14,7 +16,7 @@ const report = applied?.data ?? previewed?.data ?? null;
 
 <Shell title="Import" problem={problemOf([previewed, applied])}>
   <Fragment slot="lead">
-    Upload a time-tracking CSV, up to 2 MB and 5,000 rows. Its columns are read through the mapping
+    Upload a time-tracking CSV, up to 2 MB and {rows} rows. Its columns are read through the mapping
     in
     <a class="underline underline-offset-2" href="/settings/csv">
       CSV settings

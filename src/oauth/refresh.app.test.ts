@@ -6,7 +6,7 @@ import { call2025, mcp } from '../../test/helpers/agent';
 import { caller, getPage, ORIGIN } from '../../test/helpers/callers';
 import { CLIENT_ID, connect, document, stubDocuments, token } from '../../test/helpers/oauth';
 import { rowsOf } from '../db/test-support-agents';
-import { DEFAULT_POLICY } from '../lib/policy';
+import { currentEnv } from '../lib/env';
 
 let stub: ReturnType<typeof stubDocuments>;
 beforeEach(() => {
@@ -70,10 +70,10 @@ describe('refreshing', () => {
       (t) => t.grant_id === id && t.kind === 'refresh',
     );
     expect(Number(rows[0]?.expires_at) - Date.now()).toBeLessThanOrEqual(
-      DEFAULT_POLICY.mcpRefreshIdleMs,
+      currentEnv().POLICY.mcpRefreshIdleMs,
     );
     expect(Number(rows[0]?.expires_at) - Date.now()).toBeGreaterThan(
-      DEFAULT_POLICY.mcpRefreshIdleMs - 60_000,
+      currentEnv().POLICY.mcpRefreshIdleMs - 60_000,
     );
     await env.DB.exec(
       `UPDATE agent_token SET expires_at = 1 WHERE grant_id = '${id}' AND kind = 'refresh'`,

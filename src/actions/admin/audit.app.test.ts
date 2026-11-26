@@ -7,7 +7,7 @@ import { ACCOUNTING, ADMIN, T0 } from '../../../test/helpers/auth';
 import { caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
 import { eventsAfter, headSeq } from '../../../test/helpers/reference';
 import { appendEvent } from '../../db/audit';
-import { DEFAULT_POLICY } from '../../lib/policy';
+import { currentEnv } from '../../lib/env';
 import { systemScope } from '../../db/scope';
 import { tamperTarget } from '../../db/test-support-backup';
 import { synthetic } from '../../../test/helpers/audit-event';
@@ -90,10 +90,10 @@ describe('SEC-33 only an accounting admin or an admin reads or checks the audit 
     expect(text).not.toContain('dropped:1');
     expect(text).toContain('Clear filters');
 
-    for (let n = 0; n < DEFAULT_POLICY.auditPage + 3; n++)
+    for (let n = 0; n < currentEnv().POLICY.auditPage + 3; n++)
       await write('test.many', `many:${String(n)}`);
     const first = await (await getPage('/audit?action=test.many', who)).text();
-    expect(first).toContain(`many:${String(DEFAULT_POLICY.auditPage + 2)}`);
+    expect(first).toContain(`many:${String(currentEnv().POLICY.auditPage + 2)}`);
     expect(first).not.toContain('many:0<');
     const link = /href="(\/audit\?[^"]*before=\d+[^"]*)"/.exec(first)?.[1];
     expect(link).toContain('action=test.many');
