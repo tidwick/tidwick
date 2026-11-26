@@ -65,7 +65,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       <section>
         <Heading text="Your account">Signed in as {session.name}.</Heading>
         <Alert variant="notice" role="status" className="mt-4">
-          You signed in with a recovery code. Add a passkey to finish.
+          You signed in with a recovery code. Add a passkey within 30 minutes to finish: it replaces
+          your other passkeys and sessions.
         </Alert>
         <SavedLine problem={problem} />
         {problem && (

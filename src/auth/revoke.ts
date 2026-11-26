@@ -4,6 +4,7 @@ import { isLastAdmin } from '../db/admins';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
 import {
   activeCredentialsOf,
+  revokeCredentialsExcept,
   revokeCredentialsKeepingAdmin,
   revokeCredentialsOf,
 } from '../db/credentials';
@@ -84,7 +85,7 @@ export async function recordSessionRevocation(
  * Adds a person's identities' revocation to `batch`, with a `people.unlinkSso` event only when there are identities
  * to revoke, so a person who never used single sign-on adds no event.
  */
-async function recordIdentityRevocation(
+export async function recordIdentityRevocation(
   batch: AuditedBatch,
   db: D1Database,
   personId: string,
@@ -103,6 +104,36 @@ async function recordIdentityRevocation(
     },
     identities.length,
   );
+}
+
+/**
+ * A recovery has earned the person a new passkey (`keepCredentialId`, inserted earlier in `batch`): adds the
+ * revocation of every other passkey, every session (the recovery one too, so it must precede the new session's
+ * insert), every linked identity and every agent grant. Whoever held the lost device holds none of it afterwards.
+ */
+export async function recordRecoverySupersession(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  keepCredentialId: string,
+  now: number,
+): Promise<void> {
+  const credentials = (await activeCredentialsOf(db, personId)).map((c) => c.id);
+  if (credentials.length > 0)
+    await batch.record(
+      revokeCredentialsExcept(db, personId, keepCredentialId, now),
+      {
+        at: now,
+        action: 'people.revokeCredentials',
+        clientId: null,
+        target: `person:${personId}`,
+        before: { credentials },
+      },
+      credentials.length,
+    );
+  await recordSessionRevocation(batch, db, personId, now, 'recovery');
+  await recordIdentityRevocation(batch, db, personId, now);
+  await recordGrantRevocation(batch, db, personId, now);
 }
 
 /** Adds every revocation to `batch`, each followed by an event that lands only if it changed what was read. */

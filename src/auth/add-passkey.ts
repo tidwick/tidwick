@@ -3,11 +3,11 @@ import { auditedBatch, retryOnce } from '../db/audit';
 import { activeCredentialsOf, insertCredentialWhileLive } from '../db/credentials';
 import { personById } from '../db/people';
 import { ceremonyScope } from '../db/scope';
-import { revokeSession } from '../db/sessions';
 import type { AuthEnv } from '../lib/env';
 import { fail } from '../lib/errors';
 import { storeChallenge, takeChallenge } from './challenge';
 import { storedCredential, userHandle } from './passkeys';
+import { recordRecoverySupersession } from './revoke';
 import { newSession, type Session } from './session';
 import { keyedHash } from './tokens';
 import {
@@ -33,8 +33,9 @@ export async function addPasskeyOptions(
 
 /**
  * Registers the passkey, audited, only while the calling session is still live: one revoked during the ceremony
- * is `conflict` and adds nothing. A `must_enrol` session is revoked in the same batch and a full session
- * is returned in its place; otherwise the session stays and null is returned.
+ * is `conflict` and adds nothing. From a `must_enrol` session (a recovery) the same batch also revokes the person's
+ * every other passkey, session, identity and agent grant, and a full session is returned in place of the recovery
+ * one; otherwise the session stays and null is returned.
  */
 export async function completeAddPasskey(
   deps: AuthEnv,
@@ -64,12 +65,14 @@ export async function completeAddPasskey(
       },
       1,
     );
-    const full = session.mustEnrol ? await newSession(db, deps.secret, personId, now) : null;
-    if (full) {
-      batch.also(revokeSession(db, sessionHash, now));
-      batch.also(full.statement);
+    if (!session.mustEnrol) {
+      await batch.run();
+      return { sessionId: null };
     }
+    await recordRecoverySupersession(batch, db, personId, credential.id, now);
+    const full = await newSession(db, deps.secret, personId, now);
+    batch.also(full.statement);
     await batch.run();
-    return { sessionId: full?.rawId ?? null };
+    return { sessionId: full.rawId };
   });
 }

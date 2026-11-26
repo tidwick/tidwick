@@ -30,6 +30,9 @@ WHERE id = ?1 AND counter = ?2 AND revoked_at IS NULL`;
 const REVOKE_ALL =
   'UPDATE credential SET revoked_at = ?2 WHERE person_id = ?1 AND revoked_at IS NULL';
 
+const REVOKE_EXCEPT =
+  'UPDATE credential SET revoked_at = ?3 WHERE person_id = ?1 AND id <> ?2 AND revoked_at IS NULL';
+
 const REVOKE_UNLESS_LAST_ADMIN = `${REVOKE_ALL}
 AND (NOT EXISTS (SELECT 1 FROM person_role WHERE person_id = ?1 AND role = 'admin')
   OR EXISTS (SELECT 1 FROM person_role r WHERE ${OTHER_SIGNED_IN_ADMIN}))`;
@@ -131,6 +134,16 @@ export function revokeCredentialsOf(
   now: number,
 ): D1PreparedStatement {
   return db.prepare(REVOKE_ALL).bind(personId, now);
+}
+
+/** Revokes every live credential of a person but one, which a recovery has just added in the same batch. */
+export function revokeCredentialsExcept(
+  db: D1Database,
+  personId: string,
+  keepId: string,
+  now: number,
+): D1PreparedStatement {
+  return db.prepare(REVOKE_EXCEPT).bind(personId, keepId, now);
 }
 
 /** Changes nothing for an admin when no other admin can sign in, so a raced batch holding it rolls back. */

@@ -25,7 +25,7 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 ## Consequences
 
 - A `SETUP_TOKEN` left set opens nothing once any audit event or admin exists, except that while the sole admin has no passkey and no linked identity the claim re-issues that admin's enrolment link (audited as `people.rescue`).
-- A lost device is recovered by code or by an admin, never by email.
+- A lost device is recovered by code or by an admin, never by email. A recovery code ends the person's other sessions at once and opens a 30-minute session that may only add a passkey; adding it revokes every other passkey, linked identity, session and agent grant in the same batch, so whoever held the lost device holds nothing. An abandoned recovery leaves the old passkeys in place.
 - Sessions can be revoked server-side by deleting a row.
 - Removing a passkey ends the person's other sessions and keeps the one they used; unlinking an identity ends all of the person's sessions. Both are audited, and both end the person's agent grants.
 - Disabling a person at the identity provider stops new SSO sign-ins only. Offboarding in tidwick ends their sessions and unlinks their identities.

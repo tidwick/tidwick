@@ -5,6 +5,7 @@ import { isUnusedCode, useCode } from '../db/recovery-codes';
 import { ceremonyScope } from '../db/scope';
 import type { AuthEnv } from '../lib/env';
 import { fail } from '../lib/errors';
+import { recordSessionRevocation } from './revoke';
 import { clearFailures, emailHash, isLocked, recordFailure } from './lockout';
 import { codeHash, normalizeCode } from './recovery-codes';
 import { newSession } from './session';
@@ -13,7 +14,8 @@ import { newSession } from './session';
 const NOBODY = '00000000-0000-0000-0000-000000000000';
 
 /**
- * Consumes one code and opens a session that may only enrol a passkey. An unknown email, an offboarded
+ * Consumes one code, ends every live session of the person's (whoever holds one), and opens a session that may
+ * only enrol a passkey, for 30 minutes. An unknown email, an offboarded
  * person, a wrong or used code and a locked email all count a failure (a locked one does not) and are
  * `recovery_failed`.
  */
@@ -46,6 +48,7 @@ export async function recover(
         1,
       );
       batch.also(clearFailures(db, hash));
+      await recordSessionRevocation(batch, db, personId, now, 'recovery');
       batch.also(session.statement);
       await batch.run();
     },
