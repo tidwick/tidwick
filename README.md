@@ -11,6 +11,12 @@ Weekly timesheet for professional-services firms on Cloudflare Workers, D1 and R
 
 Week grid, clients and projects, three roles, submit/approve/lock, audit log, CSV export and import, passkey login and optional single sign-on (OpenID Connect), per-client note encryption, nightly encrypted off-account backup.
 
+## Agents (MCP)
+
+Off unless the operator sets `MCP=on`. A person makes a token on their account page, or approves an app, and an agent can then read and fill in that person's own weeks as a member would, over `/mcp`: seven tools, nothing that approves, exports or administers.
+The only client checked is Claude Code, against a local instance over loopback. No hosted client has been checked yet.
+Read the threat model in `docs/adr/0014-agent-surface.md` before turning it on; the demo leaves it off.
+
 ## Never
 
 - A hosted service, multi-tenant mode, signup or billing.
