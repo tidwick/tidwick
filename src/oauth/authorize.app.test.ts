@@ -63,6 +63,18 @@ describe('the authorize page', () => {
     expect(html).not.toContain('data-loopback');
   });
 
+  it('offers only read when the scope is offline_access alone, and every tool when none is asked', async () => {
+    serve();
+    const who = await caller();
+    const only = await (await authorize(who, await search({ scope: 'offline_access' }))).text();
+    expect(only).toMatch(/value="read"[^>]*checked/);
+    expect(only).not.toMatch(/value="write"/);
+    expect(only).not.toMatch(/value="submit"/);
+    const none = await (await authorize(who, await search({ scope: undefined }))).text();
+    expect(none).toMatch(/value="write"/);
+    expect(none).toMatch(/value="submit"/);
+  });
+
   it('warns when every redirect leads to the same computer', async () => {
     serve(document({ redirect_uris: ['http://127.0.0.1/callback'] }));
     const q = await search({ redirect_uri: 'http://127.0.0.1:53911/callback' });

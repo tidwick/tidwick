@@ -2,8 +2,8 @@
 // fetches it, so the fetch is narrow: https on port 443, no redirect followed, a body of at most 5 KB, 5 seconds, no
 // IP-literal host and never this server's own host. The 5 KB and 5 second limits are this project's own choice.
 // Only local development and the browser tests, where ORIGIN is itself http on a loopback host, fetch a loopback
-// http document. Without `global_fetch_strictly_public` a public name that resolves privately is not refused here
-// (ADR 0014 records it as a follow-up).
+// http document. The `global_fetch_strictly_public` compatibility flag (wrangler.jsonc) makes the runtime refuse a
+// public name that resolves to a private address, which this file cannot see.
 import { OauthError } from './error';
 import { parseRedirect } from './redirect';
 

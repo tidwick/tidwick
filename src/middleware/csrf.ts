@@ -1,7 +1,7 @@
 // Runs second: every POST must come from ORIGIN, and with a session must carry that session's `_csrf` token in a
 // body of at most MAX_POST_BYTES, counted as it is read, so no route or Action after it buffers more. A script call
 // is refused with the catalog body, a page form with a page linking back to reload it. The two agent paths are
-// the exception: their callers are not browsers (see `agentVerdict`).
+// the exception unless the request is an Action post: their callers are not browsers (see `agentVerdict`).
 import type { MiddlewareHandler } from 'astro';
 import { cookieValue, SESSION_COOKIE, type Session } from '../auth/session';
 import { csrfToken, sameText } from '../auth/tokens';
@@ -101,7 +101,10 @@ export async function csrfVerdict(
   session: Session | null,
 ): Promise<CsrfVerdict> {
   if (SAFE.has(request.method)) return 'ok';
-  if (AGENT_PATHS.has(new URL(request.url).pathname)) return agentVerdict(request, origin);
+  const url = new URL(request.url);
+  // An Action post (`?_action=`) is a browser form, whatever its path: it takes the Origin and token check below.
+  if (AGENT_PATHS.has(url.pathname) && !url.searchParams.has('_action'))
+    return agentVerdict(request, origin);
   if (request.headers.get('origin') !== origin) return 'foreign_origin';
   if (!session) return 'ok';
   const bytes = await boundedBody(request);
