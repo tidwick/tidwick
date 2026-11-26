@@ -60,6 +60,8 @@ const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
   'settings.saveCsv': [OUT, NO, OK, NO, OK, NO, NO],
   'settings.save': [OUT, NO, NO, OK, OK, NO, NO],
   'keys.rewrap': [OUT, NO, NO, OK, OK, NO, NO],
+  'alerts.test': [OUT, NO, NO, OK, OK, NO, OK],
+  'backup.run': [OUT, NO, NO, OK, OK, NO, NO],
   'audit.verify': [OUT, NO, OK, OK, OK, NO, OK],
 };
 

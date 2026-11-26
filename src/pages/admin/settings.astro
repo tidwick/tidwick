@@ -1,5 +1,6 @@
 ---
 import { actions } from 'astro:actions';
+import BackupStatus from '../../components/admin/backup-status.astro';
 import Field from '../../components/admin/field.astro';
 import NoteKeys from '../../components/admin/note-keys.astro';
 import SelectField from '../../components/admin/select-field.astro';
@@ -15,10 +16,11 @@ import {
   TableRow,
   TableRowHead,
 } from '../../components/ui/table';
+import { backupStatus } from '../../backup/status';
 import { keyStatus, REWRAP_PAGE, REWRAP_PAGES } from '../../db/key-rewrap';
 import { projectsWithoutNumber } from '../../db/projects';
 import { BACKUP_AGE_CEILING, BACKUP_AGE_DEFAULT, loadSettings } from '../../db/settings';
-import { currentEnv, noteKeks } from '../../lib/env';
+import { backupsBound, currentCopy, currentEnv, noteKeks } from '../../lib/env';
 import { timeZoneChoices } from '../../lib/time-zones';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt, succeeded } from '../_context';
 
@@ -27,6 +29,8 @@ const ctx = pageContext(Astro);
 const posted = [
   Astro.getActionResult(actions.settings.save),
   Astro.getActionResult(actions.keys.rewrap),
+  Astro.getActionResult(actions.alerts.test),
+  Astro.getActionResult(actions.backup.run),
 ];
 if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const saved = await loadSettings(ctx.db);
@@ -43,15 +47,25 @@ const zones = timeZoneChoices(shown.timeZone).map((zone) => ({ value: zone, labe
 const unnumbered = await projectsWithoutNumber(ctx.scope, ctx.db, SHOWN + 1);
 const keks = noteKeks();
 const keys = await keyStatus(ctx.db, keks);
+const env = currentEnv();
+const status = await backupStatus(ctx.db, {
+  copy: currentCopy(),
+  mailOn: env.EMAIL !== null,
+  setupTokenSet: env.SETUP_TOKEN !== null,
+});
 ---
 
 <Shell title="Settings" problem={problemOf(posted)}>
   <Fragment slot="lead">
-    How this instance runs for your firm. Saving and re-wrapping keys need a passkey confirmation,
-    and each change is recorded in the audit log with its value before and after.
+    How this instance runs for your firm. Saving, re-wrapping keys and backing up now need a passkey
+    confirmation, and each change is recorded in the audit log with its value before and after.
   </Fragment>
 
-  <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="saving settings and re-wrapping keys" />
+  <StepUp
+    csrf={ctx.csrf}
+    until={ctx.stepUpUntil}
+    unlocks="saving settings, re-wrapping keys and backing up now"
+  />
 
   <form
     method="POST"
@@ -133,6 +147,8 @@ const keys = await keyStatus(ctx.db, keks);
       Save settings
     </Button>
   </form>
+
+  <BackupStatus csrf={ctx.csrf} status={status} canBackUp={backupsBound()} />
 
   <NoteKeys
     csrf={ctx.csrf}

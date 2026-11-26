@@ -1,0 +1,73 @@
+---
+import type { BackupStatus } from '../../backup/status';
+import { Alert } from '../ui/alert';
+import PostForm from './post-form.astro';
+// Backups and alerts as they stand: recent runs with their errors, whether the off-account copy is on, where alerts
+// go, whether the setup token is still set (never its value), and the two buttons that prove the path now: a test
+// alert, and a backup on request, which needs a passkey confirmation like the rest of the page.
+interface Props {
+  csrf: string;
+  status: BackupStatus;
+  /** Whether this Worker has a bucket to back up to. */
+  canBackUp: boolean;
+}
+const { csrf, status, canBackUp } = Astro.props;
+const when = (ms: number) => `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+const { lastTest } = status;
+---
+
+<section aria-labelledby="status-h" class="grid max-w-2xl gap-3" data-backup-status>
+  <h2 id="status-h" class="text-lg font-semibold">
+    Backup and alert status
+  </h2>
+  <dl class="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
+    <dt class="font-medium">Alert address</dt>
+    <dd data-status="alert-to">{status.alertTo ?? 'None saved: no alert email is sent.'}</dd>
+    <dt class="font-medium">Email</dt>
+    <dd>{status.mailOn ? 'On.' : 'Off on this deployment; findings go to the Worker log only.'}</dd>
+    <dt class="font-medium">Off-account copy</dt>
+    <dd data-status="copy" data-state={status.copy.state}>
+      {status.copy.detail}
+    </dd>
+    <dt class="font-medium">Setup token</dt>
+    <dd data-status="setup-token">
+      {status.setupTokenSet
+        ? 'SETUP_TOKEN is set. Delete it once the first admin has enrolled.'
+        : 'SETUP_TOKEN is not set.'}
+    </dd>
+    <dt class="font-medium">Last test alert</dt>
+    <dd data-status="test-alert">
+      {lastTest === null
+        ? 'Never sent.'
+        : lastTest.sent
+          ? `Sent ${when(lastTest.at)}. Check that it arrived.`
+          : `Failed ${when(lastTest.at)}: ${lastTest.error ?? 'no reason recorded'}`}
+    </dd>
+  </dl>
+
+  {status.runs.length === 0 ? (
+    <p class="text-sm text-muted-foreground">No backup has run yet.</p>
+  ) : (
+    <ol class="grid gap-1 text-sm" aria-label="Recent backups">
+      {status.runs.map((run) => (
+        <li data-run={run.status}>
+          <span class="font-medium">{run.status === 'ok' ? 'Succeeded' : 'Failed'}</span>{' '}
+          {when(run.finished_at)}, <code>{run.object_key}</code>
+          {run.error !== null && <span class="block text-danger">{run.error}</span>}
+        </li>
+      ))}
+    </ol>
+  )}
+  {status.runs[0]?.status === 'failed' && (
+    <Alert variant="danger" className="font-medium">
+      The latest backup failed. Fix the reason above, then back up now.
+    </Alert>
+  )}
+
+  <div class="flex flex-wrap gap-4">
+    <PostForm action="?_action=alerts.test" csrf={csrf} label="Send test alert" tone="plain" />
+    {canBackUp && (
+      <PostForm action="?_action=backup.run" csrf={csrf} label="Back up now" tone="plain" />
+    )}
+  </div>
+</section>

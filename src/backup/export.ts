@@ -15,6 +15,7 @@ import {
 import { recordRun, type BackupRun } from '../db/backup-runs.ts';
 import { errorText } from '../lib/error-text.ts';
 import { isAgeRecipient } from '../lib/secrets.ts';
+import { withRetry } from './retry.ts';
 import { encodeLine, FORMAT, VERSION, type BackupHeader } from '../lib/backup-format.ts';
 import { BACKUP_DUMP_CHARS, D1_QUERIES_PER_INVOCATION } from '../lib/limits.ts';
 
@@ -34,12 +35,15 @@ export interface BackupDeps {
   recipient: string;
   /** The off-account copy; absent or null when `BACKUP_COPY` is `none`. */
   copy?: BackupCopy | null;
+  /** Milliseconds before a write's second try (and twice that before its third); tests pass 0. */
+  retryPauseMs?: number;
 }
 
-/** `backups/YYYY/MM/DD.ndjson.gz.age` for the UTC date of `now`. */
+/** `backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age` for the UTC time of `now`, so a second backup the same day keeps both. */
 export function objectKey(now: number): string {
-  const [y, m, d] = new Date(now).toISOString().slice(0, 10).split('-');
-  return `backups/${y ?? ''}/${m ?? ''}/${d ?? ''}.ndjson.gz.age`;
+  const [date = '', time = ''] = new Date(now).toISOString().slice(0, 19).split('T');
+  const [y = '', m = '', d = ''] = date.split('-');
+  return `backups/${y}/${m}/${d}-${time.replaceAll(':', '')}.ndjson.gz.age`;
 }
 
 /**
@@ -138,18 +142,19 @@ async function attempt(
 }
 
 /**
- * Puts the sealed file in the sink, then in the off-account copy, each tried whatever the other did, and marks
+ * Puts the sealed file in the sink, then in the off-account copy, each tried up to three times whatever the other did, and marks
  * `run` ok only when every write landed; otherwise returns each failure's reason.
  */
 async function write(deps: BackupDeps, run: BackupRun, sealed: Uint8Array): Promise<string | null> {
   const failures: string[] = [];
-  try {
+  const sunk = await withRetry(async () => {
     await deps.sink.put(run.object_key, sealed);
-  } catch (error) {
-    failures.push(`writing to the sink failed: ${errorText(error)}`);
-  }
-  if (deps.copy) {
-    const why = await deps.copy.write(run.object_key, sealed).catch(errorText);
+    return null;
+  }, deps.retryPauseMs);
+  if (sunk !== null) failures.push(`writing to the sink failed: ${sunk}`);
+  const { copy } = deps;
+  if (copy) {
+    const why = await withRetry(() => copy.write(run.object_key, sealed), deps.retryPauseMs);
     if (why !== null) failures.push(`copying off the account failed: ${why}`);
   }
   if (failures.length > 0) return failures.join('; ');

@@ -15,7 +15,12 @@ import { BACKUP_CRON, scheduled } from './scheduled';
 
 const HOUR = 60 * 60 * 1000;
 const AT = Date.UTC(2026, 10, 10, 3, 0);
-const deps = () => ({ db: env.DB, sink: env.BACKUPS, recipient: readEnv(env).BACKUP_RECIPIENT });
+const deps = () => ({
+  db: env.DB,
+  sink: env.BACKUPS,
+  recipient: readEnv(env).BACKUP_RECIPIENT,
+  retryPauseMs: 0,
+});
 
 beforeAll(async () => {
   await putSetting(env.DB, 'alert_to', 'ops@example.net');

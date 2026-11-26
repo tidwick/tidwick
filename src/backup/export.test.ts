@@ -56,7 +56,7 @@ describe('SEC-15 nightly backup', () => {
 
   it('SEC-15 the 03:00 job writes one age file to R2 that the offline key opens, with every row and the chain head', async () => {
     const sealed = await stored(objectKey(AT));
-    expect(objectKey(AT)).toBe('backups/2026/11/20.ndjson.gz.age');
+    expect(objectKey(AT)).toBe('backups/2026/11/20-030000.ndjson.gz.age');
     expect(sealed).not.toBeNull();
     const parsed = parseBackup(await open(sealed ?? new Uint8Array()));
     if (!parsed.ok) return expect.unreachable(parsed.why);

@@ -122,6 +122,9 @@ Lab checklist, run by hand each release, on a fresh account. Order: merge the re
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.
+- Alerts and backups at `/admin/settings`: the status block lists the last runs with their errors, whether the off-account copy is on, `alert_to`, and whether `SETUP_TOKEN` is set (never its value). "Send test alert" mails `alert_to` through the same binding as the 09:00 check and shows the delivery error, audited as `alerts.test`; "Back up now" runs a backup on request with step-up, audited as `backup.run`. A write that fails is retried twice more inside the run, and each backup's key carries its UTC time, so two on one day do not collide.
+- Email Routing is the alert path's prerequisite: the send-email binding delivers only to an address verified as a destination in the account's Email Routing, from a sender on a domain with Email Routing on. Verify `alert_to` there before relying on it, then press "Send test alert". The 09:00 check cannot tell you its own email never arrived.
+- Watch `/healthz` from outside Cloudflare, since the in-account check dies with the account or the cron. Point any uptime monitor at `https://<domain>/healthz` and alert on a non-200 answer: it is 503 until a good backup exists and when the last one is older than the age limit.
 - Lost first enrolment link, `SETUP_TOKEN` still set: the `/setup` form. Otherwise, no admin can sign in. Read the live audit head and the admin ids (a backup's header head is stale and the rescue then writes nothing):
   ```sh
   npx wrangler d1 execute tidwick --remote --command "SELECT seq, hash FROM audit_event ORDER BY seq DESC LIMIT 1"
@@ -137,7 +140,7 @@ Lab checklist, run by hand each release, on a fresh account. Order: merge the re
 A lost or corrupted production D1, in order. Check out the release whose last migration the backup header names (`restore` says which). Never run this against a database that holds rows.
 
 1. If the database still exists but its data is wrong, try D1 Time Travel first: `npx wrangler d1 time-travel info tidwick`, then `restore tidwick --timestamp <time just before the damage>`. It rewinds in place within the plan's retention window, and it belongs to the database, so a deleted database takes it along. The audit log rewinds with the rows, so the chain stays whole.
-2. Fetch the newest good night: `just backup-fetch YYYY-MM-DD` from the Worker account's R2, or from the off-account bucket with any S3 client, for example `aws s3 cp --endpoint-url <endpoint> s3://<bucket>/backups/YYYY/MM/DD.ndjson.gz.age .wrangler/restore-remote/backup.age` with the off-account key as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+2. Fetch the newest good night: `just backup-fetch YYYY-MM-DD-HHMMSS` (the UTC time in the object key, shown on `/admin/settings`) from the Worker account's R2, or from the off-account bucket with any S3 client, for example `aws s3 cp --endpoint-url <endpoint> s3://<bucket>/backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age .wrangler/restore-remote/backup.age` with the off-account key as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 3. Create the empty database: `npx wrangler d1 create tidwick` (the Worker finds it by name; delete the lost one first).
 4. `just restore-remote .wrangler/restore-remote/backup.age <age identity from the offline kit>` checks the header, schema version and audit chain, migrates the new database and loads the rows, and refuses a database that holds any. Delete `.wrangler/restore-remote/restore.sql`, which holds every row in the clear.
 5. `just deploy-secrets` with the same offline kit (`NOTE_KEK` must be the original, or every note stays sealed), then `just deploy`, then `just deploy-check`.
@@ -162,6 +165,6 @@ Numbers live in code; see the cited ADR.
 - Restoring revives access revoked after the backup was taken. A backup is encrypted, not authenticated.
 - The chain check is beaten by a writer who recomputes it; keep a head off-database (backup header, `/healthz`).
 - Export and backup are built in memory under caps (ADR 0010, 0008); the CSV formula escape assumes comma separators.
-- Workers invocation logs are off. The 09:00 alert needs `alert_to` and `MAIL` on.
+- Workers invocation logs are off. The 09:00 alert needs `alert_to` and `MAIL` on, and a verified Email Routing destination.
 - Clients, projects and task codes are archived, never deleted.
 - A wrong mapping on import cannot be undone as a batch; correct cell by cell.

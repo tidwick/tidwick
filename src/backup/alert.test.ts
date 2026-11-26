@@ -37,15 +37,15 @@ describe('a missed backup sends one alert', () => {
 
   it('a missed backup sends exactly one alert, from the 09:00 check alone', async () => {
     const mailer = recordingMailer();
-    await scheduled(tick(BACKUP_CRON, at(1, 3)), withDeadSink(), mailer);
+    await scheduled(tick(BACKUP_CRON, at(1, 3)), withDeadSink(), mailer, undefined, 0);
     expect(mailer.sent).toEqual([]);
     const runs = await backupRuns(env.DB);
     expect(runs.at(-1)).toEqual({
       status: 'failed',
-      object_key: 'backups/2026/11/19.ndjson.gz.age',
+      object_key: 'backups/2026/11/19-030000.ndjson.gz.age',
       error: 'writing to the sink failed: TypeError',
     });
-    expect(await env.BACKUPS.get('backups/2026/11/19.ndjson.gz.age')).toBeNull();
+    expect(await env.BACKUPS.get('backups/2026/11/19-030000.ndjson.gz.age')).toBeNull();
     // At 09:00 the day-one backup is 30 hours old, past the 26 hour default.
     await scheduled(tick(CHECK_CRON, at(1, 9)), env, mailer);
     expect(mailer.sent).toHaveLength(1);

@@ -1,6 +1,7 @@
 // The Action registry: one Action per file under `src/actions/<group>/<name>.ts`, each imported by name so
 // `actions.<group>.<name>` is typed for pages and scripts. The import is named `<group><Name>`, since
 // two groups can share a file name.
+import alertsTest from './alerts/test';
 import assignmentsAdd from './assignments/add';
 import assignmentsAddAll from './assignments/addAll';
 import assignmentsRemove from './assignments/remove';
@@ -19,6 +20,7 @@ import authRegenerateCodes from './auth/regenerateCodes';
 import authRevokePasskey from './auth/revokePasskey';
 import authStepUpOptions from './auth/stepUpOptions';
 import authStepUpVerify from './auth/stepUpVerify';
+import backupRun from './backup/run';
 import clientsArchive from './clients/archive';
 import clientsCreate from './clients/create';
 import clientsUpdate from './clients/update';
@@ -54,6 +56,9 @@ import taskCodesCreate from './taskCodes/create';
 import taskCodesUpdate from './taskCodes/update';
 
 export const server = {
+  alerts: {
+    test: alertsTest,
+  },
   assignments: {
     add: assignmentsAdd,
     addAll: assignmentsAddAll,
@@ -77,6 +82,9 @@ export const server = {
     revokePasskey: authRevokePasskey,
     stepUpOptions: authStepUpOptions,
     stepUpVerify: authStepUpVerify,
+  },
+  backup: {
+    run: backupRun,
   },
   clients: {
     archive: clientsArchive,

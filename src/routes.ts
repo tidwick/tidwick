@@ -112,6 +112,8 @@ export const ACTIONS: Readonly<Record<string, Rule>> = {
   'people.reinstate': ADMIN_STEP_UP,
   'settings.save': ADMIN_STEP_UP,
   'keys.rewrap': ADMIN_STEP_UP,
+  'alerts.test': ADMIN,
+  'backup.run': ADMIN_STEP_UP,
 };
 
 /** What an access token must carry to call a tool: `read` to look, `write` to change a week, `submit` to lock one. */
