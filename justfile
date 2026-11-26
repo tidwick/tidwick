@@ -329,7 +329,7 @@ e2e *args:
     if [ -e "$aside" ]; then rm -rf "$state"; mv "$aside" "$state"; fi
     if [ -e "$state" ]; then mv "$state" "$aside"; fi
     trap 'rm -f .dev.vars; rm -rf "$state"; if [ -e "$aside" ]; then mv "$aside" "$state"; fi' EXIT
-    # Two fresh-instance phases first, each on an empty D1: no secrets (`/setup` makes them), then a setup token (`/setup` claims).
+    # Three fresh-instance phases first, each on an empty D1: no secrets (`/setup` makes them), a setup token (`/setup` claims), and MCP off.
     fresh() { rm -rf "$state"; just db-migrate; FRESH=$1 npx --no-install playwright test --project=phone; }
     fresh setup
     node test/e2e/prepare.ts
@@ -337,6 +337,11 @@ e2e *args:
     echo "SETUP_TOKEN=$SETUP_TOKEN" >> .dev.vars
     fresh claim
     unset SETUP_TOKEN
+    # Then the same secrets with the agent surface left off (the generated .dev.vars turns it on).
+    grep -v -e '^MCP=on$' -e '^SETUP_TOKEN=' .dev.vars > .dev.vars.off
+    cat .dev.vars.off > .dev.vars
+    rm .dev.vars.off
+    fresh off
     rm -rf "$state"
     node test/e2e/prepare.ts
     just db-migrate
@@ -368,6 +373,8 @@ live:
     want /mcp "$(get "$t/mcp" $demo/mcp)" 404
     want /.well-known/oauth-protected-resource "$(get "$t/prm" $demo/.well-known/oauth-protected-resource)" 404
     want /oauth/authorize "$(get "$t/authorize" $demo/oauth/authorize)" 404
+    want /oauth/token "$(get "$t/token" $demo/oauth/token)" 404
+    want /.well-known/oauth-authorization-server "$(get "$t/asm" $demo/.well-known/oauth-authorization-server)" 404
     want /setup "$(get "$t/setup" $demo/setup)" 404
     want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
     echo "PASS live"

@@ -44,7 +44,7 @@ The boundaries those checks hold, and the tests that hold the rest, are listed i
 
 ## Tests
 
-Unit and integration tests are vitest, in `*.test.ts` files under `src/` and `test/`, running in the Workers pool. Browser tests are Playwright specs under `e2e/`, run with `just e2e` (first two fresh-instance specs under `e2e/fresh/`, one on a bare instance and one claiming it, then the suite), which needs the Playwright browsers installed and refuses to run while a `.dev.vars` file exists.
+Unit and integration tests are vitest, in `*.test.ts` files under `src/` and `test/`, running in the Workers pool. Browser tests are Playwright specs under `e2e/`, run with `just e2e` (first three fresh-instance specs under `e2e/fresh/`: a bare instance, one claiming it, and one with MCP off; then the suite), which needs the Playwright browsers installed and refuses to run while a `.dev.vars` file exists.
 
 - A change in behaviour comes with a test.
 - A security test is titled `SEC-nn` and has a negative case that shows the check can fail.

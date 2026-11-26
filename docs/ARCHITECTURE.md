@@ -21,6 +21,7 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 - Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007). `/setup` on an unconfigured, empty instance shows binding names only; keys are made in the browser and never sent. Once it is configured and still empty, `/setup` can create the first admin once: the form needs `SETUP_TOKEN` (compared in constant time), counts against the login bucket and writes only into an empty database.
 - Signed-in member: cross-client reads, role escalation, writes to a locked week. Closed by the routes table and `Scope` (ADR 0004, 0005, 0009).
 - Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
+- Agent, or whoever holds its token: a program acting for a person, a stolen token, text that other people wrote and the agent reads (names, notes, a return reason). It is the person at a member's reach on assigned projects, through seven whitelisted tools (TOOLS, §4), and nothing it can call approves, exports or administers. Tokens are shown once, stored hashed, short-lived, capped and revoked with every cut of the person's own access; its changes carry `via` in the audit. Open: the agent holds the token, so the `submit_week` confirmation is not a human gate, and a hijacked agent can change or submit its person's open weeks until an accountant returns them (ADR 0014).
 - Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed). One exception: a person's new plain recovery codes sit in `pending_codes` for ten minutes, until acknowledged, readable only by the creating session; backups exclude them.
 - Database writer: audit triggers and the chain catch edits unless the writer recomputes the chain (ADR 0006).
 - Backup holder: sees nothing without the offline age identity and `NOTE_KEK` (ADR 0008).
@@ -32,11 +33,29 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 
 Every response, assets included, passes `headers.ts`. Middleware order is errors, session, CSRF, routes table (`src/routes.ts`: path, method, role, step-up; unlisted means denied). `/setup` skips session and CSRF only while the env does not parse: its gate (`src/middleware/setup.ts`) checks its row and renders only on an empty database. Once the env parses it is a 404 unless the database is empty, and then it runs the full chain like every other form. An Action gets a `Scope` and only reads or writes rows through it. A mutation and its audit event share one D1 batch. Errors come from the catalog in `src/lib/errors.ts` and log only class and code (ADR 0004, 0007).
 
+The agent surface exists only with `MCP=on`. Off, `/mcp`, `/oauth/authorize`, `/oauth/token` and the two `/.well-known/oauth-*` documents answer 404 before a session or a table row is read. On, `/mcp` is a public row that reads a bearer itself: `session.ts` stays cookie-only, a bearer anywhere else is an anonymous request, and a request with both a cookie and a bearer is refused. Each call builds a member's `Scope` for the token's person again, so a role or assignment change applies on the next call, and judges the tool on the route-table row it names. CSRF waives the `Origin` requirement only for `/mcp` and `/oauth/token`, whose callers are not browsers. A person makes tokens on `/account` and approves an app on `/oauth/authorize`, each behind step-up; revoking a token needs only the signed-in session. Approving answers 200 with a hand-off page, not a redirect: the CSP's `form-action 'self'` also covers the redirect after a form POST, so a 303 to the client would be cancelled (ADR 0014).
+
+### Agent tools
+
+`TOOLS` in `src/routes.ts` maps each tool to the route-table row it reuses and the token scope it needs. The dispatcher runs `authorize` on that row for a principal with no grants and no step-up, so a row above a member's refuses before the tool runs.
+
+| Tool             | Reuses (row)                  | Scope  |
+| ---------------- | ----------------------------- | ------ |
+| `list_projects`  | page `/week/[...start]`, GET  | read   |
+| `get_week`       | page `/week/[...start]`, GET  | read   |
+| `save_entries`   | Action `entries.save`         | write  |
+| `add_row`        | Action `entries.addRow`       | write  |
+| `copy_last_week` | Action `entries.copyLastWeek` | write  |
+| `remove_row`     | Action `entries.removeRow`    | write  |
+| `submit_week`    | Action `submission.submit`    | submit |
+
+`submit_week` asks twice: the first call returns a summary and a confirmation bound to the person, grant, week and fingerprint, and the second submits only if the fingerprint still holds inside the submitting statement. Notes are returned as `has_note` unless `MCP_NOTES=read`. The tool text tells the agent that every string it gets back is data; `test/golden/mcp-tools.json` pins those words.
+
 ## 5. Data
 
 ![Clients own projects, people are assigned to them, entries hang off weekly rows, and an append-only audit chain is anchored by each backup.](arch/data.svg)
 
-One D1 database, STRICT tables, hand-written SQL under `src/db/`, forward-only migrations. Hours are integer hundredths. Client rows carry `client_id` in composite keys. `audit_event` is append-only and hash-chained, its head recorded by each backup. Notes are sealed under a per-client key wrapped by `NOTE_KEK` (ADR 0005, 0006).
+One D1 database, STRICT tables, hand-written SQL under `src/db/`, forward-only migrations. Hours are integer hundredths. Client rows carry `client_id` in composite keys. `audit_event` is append-only and hash-chained, its head recorded by each backup. Notes are sealed under a per-client key wrapped by `NOTE_KEK` (ADR 0005, 0006). Agent access is two tables: `agent_grant`, one row per token a person made or app they approved (scopes, end date, last use, revoked), and `agent_token`, the hashed codes, access tokens and refresh tokens of a grant. A secret is stored only as a keyed hash of its own kind, so one kind never passes as another.
 
 ## 6. Week lifecycle
 
@@ -46,29 +65,35 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 
 ## 7. Backup and restore
 
-03:00 UTC: dump every kept table as NDJSON, gzip, age-encrypt to the offline public key, write to R2, copy to a bucket in a second account over the S3 API; the night is ok only when both land. 09:00: the check verifies freshness, the chain against the last head, size headroom and the copy, and emails `alert_to`. `/healthz` is 503 until a good run exists and past the age limit. `just restore` and the restore drill share the dump's core code (ADR 0008, 0010).
+03:00 UTC: dump every kept table as NDJSON, gzip, age-encrypt to the offline public key, write to R2, copy to a bucket in a second account over the S3 API; the night is ok only when both land. 09:00: the check verifies freshness, the chain against the last head, size headroom and the copy, and emails `alert_to`. `/healthz` is 503 until a good run exists and past the age limit. `just restore` and the restore drill share the dump's core code (ADR 0008, 0010). The dump skips `agent_grant` and `agent_token` with the other session state, so a restore brings back no agent access: every person makes a new token or approves their app again.
 
 ## 8. Boundaries enforced by gates
 
-| Rule                                                                                                                                           | Gate                                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| SQL only under `src/db/`                                                                                                                       | `just lint` (`guard/sql-boundary`)                             |
-| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                                              | `just lint` (`guard/import-gate`)                              |
-| Roles only in `src/routes.ts` and `src/db/`                                                                                                    | `just lint` (`guard/role-boundary`)                            |
-| Test support, `systemScope` and `test/` never reach shipped source                                                                             | `just lint` (`guard/test-support-gate`, `guard/test-boundary`) |
-| A migration in the newest release tag never changes; before the first tag none is frozen                                                       | `just guard`                                                   |
-| Hours are integer hundredths                                                                                                                   | tests (`src/actions/entries.app.test.ts`)                      |
-| The audit log is append-only                                                                                                                   | `src/db/audit.test.ts`                                         |
-| Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                                               | `src/db/scope-kind.test.ts`                                    |
-| Migrations only move forward                                                                                                                   | the migration gate (`just guard`)                              |
-| Security tests are `SEC-nn`, each with a negative case                                                                                         | review                                                         |
-| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts` and the field parsers it calls (`env-fields.ts`, `sso-config.ts`) | review; grep                                                   |
-| Colours only as tokens in `src/styles/global.css`, contrast checked                                                                            | `just guard`                                                   |
-| Source files <= 250 lines                                                                                                                      | `just guard`                                                   |
-| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                                             | `just guard`                                                   |
-| Exact dependency pins; a new runtime dependency needs an ADR (0012)                                                                            | `SEC-27 (src/lib/dependencies.test.ts)`; review                |
-| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                                                      | comment in `src/backup/export.ts`, restore drill               |
-| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code                            | review                                                         |
+| Rule                                                                                                                                            | Gate                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| SQL only under `src/db/`                                                                                                                        | `just lint` (`guard/sql-boundary`)                                                       |
+| `src/db`, `src/auth`, `src/backup`, `src/lib` import no `astro:`, `cloudflare:` or edge directory                                               | `just lint` (`guard/import-gate`)                                                        |
+| Roles only in `src/routes.ts` and `src/db/`                                                                                                     | `just lint` (`guard/role-boundary`)                                                      |
+| Test support, `systemScope` and `test/` never reach shipped source                                                                              | `just lint` (`guard/test-support-gate`, `guard/test-boundary`)                           |
+| A migration in the newest release tag never changes; before the first tag none is frozen                                                        | `just guard`                                                                             |
+| Hours are integer hundredths                                                                                                                    | tests (`src/actions/entries.app.test.ts`)                                                |
+| The audit log is append-only                                                                                                                    | `src/db/audit.test.ts`                                                                   |
+| Client rows are read through a `Scope`, and `requireAll` refuses a non-all scope                                                                | `src/db/scope-kind.test.ts`                                                              |
+| Migrations only move forward                                                                                                                    | the migration gate (`just guard`)                                                        |
+| Security tests are `SEC-nn`, each with a negative case                                                                                          | review                                                                                   |
+| Errors only from `src/lib/errors.ts`; bindings read only in `src/lib/env.ts` and the field parsers it calls (`env-fields.ts`, `sso-config.ts`)  | review; grep                                                                             |
+| Colours only as tokens in `src/styles/global.css`, contrast checked                                                                             | `just guard`                                                                             |
+| Source files <= 250 lines                                                                                                                       | `just guard`                                                                             |
+| Markdown only in README, CONTRIBUTING, AGENTS, ARCHITECTURE, ADRs, the PR template                                                              | `just guard`                                                                             |
+| An agent tool is a whitelisted `TOOLS` entry and runs only on its route-table row for a member; no tool reaches a step-up, steward or admin row | `SEC-09` (`src/mcp/principal.test.ts`, `src/mcp/auth.app.test.ts`)                       |
+| An agent token is shown once, stored only hashed, and is a bearer for `/mcp` alone                                                              | `SEC-60`, `SEC-64` (`src/actions/agents/agents.app.test.ts`, `src/mcp/auth.app.test.ts`) |
+| Every cut of a person's own access revokes their agent grants                                                                                   | `src/auth/agent-revoke.test.ts`, `src/mcp/revocation.app.test.ts`                        |
+| Tool words and OAuth metadata change only as a reviewed diff                                                                                    | `test/golden/mcp-tools.json`, `test/golden/oauth-metadata.json` (`just golden`)          |
+| With `MCP` off every agent route is a 404                                                                                                       | `src/mcp/off.demo.test.ts`, `src/oauth/off.demo.test.ts`, `e2e/fresh/off.spec.ts`        |
+| The token flow and the hand-off page work in a real browser under the CSP                                                                       | `e2e/mcp.spec.ts`                                                                        |
+| Exact dependency pins; a new runtime dependency needs an ADR (0012)                                                                             | `SEC-27 (src/lib/dependencies.test.ts)`; review                                          |
+| Files the scripts import use relative `.ts` imports, no `cloudflare:` or `astro:` modules                                                       | comment in `src/backup/export.ts`, restore drill                                         |
+| Adopter specifics (domain, names, mapping, alert address) live in `wrangler.jsonc`, settings or seed, never in code                             | review                                                                                   |
 
 ## 9. Deploy
 
@@ -88,6 +113,7 @@ Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `d
 - Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
 - `deploy-secrets` takes the four `BACKUP_S3_*` values on standard input.
 - Single sign-on is optional and off until `SSO_PROVIDERS` is set: a JSON array (as a string, or as an array in `wrangler.jsonc`), one entry per provider tenant, `{"id","label","issuer","client_id"}` (`hd` limits Google to one Workspace domain; the Google preset is `{"id":"google","client_id":"..."}`). Each needs `wrangler secret put SSO_SECRET_<ID>` (id upper-cased, `-` as `_`). At the provider, register an app, add the redirect URI `<ORIGIN>/auth/sso/callback`, and use its tenant v2.0 issuer URL (Entra ID: the tenant's `https://<host>/<tenant-id>/v2.0`, never `/common`); a multi-tenant endpoint fails the exact issuer match. Diarise each secret's expiry. People are linked by an enrolment link; an admin unlinks at `/admin/people/<id>`. Deploy-to-Cloudflare leaves it off.
+- Agents are off. `MCP` set to `on` (in `wrangler.jsonc` vars, or as a secret like the other optional values) turns on `/mcp`, `/oauth/*` and the token section of `/account`. `MCP_NOTES` set to `read` lets a tool result carry note text, which then goes to the agent's provider; leave it unset to return `has_note` only. `MCP_CLIENTS` is a comma-separated list of https address prefixes, each ending in a slash, for redirect addresses of a client you trust beyond claude.ai's callback and loopback ones; a malformed value stops the environment from parsing and the error names `MCP_CLIENTS`. Turn it on only after reading ADR 0014, Threat model.
 - The demo is the Worker `tidwick-demo`. Before its first CI deploy run `just deploy-secrets demo`, and move `demo.tidwick.dev` off any older `tidwick` Worker.
 - Demo only: `/demo` signs in as one of four seeded personas with a shared `DEMO_PASSWORD` secret (set it with `wrangler secret put`; 16 or more characters), for two hours and with no passkey prompt. It answers only while `DEMO_LOGIN` and `DEMO_BANNER` are `on`, the password is set and the seed's `demo` setting exists, otherwise 404. A 04:00 cron wipes the database and loads the seed again; `just demo-reset remote` still applies schema changes (ADR 0003). Before the first release tag `0001_init.sql` may be edited: each demo deploy compares its hash with the one the demo recorded, and a demo-marked database that differs is reset (new `NOTE_KEK`, which holds invented notes only) by `scripts/demo-schema-sync.sh`, never any other database.
 - After the first admin enrols: delete `SETUP_TOKEN` if set; set alert address, age limit, time zone at `/admin/settings`; confirm the first backup in both buckets; rehearse a restore.
@@ -156,7 +182,7 @@ Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just re
 Numbers live in code; see the cited ADR.
 
 - Client erasure is not built; notes cannot be shredded.
-- Agents reach a person's own weeks only through `/mcp` with a personal token, off unless `MCP=on` (ADR 0014); nothing there approves, exports or administers.
+- Agents reach a person's own weeks only through `/mcp`, with a personal token or an approved app, off unless `MCP=on` (ADR 0014); nothing there approves, exports or administers. The agent holds its token, so it can change or submit its person's open weeks; an accountant's return undoes a submit. The OAuth code is hand-written and follows a specification that moves, so it needs upkeep. Hosted clients have not been checked against a live deployment.
 - Enrolment links are shown once to the issuing admin, never emailed. `addPasskeyVerify` revokes no other passkey.
 - `NOTE_KEK` rotation re-wraps client keys, it does not re-key notes: an old KEK plus an old read still opens them. It lives in the same account as the data.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.
