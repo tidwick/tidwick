@@ -103,12 +103,8 @@ export function fakeBucket(endpoint = 'https://offsite.example'): FakeBucket {
       const key = rest.map(decodeURIComponent).join('/');
       if (request.method === 'PUT') {
         if (bucket.refuse !== null) return answer(bucket.refuse, 'AccessDenied');
-        // The lock rule: a key that exists is not overwritten; a conditional PUT learns so as a 412.
-        if (bucket.objects.has(key)) {
-          return request.headers.get('if-none-match') === '*'
-            ? answer(412, 'PreconditionFailed')
-            : answer(403, 'AccessDenied');
-        }
+        // The lock rule: a key that exists is not overwritten; R2 answers 409 ObjectLockedByBucketPolicy.
+        if (bucket.objects.has(key)) return answer(409, 'ObjectLockedByBucketPolicy');
         bucket.objects.set(key, body);
         return new Response(null, { status: 200 });
       }

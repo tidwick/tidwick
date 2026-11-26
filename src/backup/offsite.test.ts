@@ -23,8 +23,6 @@ const AT = Date.UTC(2026, 10, 2, 3, 0);
 const REFUSED =
   'copying off the account failed: the off-account bucket refused the write: HTTP 403 AccessDenied';
 
-const REFUSED_WRITE = 'the off-account bucket refused the write: HTTP 403 AccessDenied';
-
 const copyVars = (s: FakeSettings) => ({
   BACKUP_COPY: 's3',
   BACKUP_S3_ENDPOINT: s.endpoint,
@@ -212,8 +210,10 @@ describe('SEC-15 the off-account copy', () => {
     const run = await runBackup({ ...deps, copy: s3Copy(bucket.settings, flaky) }, at);
     expect(run).toMatchObject({ status: 'ok', error: null });
     expect(bucket.seen).toEqual(Array(2).fill(`PUT /offsite-backups/${objectKey(at)}`));
-    // A first write is never conditional: an existing object still meets the lock's refusal.
+    // A first write over an existing object is not a retry: it meets the lock's refusal.
     const again = s3Copy(bucket.settings, (r) => bucket.fetch(r));
-    expect(await again.write(objectKey(at), new Uint8Array([1]))).toBe(REFUSED_WRITE);
+    expect(await again.write(objectKey(at), new Uint8Array([1]))).toBe(
+      'the off-account bucket refused the write: HTTP 409 ObjectLockedByBucketPolicy',
+    );
   });
 });

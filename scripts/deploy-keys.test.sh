@@ -7,6 +7,15 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cd "$repo"
 
+# A stub age-keygen, so the test needs no age install: -o writes a dummy identity, -y a dummy recipient.
+mkdir "$work/bin"
+cat > "$work/bin/age-keygen" <<'STUB'
+#!/usr/bin/env bash
+if [ "$1" = "-o" ]; then echo "AGE-SECRET-KEY-STUB" > "$2"; else echo "age1stubrecipient"; fi
+STUB
+chmod +x "$work/bin/age-keygen"
+export PATH="$work/bin:$PATH"
+
 fail() {
   echo "FAIL deploy-keys self-test: $1"
   exit 1

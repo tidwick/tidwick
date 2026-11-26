@@ -82,12 +82,18 @@ export function s3Copy(
       const url = `${target.endpoint}/${target.bucket}/${objectKey.split('/').map(uriEncode).join('/')}`;
       try {
         const headers = await s3Headers(key, 'PUT', url, body, Date.now());
-        if (retry) headers['if-none-match'] = '*';
         const signal = AbortSignal.timeout(timeoutMs);
         const response = await fetcher(new Request(url, { method: 'PUT', headers, body, signal }));
         const text = await response.text();
-        // On a retry the object already existing means the earlier attempt landed.
-        if (response.ok || (retry && response.status === 412)) return null;
+        // R2's bucket lock answers a write over an existing key with 409 ObjectLockedByBucketPolicy, before any condition is read.
+        // The key carries the run's second, so on a retry that key is the earlier attempt, which landed.
+        if (
+          response.ok ||
+          (retry &&
+            response.status === 409 &&
+            text.includes('<Code>ObjectLockedByBucketPolicy</Code>'))
+        )
+          return null;
         return refused(response.status, text);
       } catch (error) {
         return `the off-account bucket could not be reached: ${errorText(error)}`;
