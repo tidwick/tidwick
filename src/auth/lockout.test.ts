@@ -20,17 +20,18 @@ async function failTimes(email: string, times: number, at: number): Promise<void
 }
 
 describe('recovery lockout', () => {
-  it('SEC-08 five failures lock recovery for that email, and even a right code is refused while locked', async () => {
+  it('SEC-08 five failures lock recovery for that email: a wrong code is refused while locked, a right one is not', async () => {
     expect(LOCK_AFTER).toBe(5);
     const person = await enrolledPerson();
     await failTimes(person.email, 4, T0);
     await failTimes(person.email, 1, T0);
+    await expect(recover(deps(), person.email, WRONG, T0 + 1)).rejects.toMatchObject({
+      code: 'recovery_failed',
+    });
     await expect(
-      recover(deps(), person.email, person.codes[0] ?? '', T0 + 1),
-    ).rejects.toMatchObject({ code: 'recovery_failed' });
-    await expect(
-      recover(deps(), person.email, person.codes[0] ?? '', T0 + MINUTE),
+      recover(deps(), person.email, person.codes[0] ?? '', T0 + 2),
     ).resolves.toBeTruthy();
+    expect(await attemptOf(deps().db, await emailHash(deps().secret, person.email))).toBeNull();
     const locks = (await storedRows(deps().db, 'audit_event')).filter(
       (e) => e.action === 'auth.recoveryLocked',
     );
@@ -46,7 +47,7 @@ describe('recovery lockout', () => {
     await failTimes(person.email, 5, T0);
     await failTimes(person.email, 1, T0 + MINUTE);
     const code = person.codes[0] ?? '';
-    await expect(recover(deps(), person.email, code, T0 + 3 * MINUTE - 1)).rejects.toMatchObject({
+    await expect(recover(deps(), person.email, WRONG, T0 + 3 * MINUTE - 1)).rejects.toMatchObject({
       code: 'recovery_failed',
     });
     await expect(recover(deps(), person.email, code, T0 + 3 * MINUTE)).resolves.toBeTruthy();

@@ -8,3 +8,11 @@ export async function pendingRowPeople(db: D1Database): Promise<string[]> {
 export async function expireAllPending(db: D1Database, at: number): Promise<void> {
   await db.prepare('UPDATE pending_codes SET expires_at = ?1').bind(at).run();
 }
+
+export async function storedPendingCodes(db: D1Database, personId: string): Promise<string> {
+  const row = await db
+    .prepare('SELECT codes FROM pending_codes WHERE person_id = ?1')
+    .bind(personId)
+    .first<{ codes: string }>();
+  return row?.codes ?? '';
+}

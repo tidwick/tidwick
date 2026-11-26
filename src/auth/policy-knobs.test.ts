@@ -15,6 +15,7 @@ import {
 import { memberScope } from '../../test/helpers/reference';
 import { openEnrolment } from '../db/enrolments';
 import { pendingCodesOf } from '../db/pending-codes';
+import { storedPendingCodes } from '../db/test-support-pending';
 import { AppError } from '../lib/errors';
 import { DEFAULT_POLICY, readPolicy } from '../lib/policy';
 import { grantAccess } from '../oauth/grant';
@@ -179,5 +180,25 @@ describe('link and code knobs', () => {
     );
     expect(await pendingCodesOf(d.db, d.secret, owner, T0 + 2 * MINUTE - 1)).toEqual(codes);
     expect(await pendingCodesOf(d.db, d.secret, owner, T0 + 2 * MINUTE)).toEqual([]);
+  });
+
+  it('SEC-49 the stored pending codes are sealed: no code in the row, and another session id reads none', async () => {
+    const d = deps();
+    const person = await enrolledPerson();
+    const codes = await regenerateCodes(
+      await adminScope(),
+      d.db,
+      d.secret,
+      person.personId,
+      T0,
+      'raw-session-two',
+    );
+    const stored = await storedPendingCodes(d.db, person.personId);
+    expect(stored).not.toBe('');
+    for (const code of codes) expect(stored).not.toContain(code);
+    const other = { personId: person.personId, rawId: 'raw-session-other' };
+    expect(await pendingCodesOf(d.db, d.secret, other, T0 + 1)).toEqual([]);
+    const owner = { personId: person.personId, rawId: 'raw-session-two' };
+    expect(await pendingCodesOf(d.db, d.secret, owner, T0 + 1)).toEqual(codes);
   });
 });
