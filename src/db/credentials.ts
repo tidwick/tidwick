@@ -1,5 +1,5 @@
 // Passkey credentials. A revoked credential or an offboarded person's credential never verifies.
-import { OTHER_SIGNED_IN_ADMIN_OF_2 } from './admins';
+import { OTHER_SIGNED_IN_ADMIN, OTHER_SIGNED_IN_ADMIN_OF_2 } from './admins';
 
 export interface CredentialRow {
   id: string;
@@ -29,6 +29,10 @@ WHERE id = ?1 AND counter = ?2 AND revoked_at IS NULL`;
 
 const REVOKE_ALL =
   'UPDATE credential SET revoked_at = ?2 WHERE person_id = ?1 AND revoked_at IS NULL';
+
+const REVOKE_UNLESS_LAST_ADMIN = `${REVOKE_ALL}
+AND (NOT EXISTS (SELECT 1 FROM person_role WHERE person_id = ?1 AND role = 'admin')
+  OR EXISTS (SELECT 1 FROM person_role r WHERE ${OTHER_SIGNED_IN_ADMIN}))`;
 
 const LISTED = `SELECT id, created_at, last_used_at FROM credential
 WHERE person_id = ?1 AND revoked_at IS NULL ORDER BY created_at, id`;
@@ -127,6 +131,15 @@ export function revokeCredentialsOf(
   now: number,
 ): D1PreparedStatement {
   return db.prepare(REVOKE_ALL).bind(personId, now);
+}
+
+/** Changes nothing for an admin when no other admin can sign in, so a raced batch holding it rolls back. */
+export function revokeCredentialsKeepingAdmin(
+  db: D1Database,
+  personId: string,
+  now: number,
+): D1PreparedStatement {
+  return db.prepare(REVOKE_UNLESS_LAST_ADMIN).bind(personId, now);
 }
 
 /** D1 returns a BLOB as an ArrayBuffer or an array of bytes depending on the path; both become bytes. */

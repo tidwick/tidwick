@@ -58,6 +58,16 @@ migrate-check:
     trap 'rm -rf "$state"' EXIT
     just db-migrate --persist-to "$state" > "$state/apply.log" 2>&1 || { cat "$state/apply.log"; echo "FAIL migrate-check: wrangler could not apply migrations/ to a fresh local D1; fix the SQL named above"; exit 1; }
     echo "PASS migrate-check"
+    # A deploy applies new migrations to a populated database, so the later ones must also pass over rows (a person holds a foreign key into firm).
+    keep="$(mktemp -d)"
+    trap 'rm -rf "$state" "$keep"' EXIT
+    run() { npx --no-install wrangler d1 execute tidwick --local --persist-to "$keep" "$@"; }
+    run --file migrations/0001_init.sql > "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: 0001 did not apply; see above"; exit 1; }
+    run --command "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Acme', 0); INSERT INTO firm (id, name, client_id) VALUES ('f1', 'Acme', 'c1'); INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'a@example.test', 'A', 0);" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: the 0001 seed rows did not insert; fix the INSERTs in the justfile"; exit 1; }
+    for f in $(ls migrations/*.sql | sort | tail -n +2); do
+      run --file "$f" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: $f cannot apply over existing rows; rebuild tables so rows survive foreign keys"; exit 1; }
+    done
+    echo "PASS migrate-populated"
 
 seed: dev-vars
     #!/usr/bin/env bash

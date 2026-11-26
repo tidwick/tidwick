@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { addPerson, deps, T0, ACCOUNTING, ADMIN, withPasskey } from '../../../test/helpers/auth';
 import { offboard } from '../../auth/offboard';
 import { reenrol } from '../../auth/revoke';
+import { revokeCredentialsKeepingAdmin } from '../../db/credentials';
 import { isLastAdmin, offboardStatement } from '../../db/admins';
 import { setGrants } from '../../db/role-grants';
 import { grantsOf } from '../../db/roles';
@@ -93,5 +94,16 @@ describe('SEC-11 the last admin stays', () => {
     await enrolledAdmin();
     await expect(reenrol(a.scope, d.db, d.secret, a.id, T0)).resolves.toEqual(expect.any(String));
     expect(await isLastAdmin(env.DB, a.id)).toBe(false);
+  });
+
+  it('SEC-11 a re-enrolment whose read raced still cannot revoke the last signed-in admin', async () => {
+    const a = await soleAdmin();
+    const b = await enrolledAdmin();
+    await offboardStatement(env.DB, b.id, T0).run();
+    expect((await revokeCredentialsKeepingAdmin(env.DB, a.id, T0).run()).meta.changes).toBe(0);
+    expect(await isLastAdmin(env.DB, a.id)).toBe(true);
+    const c = await enrolledAdmin();
+    expect((await revokeCredentialsKeepingAdmin(env.DB, a.id, T0).run()).meta.changes).toBe(1);
+    expect(await isLastAdmin(env.DB, c.id)).toBe(true);
   });
 });
