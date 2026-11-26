@@ -8,8 +8,13 @@ test('an admin saves the alert address and age limit, a bad value is refused wit
   await enrol(page, tokenOf(`admin-set-${info.project.name}`));
   await page.goto('/admin/settings');
 
+  await expect(page.locator('main#main')).toHaveCount(1);
+  await page.locator('form[action*="settings.save"]').evaluate((f) => {
+    (f as HTMLFormElement).noValidate = true;
+  });
   await page.getByLabel('Backup age limit, in hours').fill('0');
   await page.getByRole('button', { name: 'Save settings' }).click();
+  await expect(page.getByRole('alert').getByText(/Enter whole hours from 1 to/)).toBeVisible();
   await expect(page.getByLabel('Backup age limit, in hours')).toHaveValue('0');
   await expect(page.getByText('Saved.')).toHaveCount(0);
 

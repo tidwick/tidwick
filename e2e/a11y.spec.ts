@@ -12,4 +12,5 @@ test('the signed-out pages have no axe violations, and a skip link reaches the c
   await expect(skip).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#main$/);
+  await expect(page.locator('main#main')).toBeInViewport();
 });
