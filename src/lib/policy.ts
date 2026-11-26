@@ -39,13 +39,14 @@ export function readPolicy(source: Source, gaps?: string[]): Policy {
   const read = (
     name: string,
     once: () => number | readonly number[],
+    fallback: number | readonly number[] = 0,
   ): number | readonly number[] => {
     try {
       return once();
     } catch (error) {
       if (gaps === undefined) throw error;
       gaps.push(name);
-      return 0;
+      return fallback;
     }
   };
   for (const knob of KNOBS) {
@@ -56,7 +57,7 @@ export function readPolicy(source: Source, gaps?: string[]): Policy {
       return (value ?? knob.def) * knob.scale;
     });
   }
-  out['agentTokenDays'] = read(TOKEN_DAYS.name, () => lives(source));
+  out['agentTokenDays'] = read(TOKEN_DAYS.name, () => lives(source), TOKEN_DAYS.def);
   const days = out['agentTokenDays'] as readonly number[];
   const given = source['AGENT_TOKEN_DEFAULT_DAYS'];
   if (given === undefined || given === '')

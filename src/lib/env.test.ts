@@ -234,6 +234,10 @@ describe('typed env', () => {
     expect(caught({ ...complete(), AGENT_TOKEN_DAYS: '0' }).detail).toBe('AGENT_TOKEN_DAYS');
     const found = setupEnv({ ...complete(), AUDIT_PAGE_ROWS: '9', BACKUP_TRIES: 'x' });
     expect(found?.missing).toEqual(['AUDIT_PAGE_ROWS', 'BACKUP_TRIES']);
+    const list = setupEnv({ ...complete(), AGENT_TOKEN_DAYS: 'x,y' });
+    expect(list?.missing).toEqual(['AGENT_TOKEN_DAYS']);
+    const both = setupEnv({ ...complete(), AGENT_TOKEN_DAYS: '0', AGENT_TOKEN_DEFAULT_DAYS: '7' });
+    expect(both?.missing).toEqual(['AGENT_TOKEN_DAYS']);
     expect(backupEnv({ ...complete(), BACKUP_TRIES: '2' }).policy.backupTries).toBe(2);
     expect(() => backupEnv({ ...complete(), BACKUP_TRIES: '9' })).toThrow(AppError);
   });
