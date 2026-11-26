@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { FORMAT, VERSION, type BackupHeader, type BackupLine } from '../lib/backup-format';
 import { eventHash, GENESIS, type ChainLink } from '../lib/chain';
-import { planRestore } from './restore';
+import { parseHead, planRestore } from './restore';
 
 const SCHEMA = '0006_example.sql';
 
@@ -57,13 +57,23 @@ async function valid(key: string, events = 2): Promise<string> {
   ]);
 }
 
-async function why(text: string): Promise<string> {
-  const plan = await planRestore(text, SCHEMA);
+/** The head the file's own header names, standing for one the operator recorded when the file is the genuine one. */
+function recorded(text: string): { seq: number; hash: string } {
+  try {
+    const header = JSON.parse(text.split('\n')[0] ?? '{}') as BackupHeader;
+    return { seq: header.chain_seq, hash: header.chain_head };
+  } catch {
+    return { seq: 0, hash: GENESIS };
+  }
+}
+
+async function why(text: string, expected = recorded(text)): Promise<string> {
+  const plan = await planRestore(text, SCHEMA, expected);
   return plan.ok ? 'accepted' : plan.why;
 }
 
 async function load(text: string): Promise<void> {
-  const plan = await planRestore(text, SCHEMA);
+  const plan = await planRestore(text, SCHEMA, recorded(text));
   if (!plan.ok) return expect.unreachable(plan.why);
   await env.DB.batch(plan.sql.map((sql) => env.DB.prepare(sql)));
 }
@@ -110,6 +120,37 @@ describe('SEC-15 restore checks', () => {
     );
   });
 
+  it('SEC-70 a forged but self-consistent file is refused unless its head is the one the operator recorded', async () => {
+    const genuine = await valid('genuine', 3);
+    const forged = await valid('forged', 4);
+    // Both files verify on their own: the chain is unkeyed, so a forger can write a whole one.
+    expect(await why(forged)).toBe('accepted');
+    expect(await why(genuine)).toBe('accepted');
+    expect(await why(forged, recorded(genuine))).toMatch(
+      /^the backup's audit chain ends at seq 4, which is not the head you recorded \(seq 3\)/,
+    );
+    expect(await why(genuine, { seq: 3, hash: 'ab'.repeat(32) })).toMatch(
+      /^the backup's audit chain ends at seq 3, which is not the head you recorded/,
+    );
+    expect(await why(genuine, recorded(genuine))).toBe('accepted');
+  });
+
+  it('SEC-70 the recorded head is read as seq:hash and nothing else', () => {
+    const hash = 'ab'.repeat(32);
+    expect(parseHead(`12:${hash}`)).toEqual({ seq: 12, hash });
+    expect(parseHead(`12:${hash}\n`)).toEqual({ seq: 12, hash });
+    for (const bad of [
+      '',
+      '12',
+      `:${hash}`,
+      `12:${hash.toUpperCase()}`,
+      `12:${hash}0`,
+      `-1:${hash}`,
+      '12:abc',
+    ])
+      expect(parseHead(bad)).toBeNull();
+  });
+
   it('SEC-15 a row for a table or column the format never writes is refused', async () => {
     expect(await why(backup({}, [{ t: 'session', r: { id_hash: 'x' } }]))).toMatch(
       /^unknown table session; the file does not match this schema/,
@@ -119,7 +160,7 @@ describe('SEC-15 restore checks', () => {
     );
     const unknown = backup({}, [{ t: 'setting', r: { key: 'k', value_json: '1', evil: 'x' } }]);
     expect(await why(unknown)).toBe('accepted');
-    const plan = await planRestore(unknown, SCHEMA);
+    const plan = await planRestore(unknown, SCHEMA, recorded(unknown));
     if (!plan.ok) return expect.unreachable(plan.why);
     await expect(env.DB.batch(plan.sql.map((sql) => env.DB.prepare(sql)))).rejects.toThrow(/evil/);
     expect(await counts()).toEqual([0, 0, 0]);
@@ -129,7 +170,7 @@ describe('SEC-15 restore checks', () => {
     await load(await valid('first'));
     expect(await counts()).toEqual([1, 1, 2]);
     for (const again of [await valid('first'), await valid('second', 0)]) {
-      const plan = await planRestore(again, SCHEMA);
+      const plan = await planRestore(again, SCHEMA, recorded(again));
       if (!plan.ok) return expect.unreachable(plan.why);
       await expect(env.DB.batch(plan.sql.map((sql) => env.DB.prepare(sql)))).rejects.toThrow(
         /NOT NULL constraint failed: setting\.value_json/,

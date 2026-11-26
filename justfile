@@ -146,12 +146,12 @@ backup-fixture:
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file test/seed/hostile.sql >> "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the hostile-text rows did not load; fix test/seed/hostile.sql"; exit 1; }
     node scripts/backup-fixture.ts "$state/source" test/fixtures/backup-recipient.txt test/fixtures/backup.age
 
-restore file identity persist=".wrangler/restore":
+restore file identity head persist=".wrangler/restore":
     #!/usr/bin/env bash
     set -euo pipefail
     persist="$(./scripts/restore-target.sh {{ quote(persist) }})"
     rm -rf "$persist" && mkdir -p -m 700 "$persist"
-    node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$persist/restore.sql"
+    node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$persist/restore.sql" {{ quote(head) }}
     just db-migrate --config test/wrangler.test.jsonc --persist-to "$persist" > "$persist/migrate.log" 2>&1 || { cat "$persist/migrate.log"; echo "FAIL restore: migrations did not apply to the fresh D1"; exit 1; }
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
     echo "PASS restore: loaded into the local D1 at $persist"
@@ -166,18 +166,18 @@ backup-fetch night out=".wrangler/restore-remote/backup.age":
     [[ "$night" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || { echo "FAIL backup-fetch: pass YYYY-MM-DD (nightly) or YYYY-MM-DD-HHMMSS (UTC, on-demand), not {{ quote(night) }}"; exit 1; }
     mkdir -p -m 700 "$(dirname {{ quote(out) }})"
     npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo "$night" | sed 's#-#/#; s#-#/#').ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; nightly keys end -030000, an on-demand time needs the full HHMMSS; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
-    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit>"
+    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit> <the seq:hash head you recorded for this backup>"
 
 # Loads a backup into the deployed database of the same name: migrate, then the rows. For a lost database: create
 # it first (`wrangler d1 create tidwick`), run this BEFORE `just deploy`, then follow ARCHITECTURE, Operate, Restore.
 # The first statement fails on a database that already holds rows, so a live one is never overwritten.
-restore-remote file identity env="":
+restore-remote file identity head env="":
     #!/usr/bin/env bash
     set -euo pipefail
     eval "$(just _wr {{ quote(env) }})"
     dir=.wrangler/restore-remote
     rm -rf "$dir/restore.sql" && mkdir -p -m 700 "$dir"
-    node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$dir/restore.sql"
+    node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$dir/restore.sql" {{ quote(head) }}
     npx --no-install wrangler d1 migrations apply "$mig" --remote $flags || { echo "FAIL restore-remote: migrations did not apply; check the database exists (wrangler d1 list) and wrangler is logged in to the right account"; exit 1; }
     npx --no-install wrangler d1 execute "$db" --remote $flags --file "$dir/restore.sql" || { echo "FAIL restore-remote: the rows did not load; NOT NULL on setting.value_json means the database was not empty: create a new one and start again"; exit 1; }
     echo "PASS restore-remote: loaded into $db; delete $dir/restore.sql, then the post-restore steps in ARCHITECTURE, Operate, Restore"
@@ -194,7 +194,7 @@ offsite-check:
     node scripts/offsite-check.ts
 
 restore-drill: backup-fixture
-    just restore test/fixtures/backup.age test/fixtures/backup-key.txt
+    just restore test/fixtures/backup.age test/fixtures/backup-key.txt "$(cat test/fixtures/backup.age.head)"
     node scripts/restore-drill.ts .wrangler/drill/source .wrangler/restore
 
 # Deploy recipes; the order is in ARCHITECTURE, Deploy. `env` is "" for the real deployment or "demo" for

@@ -1,18 +1,29 @@
 // Decrypts a backup, has src/db/restore.ts check its header, schema version and audit chain, and writes the SQL
-// that loads it into a freshly migrated, empty D1. Usage: node scripts/restore.ts <backup file> <identity file> <out sql>
+// that loads it into a freshly migrated, empty D1. The chain head the operator recorded outside the backup must match
+// the file's. Usage: node scripts/restore.ts <backup file> <identity file> <out sql> <expected head, seq:hash>
 import { chmodSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Decrypter } from 'age-encryption';
-import { planRestore } from '../src/db/restore.ts';
+import { parseHead, planRestore } from '../src/db/restore.ts';
 
 function stop(why: string): never {
   console.error(`FAIL restore: ${why}`);
   process.exit(1);
 }
 
-const [file, identityFile, out] = process.argv.slice(2);
-if (file === undefined || identityFile === undefined || out === undefined) {
-  stop('usage: restore.ts <backup file> <identity file> <out sql>');
+const [file, identityFile, out, headText] = process.argv.slice(2);
+if (
+  file === undefined ||
+  identityFile === undefined ||
+  out === undefined ||
+  headText === undefined
+) {
+  stop('usage: restore.ts <backup file> <identity file> <out sql> <expected head, seq:hash>');
 }
+const expected = parseHead(headText);
+if (expected === null)
+  stop(
+    `the expected head must be seq:hash, 64 lowercase hex characters after the colon, as /admin/settings showed it for the backup (ARCHITECTURE, Operate, Restore), not ${headText}`,
+  );
 
 /** A file's bytes, or a FAIL line naming the path and what to pass instead. */
 function read(path: string, what: string): Uint8Array {
@@ -52,7 +63,7 @@ const latest =
     .filter((f) => f.endsWith('.sql'))
     .toSorted()
     .at(-1) ?? null;
-const plan = await planRestore(text, latest);
+const plan = await planRestore(text, latest, expected);
 if (!plan.ok) stop(`${file}: ${plan.why}`);
 // Every restored row is in this file in the clear, so only its owner may read it.
 writeFileSync(out, `${plan.sql.join('\n')}\n`, { mode: 0o600 });

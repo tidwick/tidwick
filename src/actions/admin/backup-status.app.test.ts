@@ -65,4 +65,17 @@ describe('backup status and the actions beside it', () => {
     expect(page).toContain('writing to the sink failed: r2 down');
     expect(page).toContain('The latest backup failed');
   });
+
+  it('SEC-70 a good run shows the chain head a restore must be given, and a failed one shows none', async () => {
+    const admin = await caller([ADMIN]);
+    const hash = 'ab'.repeat(32);
+    await env.DB.exec(
+      `INSERT INTO backup_run (id, started_at, finished_at, object_key, bytes, chain_seq, chain_head, status, error, chars) VALUES ('r-good', 1, 9999999999998, 'backups/2099/01/02-000000.ndjson.gz.age', 10, 7, '${hash}', 'ok', NULL, 10);
+INSERT INTO backup_run (id, started_at, finished_at, object_key, bytes, chain_seq, chain_head, status, error, chars) VALUES ('r-bad', 1, 9999999999997, 'backups/2099/01/03-000000.ndjson.gz.age', 0, 9, '${'cd'.repeat(32)}', 'failed', 'sink down', 0);`,
+    );
+    const page = await (await getPage('/admin/settings', admin)).text();
+    expect(page).toMatch(new RegExp(`<code data-head[^>]*>7:${hash}</code>`));
+    expect(page).not.toContain('cd'.repeat(32));
+    expect(page).toContain('offline kit');
+  });
 });
