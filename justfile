@@ -18,9 +18,6 @@ dev-vars:
 dev-session who:
     @node test/local/dev-session.ts {{ quote(who) }}
 
-dev-agent-token who:
-    @node test/local/dev-agent-token.ts {{ quote(who) }}
-
 build:
     npx --no-install wrangler types
     npx --no-install astro build
@@ -63,7 +60,7 @@ migrate-check:
     trap 'rm -rf "$state" "$keep"' EXIT
     run() { npx --no-install wrangler d1 execute tidwick --local --persist-to "$keep" "$@"; }
     run --file migrations/0001_init.sql > "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: 0001 did not apply; see above"; exit 1; }
-    run --command "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Acme', 0); INSERT INTO firm (id, name, client_id) VALUES ('f1', 'Acme', 'c1'); INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'a@example.test', 'A', 0);" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: the 0001 seed rows did not insert; fix the INSERTs in the justfile"; exit 1; }
+    run --command "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Acme', 0); INSERT INTO firm (id, client_id) VALUES ('f1', 'c1'); INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'a@example.test', 'A', 0);" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: the 0001 seed rows did not insert; fix the INSERTs in the justfile"; exit 1; }
     for f in $(ls migrations/*.sql | sort | tail -n +2); do
       run --file "$f" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: $f cannot apply over existing rows; rebuild tables so rows survive foreign keys"; exit 1; }
     done
@@ -240,6 +237,9 @@ deploy env="":
     eval "$(just _wr {{ quote(env) }})"
     env ${flags:+CLOUDFLARE_ENV=demo} just build
     npx --no-install wrangler deploy ${flags:+--env demo} --dry-run
+    # One-time: delete with scripts/demo-squash-once.sh after the first green demo deploy. The demo applied 0001 to 0004,
+    # which the squash folded into 0001_init.sql; this drops what the new file lacks, and only from the demo-marked database.
+    if [ -n "$flags" ]; then ./scripts/demo-squash-once.sh "$mig" --remote $flags; fi
     npx --no-install wrangler d1 migrations apply "$mig" --remote $flags
     npx --no-install wrangler deploy ${flags:+--env demo}
 
@@ -295,11 +295,18 @@ guard:
       base=FETCH_HEAD
     fi
     changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
+    # One-time: DELETE ME in the PR after the first green demo deploy. 0002 to 0004 and the agent tables fold into 0001_init.sql.
+    # Pinned to the exact migrations trees before and after, so it excuses no other edit.
+    if [ -n "$changed" ] && [ "$(git rev-parse "$base:migrations")" = 7a6cdd547496641a56bbafbbe208c84c7894da52 ] \
+      && [ "$(git rev-parse HEAD:migrations)" = 47e29fa82d9ceb5c1a86abcf8e4f9eaa96132bdc ] && git diff --quiet HEAD -- migrations/; then
+      echo "PASS migrations (the squash of 0002-0004 and the agent cut)"; changed=
+    fi
     [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
     echo "PASS migrations"
     ./scripts/restore-target.test.sh
     ./scripts/restore-errors.test.sh
     ./scripts/deploy-check.test.sh
+    ./scripts/demo-squash-once.test.sh
     ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh
     ./scripts/colour-literals.sh

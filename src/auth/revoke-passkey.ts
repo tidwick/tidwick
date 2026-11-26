@@ -1,12 +1,10 @@
-// A person removing one of their own passkeys, audited, and with it every agent grant. Their last passkey goes only
-// if they keep a linked identity, and not at all if it makes them the last admin who can sign in (ADR 0003).
+// A person removing one of their own passkeys, audited. Their last passkey goes only if they keep a linked identity, and not at all if it makes them the last admin who can sign in (ADR 0003).
 import { auditedBatch, retryOnce } from '../db/audit';
 import { isLastAdmin } from '../db/admins';
 import { activeCredentialsOf, revokeCredential } from '../db/credentials';
 import { liveIdentitiesOf } from '../db/identities';
 import type { Scope } from '../db/scope';
 import { fail } from '../lib/errors';
-import { recordGrantRevocation } from './revoke';
 
 export async function revokeOwnPasskey(
   scope: Scope,
@@ -34,7 +32,6 @@ export async function revokeOwnPasskey(
       },
       1,
     );
-    await recordGrantRevocation(batch, db, personId, now);
     await batch.run();
   });
 }

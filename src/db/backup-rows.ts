@@ -27,15 +27,8 @@ export const BACKUP_TABLES = [
 
 export type BackupTable = (typeof BACKUP_TABLES)[number];
 
-/** Short-lived ceremony and session state, sign-ins under way, and agent access, that a restore starts without. */
-export const SKIPPED_TABLES = [
-  'session',
-  'auth_challenge',
-  'recovery_attempt',
-  'agent_grant',
-  'agent_token',
-  'oidc_flow',
-];
+/** Short-lived ceremony and session state, and sign-ins under way, that a restore starts without. */
+export const SKIPPED_TABLES = ['session', 'auth_challenge', 'recovery_attempt', 'oidc_flow'];
 
 /** Rows per keyset page. */
 export const PAGE_ROWS = 2000;

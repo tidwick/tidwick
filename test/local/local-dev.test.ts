@@ -1,16 +1,13 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { verifyAccess } from '../../src/auth/agent-tokens';
 import { IDLE_MS, readSession, SESSION_COOKIE } from '../../src/auth/session';
 import { storedRows } from '../../src/db/stored-rows';
 import {
   DUMMY_MARKER,
   dummySecrets,
   dummyVars,
-  LOCAL_AGENT_MS,
   LOCAL_SESSION_COOKIE,
   LOCAL_SESSION_MS,
-  localAgentToken,
   localEmail,
   localSession,
 } from './local-dev';
@@ -26,11 +23,6 @@ async function person(id: string, email: string, offboardedAt: number | null): P
       `INSERT INTO person (id, firm_id, email, name, created_at, offboarded_at) VALUES ('${id}', 'lf', '${email}', 'Local person', 1, ${String(offboardedAt ?? 'NULL')});`,
     ].join('\n'),
   );
-}
-
-/** The statements of a `--command` string, which wrangler splits itself, run one at a time. */
-async function run(sql: string): Promise<void> {
-  for (const statement of sql.split(/(?<=;)\s+/)) await env.DB.exec(statement);
 }
 
 async function sessionsOf(personId: string): Promise<number> {
@@ -61,21 +53,6 @@ describe('local dev session', () => {
     }
     expect((await storedRows(env.DB, 'session')).length).toBe(before);
     expect(await sessionsOf('lp2')).toBe(0);
-  });
-
-  it('a local agent token verifies as that person’s grant, and an offboarded or unknown person gets none', async () => {
-    await person('lp3', 'agent-phone@practice.example', null);
-    await person('lp4', 'gone-agent@practice.example', 1);
-    const { sql, token } = await localAgentToken('agent-phone@practice.example', SECRET, NOW);
-    await run(sql);
-    expect((await verifyAccess(env.DB, SECRET, token, NOW + 1))?.person_id).toBe('lp3');
-    expect(await verifyAccess(env.DB, SECRET, token, NOW + LOCAL_AGENT_MS)).toBeNull();
-    expect(await verifyAccess(env.DB, 'another-secret', token, NOW + 1)).toBeNull();
-    for (const email of ['gone-agent@practice.example', 'nobody@practice.example']) {
-      const none = await localAgentToken(email, SECRET, NOW);
-      await run(none.sql);
-      expect(await verifyAccess(env.DB, SECRET, none.token, NOW + 1)).toBeNull();
-    }
   });
 
   it('only the generated dummy .dev.vars is used', async () => {

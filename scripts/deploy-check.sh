@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Before a deploy: wrangler.jsonc holds no placeholder, and every secret the target needs is set on it. Usage:
-# scripts/deploy-check.sh [demo]. Optional secrets (NOTE_KEK_PREVIOUS, MCP, SSO_PROVIDERS, SETUP_TOKEN, ...) are never
+# scripts/deploy-check.sh [demo]. Optional secrets (NOTE_KEK_PREVIOUS, SSO_PROVIDERS, SETUP_TOKEN, ...) are never
 # demanded. WRANGLER names the command that runs wrangler; the test points it at a stub.
 set -euo pipefail
 wrangler="${WRANGLER:-npx --no-install wrangler}"

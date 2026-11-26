@@ -40,10 +40,6 @@ export interface Env {
   DEMO_LOGIN: boolean;
   /** The demo sign-in's shared password, or null when unset or shorter than 16 characters, which closes it. */
   DEMO_PASSWORD: string | null;
-  /** True only when `MCP` is `on`: `/mcp` and the agent routes answer; otherwise every one of them is a 404. Off by default. */
-  MCP: boolean;
-  /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
-  MCP_NOTES: 'off' | 'read';
   /** The identity providers `SSO_PROVIDERS` allows, each with its `SSO_SECRET_<ID>`; none turns every `/auth/sso/*` route into a 404. */
   SSO: readonly SsoProvider[];
   BACKUP_RECIPIENT: string;
@@ -78,10 +74,6 @@ function parse(source: Source, gaps?: string[]): Env {
     DEMO_BANNER: field(() => choice(source, 'DEMO_BANNER', ['', 'on'], '') === 'on'),
     DEMO_LOGIN: field(() => choice(source, 'DEMO_LOGIN', ['', 'on'], '') === 'on'),
     DEMO_PASSWORD: demoPassword(source),
-    MCP: field(() => choice(source, 'MCP', ['', 'on'], '') === 'on'),
-    MCP_NOTES: field(() =>
-      choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
-    ),
     SSO: field(() => ssoProviders(providersText(source), source)),
     BACKUP_RECIPIENT: field(() => recipient(source, 'BACKUP_RECIPIENT')),
     SESSION_SECRET: field(() => secret(source, 'SESSION_SECRET', isSessionSecret)),

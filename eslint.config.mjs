@@ -32,7 +32,7 @@ const SHIPS =
 const CRON =
   "cronScope is the demo wipe's all-clients scope: only src/db/demo-wipe.ts may use it, so take the narrowest Scope your path has";
 const EDGE =
-  '/^(astro|cloudflare):|[/](actions|middleware|pages|components|layouts|mcp|worker)([/]|$)/';
+  '/^(astro|cloudflare):|[/](actions|middleware|pages|components|layouts|worker)([/]|$)/';
 const edge = (not = '') => [
   'error',
   {

@@ -8,10 +8,11 @@ import { currentEnv } from '../lib/env';
 import { fail, isAppError } from '../lib/errors';
 import { safeReturn } from '../auth/sso';
 import { errorPage, errorResponse, type PageLink } from './error-responses';
-import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
 export const RPC_PATTERN = '/_actions/[...path]';
+/** The pattern Astro gives a path nobody built; it is answered as not found, with no route-table row to look up. */
+const UNBUILT_PATTERN = '/404';
 const ACTION_QUERY = '_action';
 
 /**
@@ -69,13 +70,13 @@ export const authz: MiddlewareHandler = async (context, next) => {
   context.locals.scope = null;
   context.locals.grants = [];
   try {
+    if (context.routePattern === UNBUILT_PATTERN) fail('not_found');
     const grants = gated ? await grantsOf(DB, session.personId) : [];
     for (const rule of rules) authorize(rule, session, grants, Date.now());
     context.locals.grants = grants;
     if (gated) context.locals.scope = await scopeFor(DB, session.personId);
   } catch (error) {
     if (!isAppError(error)) throw error;
-    if (context.routePattern === MCP_PATTERN) return rpcRefusal(error.code);
     if (context.routePattern === RPC_PATTERN) return errorResponse(error.code);
     if (error.code === 'unauthenticated' && ['GET', 'HEAD'].includes(context.request.method))
       return signInRedirect(context.url);

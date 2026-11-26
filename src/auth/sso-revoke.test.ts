@@ -2,10 +2,8 @@
 // only while another way in remains and one admin still holds a passkey (ADR 0003).
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { mintAgent } from '../../test/helpers/agent';
 import { addPerson, adminScope, T0, withIdentity, withPasskey } from '../../test/helpers/auth';
 import { eventsAfter, headSeq } from '../../test/helpers/reference';
-import { liveGrantIdsOf } from '../db/agent-grants';
 import { liveIdentitiesOf } from '../db/identities';
 import { memberScope } from '../../test/helpers/reference';
 import { currentEnv } from '../lib/env';
@@ -58,11 +56,10 @@ describe('revoking a person revokes their identities', () => {
     expect(await names(seq)).not.toContain('people.unlinkSso');
   });
 
-  it('an admin unlinks one identity and the person’s agents with it, and a member scope cannot', async () => {
+  it('an admin unlinks one identity and a member scope cannot', async () => {
     const { id } = await addPerson();
     const keep = await withIdentity(id, ISSUER, subject());
     const drop = await withIdentity(id, OTHER, subject());
-    await mintAgent(id);
     const seq = await headSeq();
     expect(await refused(unlinkSso((await memberScope()).scope, env.DB, id, drop, T0))).toBe(
       'forbidden',
@@ -73,8 +70,7 @@ describe('revoking a person revokes their identities', () => {
     );
     await unlinkSso(admin, env.DB, id, drop, T0);
     expect((await liveIdentitiesOf(env.DB, id)).map((i) => i.id)).toEqual([keep]);
-    expect(await liveGrantIdsOf(env.DB, id)).toEqual([]);
-    expect(await names(seq)).toEqual(['people.unlinkSso', 'agents.revoke']);
+    expect(await names(seq)).toEqual(['people.unlinkSso']);
     const [event] = await eventsAfter(seq);
     expect(event).toMatchObject({ actor_id: admin.actorId, target: `person:${id}` });
     expect(JSON.parse(event?.before_json ?? '{}')).toEqual({ identities: [drop] });
