@@ -4,6 +4,7 @@
 import { keyedHash, sameText } from '../auth/tokens';
 import { fingerprintText, parseFingerprint, type Fingerprint } from '../lib/fingerprint';
 
+/** Fixed (security floor): how long an agent's confirmation of a changed week stays valid; it names the exact change, so it is kept short. */
 export const CONFIRM_MS = 10 * 60 * 1000;
 
 interface Holder {

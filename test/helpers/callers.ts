@@ -5,6 +5,7 @@ import { csrfToken } from '../../src/auth/tokens';
 import type { Grant } from '../../src/db/roles';
 import { currentEnv } from '../../src/lib/env';
 import { addPerson } from './auth';
+import { DEFAULT_POLICY } from '../../src/lib/policy';
 
 export const ORIGIN = 'http://localhost:4321';
 
@@ -22,7 +23,14 @@ export async function caller(
   const { SESSION_SECRET } = currentEnv();
   const person = await addPerson(grants);
   const at = Date.now() - (options.stepUpAgo ?? 0);
-  const session = await newSession(env.DB, SESSION_SECRET, person.id, at, options.mustEnrol);
+  const session = await newSession(
+    env.DB,
+    SESSION_SECRET,
+    person.id,
+    at,
+    DEFAULT_POLICY.sessionMaxMs,
+    options.mustEnrol,
+  );
   await session.statement.run();
   const token = await csrfToken(SESSION_SECRET, session.rawId);
   return { personId: person.id, raw: session.rawId, token };

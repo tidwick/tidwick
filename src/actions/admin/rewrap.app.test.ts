@@ -2,6 +2,7 @@
 // fresh passkey confirmation re-wraps the client keys, by the script and the no-script settings page, each key one
 // audit event, and a member's note reads the same while the keys wait and after they moved.
 import { env } from 'cloudflare:workers';
+import { currentEnv } from '../../lib/env';
 import { describe, expect, it } from 'vitest';
 import { ACCOUNTING, ADMIN, adminScope, MINUTE } from '../../../test/helpers/auth';
 import { addRow, booking, cell, save, WEEK, weekOf } from '../../../test/helpers/booking';
@@ -80,7 +81,7 @@ describe('SEC-32 keys.rewrap runs only for an admin with step-up', () => {
     expect((await weekOf(b.who, WEEK)).rows[0]?.cells[0]?.note).toBe('site walk');
 
     const done = await (await getPage('/admin/settings?saved=1', admin)).text();
-    const until = new Date(Math.max(...events.map((e) => e.at)) + 40 * 86_400_000)
+    const until = new Date(Math.max(...events.map((e) => e.at)) + currentEnv().POLICY.backupKeepMs)
       .toISOString()
       .slice(0, 10);
     expect(done).toContain(`Keep NOTE_KEK_PREVIOUS until ${until}`);

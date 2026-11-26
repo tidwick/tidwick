@@ -3,13 +3,8 @@ import { actions } from 'astro:actions';
 import { cn } from 'cn';
 import { DANGER, SECONDARY } from '../auth/classes';
 import { Input } from '../ui/input';
-import {
-  DEFAULT_LIFE_DAYS,
-  LABEL_MAX,
-  LIFE_DAYS,
-  MAX_LIVE_GRANTS,
-  PERSONAL_CLIENT,
-} from '../../auth/agent-personal';
+import { LABEL_MAX, PERSONAL_CLIENT } from '../../auth/agent-personal';
+import type { Policy } from '../../lib/policy';
 import type { ListedGrant } from '../../db/agent-grants';
 // Agent tokens on the account page: the ones held, whether made here or approved for an app (the same Revoke ends
 // either), a form to mint another, and a just-minted token shown once.
@@ -22,8 +17,9 @@ interface Props {
   /** The token the Action just minted, or null. */
   minted: { token: string; label: string; expiresAt: number } | null;
   origin: string;
+  policy: Policy;
 }
-const { csrf, grants, confirmed, minted, origin } = Astro.props;
+const { csrf, grants, confirmed, minted, origin, policy } = Astro.props;
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const hour = (ms: number) => `${new Date(ms).toISOString().slice(0, 13).replace('T', ' ')}:00 UTC`;
 const scopesOf = (json: string) => (JSON.parse(json) as string[]).join(', ');
@@ -98,9 +94,9 @@ const appHost = (id: string) =>
       </li>
     ))}
   </ul>
-  {grants.length >= MAX_LIVE_GRANTS ? (
+  {grants.length >= policy.agentTokenMax ? (
     <p class="text-sm text-muted-foreground">
-      You hold {MAX_LIVE_GRANTS} tokens, the most allowed. Revoke one to make another.
+      You hold {policy.agentTokenMax} tokens, the most allowed. Revoke one to make another.
     </p>
   ) : (
     <form method="POST" action={`/account${actions.agents.mint}`} class="grid max-w-sm gap-3">
@@ -127,8 +123,8 @@ const appHost = (id: string) =>
           name="days"
           class="h-11 rounded-md border border-control bg-background px-3 text-base md:h-9 md:text-sm"
         >
-          {LIFE_DAYS.map((d) => (
-            <option value={d} selected={d === DEFAULT_LIFE_DAYS}>
+          {policy.agentTokenDays.map((d) => (
+            <option value={d} selected={d === policy.agentTokenDefaultDays}>
               {d} days
             </option>
           ))}

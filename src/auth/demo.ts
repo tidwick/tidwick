@@ -46,7 +46,15 @@ export async function demoSignIn(
   if (!(await passwordMatches(password, env.DEMO_PASSWORD))) return null;
   const who = DEMO_PERSONAS.find((p) => p.key === persona) ?? fail('not_found');
   return retryOnce(async () => {
-    const session = await newSession(env.DB, env.SESSION_SECRET, who.id, now, false, true);
+    const session = await newSession(
+      env.DB,
+      env.SESSION_SECRET,
+      who.id,
+      now,
+      env.POLICY.sessionMaxMs,
+      false,
+      true,
+    );
     const event = await auditStatement(
       ceremonyScope(who.id),
       env.DB,

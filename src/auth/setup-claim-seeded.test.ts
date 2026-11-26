@@ -4,6 +4,7 @@ import { loadSeed } from '../../test/seed/load';
 import { rowCounts } from '../db/test-support-bootstrap';
 import { currentEnv } from '../lib/env';
 import { claimFirstAdmin } from './setup-claim';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const TOKEN = 'a-setup-token-of-more-than-forty-three-characters-x';
 
@@ -19,6 +20,7 @@ describe('the first-admin claim on a seeded database', () => {
       {
         db: env.DB,
         secret: SESSION_SECRET,
+        policy: DEFAULT_POLICY,
         rp: { id: 'localhost', name: 'tidwick', origin: 'http://localhost' },
         kek: NOTE_KEK,
         setupToken: TOKEN,

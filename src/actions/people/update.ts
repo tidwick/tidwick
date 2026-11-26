@@ -28,7 +28,7 @@ export default defineAction({
       const session = signedIn(context);
       const edit = { ...input, externalCode: input.externalCode ?? null };
       await updatePerson(scopeOf(context), currentEnv().DB, input.id, edit, now, (emailChanges) => {
-        if (emailChanges) requireStepUp(session, now);
+        if (emailChanges) requireStepUp(session, now, currentEnv().POLICY.stepUpMs);
       });
       return { id: input.id };
     }),

@@ -13,7 +13,7 @@ export const DAY_NAMES = [
   'Sunday',
 ] as const;
 
-/** A note is at most this many characters. */
+/** Fixed: a note is at most this many characters, a size bound on stored text, not a policy. */
 export const NOTE_MAX = 2000;
 
 export interface Cell {

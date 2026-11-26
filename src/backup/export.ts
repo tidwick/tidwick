@@ -35,8 +35,10 @@ export interface BackupDeps {
   recipient: string;
   /** The off-account copy; absent or null when `BACKUP_COPY` is `none`. */
   copy?: BackupCopy | null;
-  /** Milliseconds before a write's second try (and twice that before its third); tests pass 0. */
+  /** Milliseconds before a write's second try (and twice that before its third); `BACKUP_RETRY_SECONDS`, tests pass 0. */
   retryPauseMs?: number;
+  /** Tries a write gets, the first included; `BACKUP_TRIES`. */
+  tries?: number;
 }
 
 /** `backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age` for the UTC time of `now`, so a second backup the same day keeps both. */
@@ -142,19 +144,27 @@ async function attempt(
 }
 
 /**
- * Puts the sealed file in the sink, then in the off-account copy, each tried up to three times whatever the other did, and marks
+ * Puts the sealed file in the sink, then in the off-account copy, each tried up to `tries` times whatever the other did, and marks
  * `run` ok only when every write landed; otherwise returns each failure's reason.
  */
 async function write(deps: BackupDeps, run: BackupRun, sealed: Uint8Array): Promise<string | null> {
   const failures: string[] = [];
-  const sunk = await withRetry(async () => {
-    await deps.sink.put(run.object_key, sealed);
-    return null;
-  }, deps.retryPauseMs);
+  const sunk = await withRetry(
+    async () => {
+      await deps.sink.put(run.object_key, sealed);
+      return null;
+    },
+    deps.retryPauseMs,
+    deps.tries,
+  );
   if (sunk !== null) failures.push(`writing to the sink failed: ${sunk}`);
   const { copy } = deps;
   if (copy) {
-    const why = await withRetry(() => copy.write(run.object_key, sealed), deps.retryPauseMs);
+    const why = await withRetry(
+      () => copy.write(run.object_key, sealed),
+      deps.retryPauseMs,
+      deps.tries,
+    );
     if (why !== null) failures.push(`copying off the account failed: ${why}`);
   }
   if (failures.length > 0) return failures.join('; ');

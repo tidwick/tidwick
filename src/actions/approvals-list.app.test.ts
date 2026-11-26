@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ACCOUNTING, T0 } from '../../test/helpers/auth';
 import { addRow, bookedWeek, cell, NEXT, save, WEEK } from '../../test/helpers/booking';
 import { caller, getPage } from '../../test/helpers/callers';
+import { currentEnv } from '../lib/env';
 import { personById } from '../db/people';
 import { submitWeek } from '../db/submissions';
 
@@ -62,5 +63,12 @@ describe('the approvals list says each person once and each week once', () => {
       (m[1] ?? '').replace(/<[^>]+>/g, '').trim(),
     );
     expect(names).toEqual(['Person', 'Week of', 'Submitted', 'Hours', 'Open']);
+  });
+
+  it('NOT_SUBMITTED_WEEKS: the missing-weeks block looks back the configured number of completed weeks', async () => {
+    const who = await caller([ACCOUNTING]);
+    const html = await (await getPage('/approvals', who)).text();
+    expect(currentEnv().POLICY.notSubmittedWeeks).toBe(3);
+    expect(html).toMatch(/of the last 3 completed weeks|any of the last 3 completed weeks/);
   });
 });

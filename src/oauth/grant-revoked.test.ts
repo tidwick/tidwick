@@ -12,6 +12,7 @@ import { liveGrantIdsOf, listedGrantsOf } from '../db/agent-grants';
 import { racingDb } from '../db/test-support';
 import { currentEnv } from '../lib/env';
 import { grantAccess } from './grant';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const { SESSION_SECRET } = currentEnv();
 const request = {
@@ -30,7 +31,16 @@ async function person() {
 }
 
 const approve = (p: { id: string; scope: Awaited<ReturnType<typeof scopeFor>> }) =>
-  grantAccess(p.scope, env.DB, SESSION_SECRET, p.id, request, ['read'], T0);
+  grantAccess(
+    p.scope,
+    env.DB,
+    SESSION_SECRET,
+    p.id,
+    request,
+    ['read'],
+    DEFAULT_POLICY.agentTokenMax,
+    T0,
+  );
 const mint = (p: { id: string; scope: Awaited<ReturnType<typeof scopeFor>> }) =>
   mintPersonalToken(
     p.scope,
@@ -38,6 +48,7 @@ const mint = (p: { id: string; scope: Awaited<ReturnType<typeof scopeFor>> }) =>
     SESSION_SECRET,
     p.id,
     { label: 'Laptop', scopes: ['read'], days: 7 },
+    DEFAULT_POLICY,
     T0,
   );
 

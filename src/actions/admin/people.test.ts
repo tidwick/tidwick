@@ -12,6 +12,7 @@ import { listPeople, personDetail } from '../../db/people';
 import { systemScope } from '../../db/scope';
 import { clientWithKeyCount } from '../../db/test-support';
 import { currentEnv } from '../../lib/env';
+import { DEFAULT_POLICY } from '../../lib/policy';
 
 async function liveState(personId: string) {
   const [credentials, codes, links, sessions] = await Promise.all([
@@ -52,7 +53,15 @@ describe('SEC-23 an offboarded person keeps no access', () => {
     expect((await personDetail(systemScope(), d.db, person.personId))?.offboarded_at).toBe(
       T0 + 2 * HOUR,
     );
-    expect(await readSession(d.db, d.secret, person.sessionId, T0 + 3 * HOUR)).toBeNull();
+    expect(
+      await readSession(
+        d.db,
+        d.secret,
+        person.sessionId,
+        T0 + 3 * HOUR,
+        DEFAULT_POLICY.sessionIdleMs,
+      ),
+    ).toBeNull();
     const { options, challengeId } = await loginOptions(d, T0 + 3 * HOUR);
     const response = await person.authenticator.assert(options, d.rp.origin);
     await expect(completeLogin(d, challengeId, response, T0 + 3 * HOUR)).rejects.toMatchObject({

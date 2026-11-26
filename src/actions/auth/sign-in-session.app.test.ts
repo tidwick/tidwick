@@ -10,6 +10,7 @@ import { addPasskeyOptions } from '../../auth/add-passkey';
 import { enrolOptions, issueEnrolment } from '../../auth/enrol';
 import { loginOptions } from '../../auth/login';
 import { readSession, SESSION_COOKIE } from '../../auth/session';
+import { DEFAULT_POLICY } from '../../lib/policy';
 
 /** The session id a response sets, or null when it sets none. */
 function setSession(response: Response): string | null {
@@ -20,7 +21,10 @@ function setSession(response: Response): string | null {
 }
 
 async function live(rawId: string): Promise<boolean> {
-  return (await readSession(env.DB, deps().secret, rawId, Date.now())) !== null;
+  return (
+    (await readSession(env.DB, deps().secret, rawId, Date.now(), DEFAULT_POLICY.sessionIdleMs)) !==
+    null
+  );
 }
 
 /** Posts a Verify step carrying `planted`'s session cookie and token beside the ceremony's challenge cookie. */
@@ -109,7 +113,13 @@ describe('adding a passkey ends where the new passkey is listed', () => {
   it('auth.addPasskeyVerify sends the person on to the account page, not the week', async () => {
     const who = await caller([]);
     const d = deps();
-    const session = await readSession(env.DB, d.secret, who.raw, Date.now());
+    const session = await readSession(
+      env.DB,
+      d.secret,
+      who.raw,
+      Date.now(),
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     if (!session) return expect.unreachable('the caller has a session');
     const { options, challengeId } = await addPasskeyOptions(d, session, Date.now());
     const authenticator = await createSoftwareAuthenticator();

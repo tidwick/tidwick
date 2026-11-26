@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_BARS, reportChart, STATE_FILL } from './report-chart';
+import { reportChart, STATE_FILL } from './report-chart';
 import { reportTable } from './report-table';
+import { DEFAULT_POLICY } from './policy';
 
 const lines = (n: number) =>
   reportTable(
@@ -14,7 +15,7 @@ const lines = (n: number) =>
 
 describe('reportChart', () => {
   it('has no chart when no group has hours', () => {
-    expect(reportChart([])).toBeNull();
+    expect(reportChart([], DEFAULT_POLICY.reportMaxBars)).toBeNull();
   });
 
   it('stacks the states of a bar end to end, in order, within the plot', () => {
@@ -22,7 +23,7 @@ describe('reportChart', () => {
       { keys: ['Acme'], state: 'draft', hundredths: 200 },
       { keys: ['Acme'], state: 'approved', hundredths: 600 },
     ]);
-    const chart = reportChart(table.lines);
+    const chart = reportChart(table.lines, DEFAULT_POLICY.reportMaxBars);
     const segments = chart?.bars[0]?.segments ?? [];
     expect(segments.map((s) => s.state)).toEqual(['draft', 'approved']);
     const [draft, approved] = segments;
@@ -32,9 +33,12 @@ describe('reportChart', () => {
     expect(chart?.bars[0]?.end).toBeLessThan(chart?.width ?? 0);
   });
 
-  it('draws at most MAX_BARS bars and says how many it left out', () => {
-    const chart = reportChart(lines(MAX_BARS + 5));
-    expect(chart?.bars).toHaveLength(MAX_BARS);
+  it('draws at most DEFAULT_POLICY.reportMaxBars bars and says how many it left out', () => {
+    const chart = reportChart(
+      lines(DEFAULT_POLICY.reportMaxBars + 5),
+      DEFAULT_POLICY.reportMaxBars,
+    );
+    expect(chart?.bars).toHaveLength(DEFAULT_POLICY.reportMaxBars);
     expect(chart?.omitted).toBe(5);
   });
 
@@ -47,7 +51,15 @@ describe('reportChart', () => {
     ]);
     const chart = reportChart(
       reportTable('client', [{ keys: ['x'.repeat(60)], state: 'draft', hundredths: 100 }]).lines,
+      DEFAULT_POLICY.reportMaxBars,
     );
     expect(chart?.bars[0]?.label).toHaveLength(24);
+  });
+
+  it('REPORT_MAX_BARS: the chart draws the configured number of bars and counts the rest', () => {
+    const chart = reportChart(lines(9), 5);
+    expect(chart?.bars).toHaveLength(5);
+    expect(chart?.omitted).toBe(4);
+    expect(reportChart(lines(9), 9)?.omitted).toBe(0);
   });
 });

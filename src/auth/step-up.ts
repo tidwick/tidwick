@@ -1,4 +1,4 @@
-// Step-up: a passkey assertion in the last 15 minutes before high-impact work. Login and recovery count as one.
+// Step-up: a passkey assertion within `STEP_UP_MINUTES` (15 at most) before high-impact work. Login and recovery count as one.
 import { activeCredential, useCredential } from '../db/credentials';
 import { stepUpSession } from '../db/sessions';
 import type { AuthEnv } from '../lib/env';
@@ -14,11 +14,9 @@ import {
   type PublicKeyCredentialRequestOptionsJSON,
 } from './webauthn';
 
-export const STEP_UP_MS = 15 * 60 * 1000;
-
-/** The one gate for every step-up row: refuses a session whose last assertion is 15 minutes old or more. */
-export function requireStepUp(session: Session, now: number): void {
-  if (now - session.stepUpAt >= STEP_UP_MS) fail('step_up_required');
+/** The one gate for every step-up row: refuses a session whose last assertion is `maxMs` old or more. */
+export function requireStepUp(session: Session, now: number, maxMs: number): void {
+  if (now - session.stepUpAt >= maxMs) fail('step_up_required');
 }
 
 export async function stepUpOptions(

@@ -10,6 +10,7 @@ import { grantsOf } from '../db/roles';
 import { currentEnv } from '../lib/env';
 import { MAX_POST_BYTES } from '../lib/limits';
 import { csrfVerdict } from './csrf';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const ORIGIN = 'http://localhost:4321';
 const FOREIGN = 'https://elsewhere.example';
@@ -26,14 +27,23 @@ async function signedIn(): Promise<{ raw: string; token: string }> {
       `INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('${id}', 'f-home', 'm${String(serial)}@practice.example', 'Member', 1);`,
     ].join('\n'),
   );
-  const session = await newSession(env.DB, SESSION_SECRET, id, Date.now());
+  const session = await newSession(
+    env.DB,
+    SESSION_SECRET,
+    id,
+    Date.now(),
+    DEFAULT_POLICY.sessionMaxMs,
+  );
   await session.statement.run();
   return { raw: session.rawId, token: await csrfToken(SESSION_SECRET, session.rawId) };
 }
 
 async function alive(raw: string): Promise<boolean> {
   const { SESSION_SECRET } = currentEnv();
-  return (await readSession(env.DB, SESSION_SECRET, raw, Date.now())) !== null;
+  return (
+    (await readSession(env.DB, SESSION_SECRET, raw, Date.now(), DEFAULT_POLICY.sessionIdleMs)) !==
+    null
+  );
 }
 
 function headers(origin: string | null, raw: string | null, type: string): Headers {

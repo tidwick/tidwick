@@ -8,6 +8,7 @@ import { personById } from './people';
 import { notSubmittedWeeks, type EndedWeek } from './not-submitted';
 import { recentWeeks } from './my-weeks';
 import { decideWeek, submitWeek } from './submissions';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 // The booked week, WEEK, ends a week after it starts; a person assigned at T0 (inside that week) was on the books.
 const AFTER: EndedWeek = { weekStart: WEEK, endsAt: Date.UTC(2026, 0, 12) };
@@ -15,7 +16,12 @@ const EARLIER: EndedWeek = { weekStart: '2025-12-22', endsAt: Date.UTC(2025, 11,
 const LATER: EndedWeek = { weekStart: '2026-01-12', endsAt: Date.UTC(2026, 0, 19) };
 
 async function missing(person: string, ...ended: EndedWeek[]) {
-  const { weeks } = await notSubmittedWeeks(await adminScope(), env.DB, ended);
+  const { weeks } = await notSubmittedWeeks(
+    await adminScope(),
+    env.DB,
+    ended,
+    DEFAULT_POLICY.approvalsPage,
+  );
   return weeks.filter((w) => w.person_id === person).map((w) => `${w.week_start} ${w.state}`);
 }
 
@@ -67,10 +73,17 @@ describe('the weeks nobody has submitted', () => {
 
   it('keeps people in name order with their weeks oldest first, and is for an all-clients scope only', async () => {
     const w = await bookedWeek();
-    const { weeks } = await notSubmittedWeeks(w.admin, env.DB, [LATER, AFTER]);
+    const { weeks } = await notSubmittedWeeks(
+      w.admin,
+      env.DB,
+      [LATER, AFTER],
+      DEFAULT_POLICY.approvalsPage,
+    );
     const mine = weeks.filter((x) => x.person_id === w.who.personId).map((x) => x.week_start);
     expect(mine).toEqual([WEEK, '2026-01-12']);
-    await expect(notSubmittedWeeks(w.member, env.DB, [AFTER])).rejects.toMatchObject({
+    await expect(
+      notSubmittedWeeks(w.member, env.DB, [AFTER], DEFAULT_POLICY.approvalsPage),
+    ).rejects.toMatchObject({
       code: 'not_found',
     });
   });
@@ -79,10 +92,26 @@ describe('the weeks nobody has submitted', () => {
     const w = await bookedWeek();
     const other = await bookedWeek();
     const email = (await personById(env.DB, w.who.personId))?.email ?? '';
-    const found = await notSubmittedWeeks(w.admin, env.DB, [AFTER], email);
+    const found = await notSubmittedWeeks(
+      w.admin,
+      env.DB,
+      [AFTER],
+      DEFAULT_POLICY.approvalsPage,
+      email,
+    );
     expect(found.weeks.map((x) => x.person_id)).toEqual([w.who.personId]);
     expect(found.weeks.some((x) => x.person_id === other.who.personId)).toBe(false);
-    expect((await notSubmittedWeeks(w.admin, env.DB, [AFTER], '%')).weeks).toEqual([]);
+    expect(
+      (await notSubmittedWeeks(w.admin, env.DB, [AFTER], DEFAULT_POLICY.approvalsPage, '%')).weeks,
+    ).toEqual([]);
+  });
+
+  it('APPROVALS_PAGE_ROWS: the missing-weeks list is cut at the configured page and says so', async () => {
+    const w = await bookedWeek();
+    const cut = await notSubmittedWeeks(w.admin, env.DB, [AFTER, LATER], 1);
+    expect(cut.weeks).toHaveLength(1);
+    expect(cut.cut).toBe(true);
+    expect((await notSubmittedWeeks(w.admin, env.DB, [AFTER, LATER], 500)).cut).toBe(false);
   });
 });
 

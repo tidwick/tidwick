@@ -9,6 +9,7 @@ import { DEMO_SESSION_MS, readSession } from '../auth/session';
 import { csrfToken } from '../auth/tokens';
 import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv } from '../lib/env';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const PASSWORD = 'a-long-demo-<&"pass';
 const [member, , , manager] = DEMO_PERSONAS;
@@ -99,8 +100,24 @@ describe('the sign-in', () => {
       `__Host-tidwick-session=${first.raw ?? ''}`,
     );
     const { SESSION_SECRET } = currentEnv();
-    expect(await readSession(env.DB, SESSION_SECRET, first.raw ?? '', Date.now())).toBeNull();
-    expect(await readSession(env.DB, SESSION_SECRET, second.raw ?? '', Date.now())).not.toBeNull();
+    expect(
+      await readSession(
+        env.DB,
+        SESSION_SECRET,
+        first.raw ?? '',
+        Date.now(),
+        DEFAULT_POLICY.sessionIdleMs,
+      ),
+    ).toBeNull();
+    expect(
+      await readSession(
+        env.DB,
+        SESSION_SECRET,
+        second.raw ?? '',
+        Date.now(),
+        DEFAULT_POLICY.sessionIdleMs,
+      ),
+    ).not.toBeNull();
   });
 
   it('counts every guess: the 31st in a minute is refused, even with the right password', async () => {

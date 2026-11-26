@@ -6,6 +6,7 @@ import AuditVerdict from '../../components/admin/audit-verdict.astro';
 import PostForm from '../../components/admin/post-form.astro';
 import Shell from '../../components/admin/shell.astro';
 import { auditChoices, readAuditPage } from '../../db/audit-read';
+import { currentEnv } from '../../lib/env';
 import { auditQuery, filterQuery, nextPageQuery } from '../../lib/audit-filter';
 import { pageContext, problemOf } from '../_context';
 
@@ -14,7 +15,7 @@ const verified = Astro.getActionResult(actions.audit.verify);
 const params = Astro.url.searchParams;
 const { filter, before, problem } = auditQuery(params);
 const [page, choices] = await Promise.all([
-  readAuditPage(ctx.scope, ctx.db, filter, before),
+  readAuditPage(ctx.scope, ctx.db, filter, before, currentEnv().POLICY.auditPage),
   auditChoices(ctx.scope, ctx.db),
 ]);
 const kept = filterQuery(params).toString();

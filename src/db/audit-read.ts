@@ -5,7 +5,6 @@ import { fail } from '../lib/errors';
 import type { Scope } from './scope';
 
 /** Events on one page of the audit view. */
-export const AUDIT_PAGE = 50;
 
 const DAY_MS = 86_400_000;
 
@@ -57,6 +56,7 @@ export async function readAuditPage(
   db: D1Database,
   filter: AuditFilter,
   before: number | null,
+  pageRows: number,
 ): Promise<AuditPage> {
   if (scope.kind !== 'all') fail('forbidden');
   const until = startOf(filter.to);
@@ -70,12 +70,12 @@ export async function readAuditPage(
       filter.client,
       filter.action,
       filter.target,
-      AUDIT_PAGE + 1,
+      pageRows + 1,
     )
     .all<AuditEntry>();
-  const events = found.results.slice(0, AUDIT_PAGE);
+  const events = found.results.slice(0, pageRows);
   const last = events.at(-1);
-  return { events, next: found.results.length > AUDIT_PAGE && last ? last.seq : null };
+  return { events, next: found.results.length > pageRows && last ? last.seq : null };
 }
 
 export interface AuditChoices {

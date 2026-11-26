@@ -17,13 +17,7 @@ import {
   TableRowHead,
 } from '../../components/ui/table';
 import { backupStatus } from '../../backup/status';
-import {
-  KEEP_PREVIOUS_DAYS,
-  keyStatus,
-  lastRewrapAt,
-  REWRAP_PAGE,
-  REWRAP_PAGES,
-} from '../../db/key-rewrap';
+import { keyStatus, lastRewrapAt, REWRAP_PAGE, REWRAP_PAGES } from '../../db/key-rewrap';
 import { projectsWithoutNumber } from '../../db/projects';
 import { BACKUP_AGE_CEILING, BACKUP_AGE_DEFAULT, loadSettings } from '../../db/settings';
 import { backupsBound, currentCopy, currentEnv, noteKeks } from '../../lib/env';
@@ -57,7 +51,7 @@ const rewrappedAt = await lastRewrapAt(ctx.db);
 const keepUntil =
   rewrappedAt === null
     ? null
-    : new Date(rewrappedAt + KEEP_PREVIOUS_DAYS * 86_400_000).toISOString().slice(0, 10);
+    : new Date(rewrappedAt + currentEnv().POLICY.backupKeepMs).toISOString().slice(0, 10);
 const env = currentEnv();
 const status = await backupStatus(ctx.db, {
   copy: currentCopy(),
@@ -166,6 +160,7 @@ const status = await backupStatus(ctx.db, {
     status={keys}
     rotating={keks.previous !== null}
     keepUntil={keepUntil}
+    keepDays={currentEnv().POLICY.backupKeepMs / 86_400_000}
     perRun={REWRAP_PAGE * REWRAP_PAGES}
   />
 

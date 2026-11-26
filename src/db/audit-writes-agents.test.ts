@@ -8,6 +8,7 @@ import { mintPersonalToken, revokeOwnGrant } from '../auth/agent-personal';
 import { keyedHash } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
 import { grantAccess } from '../oauth/grant';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const NOW = Date.UTC(2026, 5, 1);
 
@@ -23,6 +24,7 @@ describe('agent tokens are audited', () => {
       secret,
       id,
       { label: 'Laptop', scopes: ['read', 'write'], days: 30 },
+      DEFAULT_POLICY,
       NOW,
     );
     const events = await eventsAfter(head);
@@ -54,9 +56,27 @@ describe('agent tokens are audited', () => {
       challenge: 'c'.repeat(43),
       offered: ['read', 'write', 'submit'],
     } as const;
-    const first = await grantAccess(scope, env.DB, secret, id, request, ['read'], NOW);
+    const first = await grantAccess(
+      scope,
+      env.DB,
+      secret,
+      id,
+      request,
+      ['read'],
+      DEFAULT_POLICY.agentTokenMax,
+      NOW,
+    );
     const head = await headSeq();
-    const code = await grantAccess(scope, env.DB, secret, id, request, ['read', 'write'], NOW + 1);
+    const code = await grantAccess(
+      scope,
+      env.DB,
+      secret,
+      id,
+      request,
+      ['read', 'write'],
+      DEFAULT_POLICY.agentTokenMax,
+      NOW + 1,
+    );
     const events = await eventsAfter(head);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
@@ -83,6 +103,7 @@ describe('agent tokens are audited', () => {
       currentEnv().SESSION_SECRET,
       id,
       { label: 'Laptop', scopes: ['read'], days: 7 },
+      DEFAULT_POLICY,
       NOW,
     );
     const head = await headSeq();

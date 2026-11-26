@@ -4,7 +4,6 @@ import type { AstroGlobal } from 'astro';
 import { isInputError } from 'astro:actions';
 import { isAccounting, isAdmin, isSteward, type Grant } from '../db/roles';
 import type { Scope } from '../db/scope';
-import { STEP_UP_MS } from '../auth/step-up';
 import { currentEnv } from '../lib/env';
 import { fail } from '../lib/errors';
 import { fieldErrorsOf, type FieldErrors } from '../lib/field-errors';
@@ -27,6 +26,7 @@ export function pageContext(Astro: AstroGlobal): PageContext {
   const session = Astro.locals.session ?? fail('unauthenticated');
   const scope = Astro.locals.scope ?? fail('unauthenticated');
   const grants = [...Astro.locals.grants];
+  const stepUpEnd = session.stepUpAt + currentEnv().POLICY.stepUpMs;
   return {
     db: currentEnv().DB,
     scope,
@@ -36,7 +36,7 @@ export function pageContext(Astro: AstroGlobal): PageContext {
     admin: isAdmin(grants),
     accounting: isAccounting(grants),
     steward: isSteward(grants),
-    stepUpUntil: session.stepUpAt + STEP_UP_MS > Date.now() ? session.stepUpAt + STEP_UP_MS : null,
+    stepUpUntil: stepUpEnd > Date.now() ? stepUpEnd : null,
   };
 }
 

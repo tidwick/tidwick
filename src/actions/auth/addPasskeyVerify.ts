@@ -15,9 +15,11 @@ export default defineAction({
       const session = signedIn(context);
       await guardPersona(currentEnv(), session.personId);
       const id = challengeId(context);
-      const added = await completeAddPasskey(authEnv(), session, id, input.response, Date.now());
+      const deps = authEnv();
+      const added = await completeAddPasskey(deps, session, id, input.response, Date.now());
       queueCookie(context, clearedChallengeCookie());
-      if (added.sessionId !== null) queueCookie(context, sessionCookie(added.sessionId));
+      if (added.sessionId !== null)
+        queueCookie(context, sessionCookie(added.sessionId, deps.policy.sessionMaxMs));
       return { next: '/account' };
     }),
 });

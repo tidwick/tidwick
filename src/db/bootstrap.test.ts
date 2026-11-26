@@ -1,6 +1,5 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { ENROLMENT_MS } from '../auth/enrol';
 import { keyedHash } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
 import { unwrapClientKey } from '../lib/note-crypto';
@@ -14,6 +13,7 @@ import {
   rowCounts,
   seizeAttempt,
 } from './test-support-bootstrap';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 // The tests in this file share one database, in order: empty, then bootstrapped by `firstFile`.
 let firstFile = '';
@@ -32,8 +32,10 @@ describe('first admin bootstrap', () => {
     ).first<{ id: string }>();
     const enrolment = await openEnrolment(env.DB, hash, BOOTSTRAP_NOW + 1);
     expect(enrolment?.person_id).toBe(person?.id);
-    expect(enrolment?.expires_at).toBe(BOOTSTRAP_NOW + ENROLMENT_MS);
-    expect(await openEnrolment(env.DB, hash, BOOTSTRAP_NOW + ENROLMENT_MS)).toBeNull();
+    expect(enrolment?.expires_at).toBe(BOOTSTRAP_NOW + DEFAULT_POLICY.enrolmentMs);
+    expect(
+      await openEnrolment(env.DB, hash, BOOTSTRAP_NOW + DEFAULT_POLICY.enrolmentMs),
+    ).toBeNull();
 
     const chain = await checkChain(env.DB);
     expect(chain.ok && chain.head.seq).toBe(1);
@@ -59,7 +61,7 @@ describe('first admin bootstrap', () => {
   });
 
   it('the bootstrap link lasts as long as every other enrolment link', () => {
-    expect(BOOTSTRAP_ENROLMENT_MS).toBe(ENROLMENT_MS);
+    expect(BOOTSTRAP_ENROLMENT_MS).toBe(DEFAULT_POLICY.enrolmentMs);
   });
 
   it('a name holding a quote or ?1 renders once and stays one value', async () => {

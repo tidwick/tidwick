@@ -59,14 +59,12 @@ const COUNT = {
   draft: `SELECT count(*) AS n ${DRAFT}`,
 };
 
-/** At most this many weeks are listed at once; deciding some, or narrowing the range, brings the rest up. */
-export const APPROVALS_PAGE = 500;
-
 /** A search term keeps the people whose name, email or accounting code holds it as text. */
 export async function approvalWeeks(
   scope: Scope,
   db: D1Database,
   filter: Filter,
+  pageRows: number,
 ): Promise<Listing> {
   if (scope.kind !== 'all') fail('not_found');
   const kind = filter.state === 'draft' ? 'draft' : 'decided';
@@ -76,19 +74,20 @@ export async function approvalWeeks(
     filter.from ?? null,
     filter.to ?? null,
   ];
+  // At most `pageRows` weeks are listed at once; deciding some, or narrowing the range, brings the rest up.
   // One more than a page: if it comes back, the list was cut, and a count says how many there are.
   const found = await db
     .prepare(LIST[kind])
-    .bind(APPROVALS_PAGE + 1, ...args)
+    .bind(pageRows + 1, ...args)
     .all<ListedWeek>();
-  if (found.results.length <= APPROVALS_PAGE) {
+  if (found.results.length <= pageRows) {
     return { weeks: found.results, found: found.results.length };
   }
   const count = await db
     .prepare(COUNT[kind])
     .bind(0, ...args)
     .first<{ n: number }>();
-  return { weeks: found.results.slice(0, APPROVALS_PAGE), found: count?.n ?? found.results.length };
+  return { weeks: found.results.slice(0, pageRows), found: count?.n ?? found.results.length };
 }
 
 const NEXT = `SELECT s.person_id, s.week_start FROM week_submission s JOIN person p ON p.id = s.person_id

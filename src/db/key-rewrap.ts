@@ -9,7 +9,7 @@ import { blobBytes } from './credentials';
 import type { Scope } from './scope';
 
 /**
- * Keys per batch, and batches per run. A page costs its read, the audit head and two statements a key, so a run
+ * Fixed (platform limit): keys per batch, and batches per run. A page costs its read, the audit head and two statements a key, so a run
  * is about 410 statements, and stays under D1's 1,000 even when every page loses a race and is sent twice.
  */
 export const REWRAP_PAGE = 50;
@@ -44,9 +44,6 @@ interface KeyRow {
   wrapped: ArrayBuffer | number[];
   iv: ArrayBuffer | number[];
 }
-
-/** Days a retired NOTE_KEK is kept after the last re-wrap: the longest a backup that needs it stays off-account (ADR 0008). */
-export const KEEP_PREVIOUS_DAYS = 40;
 
 /** When the last key was re-wrapped, or null when none ever was. */
 export async function lastRewrapAt(db: D1Database): Promise<number | null> {

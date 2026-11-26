@@ -15,6 +15,7 @@ import { approvalWeeks } from './approvals';
 import { keyRing } from './client-keys';
 import { saveCells, seal } from './entry-writes';
 import { scopeFor } from './scope';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 async function count(sql: string): Promise<number> {
   const row = await env.DB.prepare(sql).first<{ n: number }>();
@@ -138,7 +139,9 @@ describe('the seed has weeks waiting for approval, dated sensibly', () => {
       [...submittedStatements(LAST, 30), ...submittedStatements(BEFORE, 10)].join('\n'),
     );
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
-    const listed = (await approvalWeeks(admin, env.DB, { state: 'submitted' })).weeks;
+    const listed = (
+      await approvalWeeks(admin, env.DB, { state: 'submitted' }, DEFAULT_POLICY.approvalsPage)
+    ).weeks;
     expect(listed).toHaveLength(40);
     expect(new Set(listed.map((w) => w.person_id)).size).toBe(30);
     // Four eight-hour days and a four-hour Friday per row: 36 hours a row, written out rather than imported.

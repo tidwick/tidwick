@@ -6,6 +6,7 @@ import { ceremonyScope, requireAll, type Scope } from '../db/scope';
 import { fail } from '../lib/errors';
 import { keyedHash } from './tokens';
 
+/** Fixed (security floor): the recovery-code guess throttle; loosening any of the three makes guessing cheaper. */
 export const LOCK_AFTER = 5;
 export const FIRST_LOCK_MS = 60 * 1000;
 export const MAX_LOCK_MS = 60 * 60 * 1000;

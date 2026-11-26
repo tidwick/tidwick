@@ -12,8 +12,15 @@ export default defineAction({
   handler: (input, context) =>
     act(async () => {
       await guardPersona(currentEnv(), input.id);
-      const { DB, SESSION_SECRET, ORIGIN } = currentEnv();
-      const token = await reenrol(scopeOf(context), DB, SESSION_SECRET, input.id, Date.now());
+      const { DB, SESSION_SECRET, ORIGIN, POLICY } = currentEnv();
+      const token = await reenrol(
+        scopeOf(context),
+        DB,
+        SESSION_SECRET,
+        input.id,
+        Date.now(),
+        POLICY.enrolmentMs,
+      );
       return { link: `${ORIGIN}/enrol/${token}` };
     }),
 });

@@ -30,3 +30,48 @@ MCP_CLIENTS=
 # {"id","label","issuer","client_id"} (the Google preset is {"id":"google","client_id":"..."}); each needs a secret
 # SSO_SECRET_<ID> (id upper-cased, "-" as "_"). Empty (off) and every /auth/sso route is a 404.
 SSO_PROVIDERS=
+# Policy knobs, all optional: leave one empty for its default. A value outside its bounds, or not a whole number, makes
+# the Worker answer every request with the variable's name until it is fixed. The table with the bounds is in
+# docs/ARCHITECTURE.md, Policy knobs; in wrangler.jsonc a knob is a plain var, a number or a string.
+# AGENT_TOKEN_DAYS: the lives, in days, offered for an agent token; 1 to 6 distinct numbers from 1 to 365, comma separated (default 7,30,90).
+AGENT_TOKEN_DAYS=
+# AGENT_TOKEN_MAX: live agent tokens and connected clients one person may hold (default 5, 1 to 50).
+AGENT_TOKEN_MAX=
+# AGENT_TOKEN_DEFAULT_DAYS: the life preselected when a person mints a token; must be one of AGENT_TOKEN_DAYS (unset: 30 when listed, else the longest) (default 30, 1 to 365).
+AGENT_TOKEN_DEFAULT_DAYS=
+# MCP_ACCESS_MINUTES: minutes a connected client's access token lives before it must refresh (default 60, 5 to 1440).
+MCP_ACCESS_MINUTES=
+# MCP_REFRESH_DAYS: days a connected client may sit unused before its refresh token ends (default 30, 1 to 90).
+MCP_REFRESH_DAYS=
+# MCP_GRANT_DAYS: days until a connected client must be approved again, however busy it is (default 90, 1 to 365).
+MCP_GRANT_DAYS=
+# SESSION_IDLE_HOURS: hours a session may sit unused before it ends (default 8, 1 to 72).
+SESSION_IDLE_HOURS=
+# SESSION_MAX_DAYS: days a session lasts at most, however busy it is (default 14, 1 to 90).
+SESSION_MAX_DAYS=
+# STEP_UP_MINUTES: minutes a passkey confirmation unlocks a sensitive action; it can be shortened, never past 15 (default 15, 1 to 15).
+STEP_UP_MINUTES=
+# ENROLMENT_HOURS: hours an enrolment or recovery link stays open (default 24, 1 to 168).
+ENROLMENT_HOURS=
+# PENDING_CODES_MINUTES: minutes a person can re-read freshly issued recovery codes before they are erased (default 10, 1 to 60).
+PENDING_CODES_MINUTES=
+# AUDIT_PAGE_ROWS: audit events per page of the log (default 50, 10 to 500).
+AUDIT_PAGE_ROWS=
+# APPROVALS_PAGE_ROWS: rows the approvals queue and the not-submitted list load before saying there are more (default 500, 50 to 2000).
+APPROVALS_PAGE_ROWS=
+# NOT_SUBMITTED_WEEKS: finished weeks back the approvals page looks for people who have not submitted (default 4, 1 to 12).
+NOT_SUBMITTED_WEEKS=
+# REPORT_MAX_DAYS: days one report or export range may span (default 366, 31 to 1830).
+REPORT_MAX_DAYS=
+# REPORT_MAX_BARS: bars the /reports chart draws before folding the rest into one (default 40, 5 to 100).
+REPORT_MAX_BARS=
+# IMPORT_MAX_ROWS: rows one CSV import may hold (default 5000, 100 to 10000).
+IMPORT_MAX_ROWS=
+# IMPORT_MAX_NEW: clients and projects one import may create that did not exist (default 50, 1 to 100).
+IMPORT_MAX_NEW=
+# BACKUP_TRIES: tries a backup write gets, the first included (default 3, 1 to 6).
+BACKUP_TRIES=
+# BACKUP_RETRY_SECONDS: seconds before a backup write's second try (twice that before its third) (default 2, 0 to 30).
+BACKUP_RETRY_SECONDS=
+# BACKUP_KEEP_DAYS: days the off-account bucket keeps a backup; a retired NOTE_KEK is kept as long (default 40, 1 to 400).
+BACKUP_KEEP_DAYS=

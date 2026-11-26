@@ -12,6 +12,7 @@ import { storedRows } from '../db/stored-rows';
 import { addPasskeyOptions, completeAddPasskey } from './add-passkey';
 import { recover } from './recovery';
 import { ENROL_MS, newSession, readSession } from './session';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const actions = async () => (await storedRows(deps().db, 'audit_event')).map((e) => e.action);
 
@@ -20,16 +21,26 @@ describe('recovery supersedes the old access', () => {
     const person = await enrolledPerson();
     const d = deps();
     await withIdentity(person.personId, 'https://idp-a.example/a/v2.0', 'recovered-sub');
-    const thief = await newSession(d.db, d.secret, person.personId, T0);
+    const thief = await newSession(
+      d.db,
+      d.secret,
+      person.personId,
+      T0,
+      DEFAULT_POLICY.sessionMaxMs,
+    );
     await thief.statement.run();
     const agent = await mintAgent(person.personId);
     expect(await liveSessionCount(d.db, person.personId, T0)).toBeGreaterThan(1);
 
     const { sessionId } = await recover(d, person.email, person.codes[7] ?? '', T0);
-    expect(await readSession(d.db, d.secret, thief.rawId, T0)).toBeNull();
-    expect(await readSession(d.db, d.secret, person.sessionId, T0)).toBeNull();
+    expect(
+      await readSession(d.db, d.secret, thief.rawId, T0, DEFAULT_POLICY.sessionIdleMs),
+    ).toBeNull();
+    expect(
+      await readSession(d.db, d.secret, person.sessionId, T0, DEFAULT_POLICY.sessionIdleMs),
+    ).toBeNull();
     expect(await activeCredentialsOf(d.db, person.personId)).toHaveLength(1);
-    const session = await readSession(d.db, d.secret, sessionId, T0);
+    const session = await readSession(d.db, d.secret, sessionId, T0, DEFAULT_POLICY.sessionIdleMs);
     expect(session).toMatchObject({ mustEnrol: true });
     const [recovering] = (await storedFor('session', person.personId)).filter(
       (row) => row.must_enrol === 1,
@@ -44,7 +55,9 @@ describe('recovery supersedes the old access', () => {
     const kept = await activeCredentialsOf(d.db, person.personId);
     expect(kept.map((c) => c.id)).toEqual([registration.id]);
     expect(await liveSessionCount(d.db, person.personId, T0)).toBe(1);
-    expect(await readSession(d.db, d.secret, added.sessionId ?? '', T0)).toMatchObject({
+    expect(
+      await readSession(d.db, d.secret, added.sessionId ?? '', T0, DEFAULT_POLICY.sessionIdleMs),
+    ).toMatchObject({
       mustEnrol: false,
     });
     expect(await liveIdentitiesOf(d.db, person.personId)).toEqual([]);
@@ -65,7 +78,11 @@ describe('recovery supersedes the old access', () => {
     const d = deps();
     const { sessionId } = await recover(d, person.email, person.codes[8] ?? '', T0);
     expect(await activeCredentialsOf(d.db, person.personId)).toHaveLength(1);
-    expect(await readSession(d.db, d.secret, sessionId, T0 + ENROL_MS - 1)).not.toBeNull();
-    expect(await readSession(d.db, d.secret, sessionId, T0 + ENROL_MS)).toBeNull();
+    expect(
+      await readSession(d.db, d.secret, sessionId, T0 + ENROL_MS - 1, DEFAULT_POLICY.sessionIdleMs),
+    ).not.toBeNull();
+    expect(
+      await readSession(d.db, d.secret, sessionId, T0 + ENROL_MS, DEFAULT_POLICY.sessionIdleMs),
+    ).toBeNull();
   });
 });

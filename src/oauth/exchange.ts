@@ -18,9 +18,6 @@ import type { Env } from '../lib/env';
 import { audience, one, scopesAsked } from './authorize';
 import { OauthError } from './error';
 
-export const ACCESS_MS = 60 * 60 * 1000;
-export const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
-export const ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000;
 const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 
 export interface TokenResponse {
@@ -96,7 +93,7 @@ async function pkceHolds(verifier: string, challenge: string | null): Promise<bo
   return sameText(toBase64Url(new Uint8Array(digest)), challenge);
 }
 
-/** Issues the pair of tokens for a grant; a first issue (from a code) also gives the grant its 90-day end. */
+/** Issues the pair of tokens for a grant; a first issue (from a code) also gives the grant its end, `MCP_GRANT_DAYS` out. */
 async function issue(
   env: Env,
   grant: OauthGrant,
@@ -105,29 +102,30 @@ async function issue(
 ): Promise<TokenResponse> {
   const access = randomToken();
   const refresh = randomToken();
-  const absolute = grant.created_at + ABSOLUTE_MS;
+  const { mcpAccessMs, mcpRefreshIdleMs, mcpGrantMs } = env.POLICY;
+  const absolute = grant.created_at + mcpGrantMs;
   const statements = [
     insertToken(env.DB, {
       hash: await keyedHash(env.SESSION_SECRET, 'agent_access', access),
       grantId: grant.id,
       kind: 'access',
-      expiresAt: Math.min(now + ACCESS_MS, absolute),
+      expiresAt: Math.min(now + mcpAccessMs, absolute),
     }),
     insertToken(env.DB, {
       hash: await keyedHash(env.SESSION_SECRET, 'agent_refresh', refresh),
       grantId: grant.id,
       kind: 'refresh',
-      expiresAt: Math.min(now + REFRESH_IDLE_MS, absolute),
+      expiresAt: Math.min(now + mcpRefreshIdleMs, absolute),
     }),
     pruneTokens(env.DB, grant.id, now),
   ];
-  if (first) statements.push(activateGrant(env.DB, grant.id, ABSOLUTE_MS));
+  if (first) statements.push(activateGrant(env.DB, grant.id, mcpGrantMs));
   await env.DB.batch(statements);
   const scopes = JSON.parse(grant.scopes) as string[];
   return {
     access_token: access,
     token_type: 'Bearer',
-    expires_in: Math.min(ACCESS_MS, absolute - now) / 1000,
+    expires_in: Math.min(mcpAccessMs, absolute - now) / 1000,
     refresh_token: refresh,
     scope: scopes.join(' '),
   };

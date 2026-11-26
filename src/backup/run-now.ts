@@ -22,6 +22,8 @@ export async function backUpNow(
       sink: env.BACKUPS,
       recipient: env.BACKUP_RECIPIENT,
       copy: offsiteCopy(env.copy, fetcher),
+      retryPauseMs: env.policy.backupRetryPauseMs,
+      tries: env.policy.backupTries,
     },
     now,
   );

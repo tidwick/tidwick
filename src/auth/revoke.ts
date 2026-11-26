@@ -20,6 +20,7 @@ import {
   revokeSessionsOf,
 } from '../db/sessions';
 import { fail } from '../lib/errors';
+import { DEFAULT_POLICY } from '../lib/policy';
 import { recordEnrolment } from './enrol';
 
 /**
@@ -201,6 +202,7 @@ export async function reenrol(
   secret: string,
   personId: string,
   now: number,
+  lifeMs = DEFAULT_POLICY.enrolmentMs,
 ): Promise<string> {
   requireAll(scope);
   return retryOnce(async () => {
@@ -209,7 +211,7 @@ export async function reenrol(
     if (await isLastAdmin(db, personId)) fail('last_admin');
     const batch = await auditedBatch(scope, db);
     await recordRevocations(batch, db, personId, now, true);
-    const token = await recordEnrolment(batch, db, secret, personId, 'people.reenrol', now);
+    const token = await recordEnrolment(batch, db, secret, personId, 'people.reenrol', now, lifeMs);
     await batch.run();
     return token;
   });

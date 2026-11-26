@@ -28,6 +28,7 @@ export default defineAction({
         secret,
         session.personId,
         { label: input.label, days: input.days, scopes: input.scopes },
+        currentEnv().POLICY,
         Date.now(),
       );
       return { token: minted.token, label: input.label, expiresAt: minted.expiresAt };

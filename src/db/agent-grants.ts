@@ -41,7 +41,7 @@ const REVOKE_ONE =
 const REVOKE_OF =
   'UPDATE agent_grant SET revoked_at = ?2 WHERE person_id = ?1 AND revoked_at IS NULL';
 
-/** `last_used_at` is written at most this often, so a busy agent costs one write an hour. */
+/** Fixed (a write-cost bound, no policy): `last_used_at` is written at most this often, so a busy agent costs one write an hour. */
 export const TOUCH_GRANT_MS = 60 * 60 * 1000;
 
 export interface NewGrant {

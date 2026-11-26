@@ -9,9 +9,11 @@ import { DAY_CAP, parseHours } from './hours';
 import { parseProjectNumber } from './project-number';
 import { NOTE_MAX, weekStartOf, weekdayOf } from './week';
 
-/** The most a file may weigh and hold, which keeps one apply inside D1's query budget. */
+/**
+ * Fixed: the most a file may weigh. It sits under the 3 MB POST cap (`MAX_POST_BYTES`) with room for the form, and
+ * keeps the text a Worker holds, parses and seals inside its memory; the rows a file may hold are `IMPORT_MAX_ROWS`.
+ */
 export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
-export const MAX_IMPORT_ROWS = 5000;
 
 export interface ImportRow {
   /** Line number in the file, the header being line 1. */
@@ -107,16 +109,13 @@ function readRow(
 }
 
 /** Parses the file and applies each row's own checks; a file over the caps or with a mapped column missing is refused. */
-export function readImport(text: string, mapping: ImportMapping): ReadResult {
+export function readImport(text: string, mapping: ImportMapping, maxRows: number): ReadResult {
   if (text.length > MAX_IMPORT_BYTES)
     fail('invalid_input', 'the file is over 2 MB; split it by date range');
   const [header, ...body] = parseCsv(text);
   if (header === undefined) fail('invalid_input', 'the file is empty');
-  if (body.length > MAX_IMPORT_ROWS) {
-    fail(
-      'invalid_input',
-      `the file has more than ${String(MAX_IMPORT_ROWS)} rows; split it by date range`,
-    );
+  if (body.length > maxRows) {
+    fail('invalid_input', `the file has more than ${String(maxRows)} rows; split it by date range`);
   }
   const at = columns(header, mapping);
   const rows: ImportRow[] = [];

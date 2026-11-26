@@ -1,7 +1,9 @@
 // What an error may leave in a log, a backup_run row or an alert: its class name, a catalog code (with the
 // binding name a `missing_binding` carries), and D1's error code, constraint kind and trigger name. Never the
-// free-form message or cause, which can carry a bound value, a note, a token or key bytes. No imports, so the
-// backup's Node drill runs it.
+// free-form message or cause, which can carry a bound value, a note, a token or key bytes. Its one import has none
+// of its own, so the backup's Node drill runs it.
+
+import { POLICY_NAMES } from './policy-table.ts';
 
 const NAME = /^[A-Za-z]\w{0,39}$/;
 /** A provider's client secret: the name is built from an operator-chosen id of `[a-z0-9-]{1,24}`. */
@@ -27,6 +29,7 @@ export const BINDING_NAMES: ReadonlySet<string> = new Set([
   'SESSION_SECRET',
   'NOTE_KEK',
   'NOTE_KEK_PREVIOUS',
+  ...POLICY_NAMES,
 ]);
 const FIXED = [
   /\bD1_[A-Z_]{1,40}\b/,

@@ -5,14 +5,27 @@ import { addRow, booking, cell, save, WEEK } from '../../test/helpers/booking';
 import { caller, getPage, rpc } from '../../test/helpers/callers';
 import { GRANTS } from '../db/roles';
 import { newSession, readSession, type Session } from './session';
-import { completeStepUp, requireStepUp, STEP_UP_MS, stepUpOptions } from './step-up';
+import { completeStepUp, requireStepUp, stepUpOptions } from './step-up';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 /** A live session for an enrolled person whose last assertion was `ago` milliseconds before now. */
 async function sessionOf(person: Enrolled, ago: number): Promise<Session> {
   const d = deps();
-  const opened = await newSession(d.db, d.secret, person.personId, Date.now() - ago);
+  const opened = await newSession(
+    d.db,
+    d.secret,
+    person.personId,
+    Date.now() - ago,
+    DEFAULT_POLICY.sessionMaxMs,
+  );
   await opened.statement.run();
-  const session = await readSession(d.db, d.secret, opened.rawId, Date.now());
+  const session = await readSession(
+    d.db,
+    d.secret,
+    opened.rawId,
+    Date.now(),
+    DEFAULT_POLICY.sessionIdleMs,
+  );
   expect(session).not.toBeNull();
   return session ?? ({} as Session);
 }
@@ -28,10 +41,10 @@ describe('SEC-10 step-up within 15 minutes before high-impact work', () => {
   it('SEC-10 the gate refuses an assertion 15 minutes old and accepts one just inside', () => {
     const session = { stepUpAt: 0 } as Session;
     expect(() => {
-      requireStepUp(session, STEP_UP_MS - 1);
+      requireStepUp(session, DEFAULT_POLICY.stepUpMs - 1, DEFAULT_POLICY.stepUpMs);
     }).not.toThrow();
     expect(() => {
-      requireStepUp(session, STEP_UP_MS);
+      requireStepUp(session, DEFAULT_POLICY.stepUpMs, DEFAULT_POLICY.stepUpMs);
     }).toThrow(expect.objectContaining({ code: 'step_up_required' }) as Error);
   });
 
@@ -60,10 +73,16 @@ describe('SEC-10 step-up within 15 minutes before high-impact work', () => {
     const now = Date.now();
     const { challengeId, response } = await stepUpBy(session, person, now);
     await completeStepUp(deps(), session, challengeId, response, now);
-    const after = await readSession(deps().db, deps().secret, session.rawId, now);
+    const after = await readSession(
+      deps().db,
+      deps().secret,
+      session.rawId,
+      now,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(after?.stepUpAt).toBe(now);
     expect(() => {
-      requireStepUp(after ?? session, now);
+      requireStepUp(after ?? session, now, DEFAULT_POLICY.stepUpMs);
     }).not.toThrow();
     await expect(completeStepUp(deps(), session, challengeId, response, now)).rejects.toMatchObject(
       { code: 'passkey_failed' },
@@ -84,10 +103,16 @@ describe('SEC-10 step-up within 15 minutes before high-impact work', () => {
     await expect(
       completeStepUp(deps(), session, foreignChallenge.challengeId, foreignChallenge.response, now),
     ).rejects.toMatchObject({ code: 'passkey_failed' });
-    const after = await readSession(deps().db, deps().secret, session.rawId, now);
+    const after = await readSession(
+      deps().db,
+      deps().secret,
+      session.rawId,
+      now,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(after?.stepUpAt).toBe(session.stepUpAt);
     expect(() => {
-      requireStepUp(session, now);
+      requireStepUp(session, now, DEFAULT_POLICY.stepUpMs);
     }).toThrow();
   });
   it("SEC-10 another person's week, notes and all, opens only with a fresh step-up", async () => {

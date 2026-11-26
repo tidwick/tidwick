@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lastFullMonth, parseRange } from './date-range';
+import { DEFAULT_POLICY } from './policy';
 
 describe('the range an export or report opens on is the last full calendar month', () => {
   it('names the first and last day of the month before the one that holds today', () => {
@@ -17,7 +18,18 @@ describe('the range an export or report opens on is the last full calendar month
   it('is a range the export and report accept, whatever the month', () => {
     for (const today of ['2026-01-31', '2026-05-31', '2028-03-01', '2031-12-25']) {
       const { from, to } = lastFullMonth(today);
-      expect(parseRange(from, to)).toEqual({ from, to });
+      expect(parseRange(from, to, DEFAULT_POLICY.reportMaxDays)).toEqual({ from, to });
     }
+  });
+
+  it('REPORT_MAX_DAYS: a range as long as the limit is refused, one day shorter is not', () => {
+    expect(parseRange('2026-01-01', '2026-01-31', 31)).toEqual({
+      from: '2026-01-01',
+      to: '2026-01-31',
+    });
+    expect(() => parseRange('2026-01-01', '2026-02-01', 31)).toThrow(/at most 31 days/);
+    expect(() =>
+      parseRange('2026-01-01', '2026-02-01', DEFAULT_POLICY.reportMaxDays),
+    ).not.toThrow();
   });
 });

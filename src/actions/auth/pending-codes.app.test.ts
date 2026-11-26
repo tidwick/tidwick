@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { caller, type Caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
 import { newSession } from '../../auth/session';
 import { csrfToken } from '../../auth/tokens';
-import { pendingCodesOf, PENDING_CODES_MS } from '../../db/pending-codes';
+import { pendingCodesOf } from '../../db/pending-codes';
 import { expireAllPending, pendingRowPeople } from '../../db/test-support-pending';
 import { currentEnv } from '../../lib/env';
 
@@ -43,7 +43,7 @@ describe('new recovery codes outlive the POST that made them', () => {
   it('shows nothing once the record is ten minutes old', async () => {
     const who = await caller();
     await rpcForm('auth.regenerateCodes', who);
-    const later = Date.now() + PENDING_CODES_MS + 1000;
+    const later = Date.now() + currentEnv().POLICY.pendingCodesMs + 1000;
     expect(await pendingOf(who, later)).toEqual([]);
     expect(await pendingRowPeople(env.DB)).not.toContain(who.personId);
   });
@@ -60,7 +60,13 @@ describe('new recovery codes outlive the POST that made them', () => {
     const who = await caller();
     await rpcForm('auth.regenerateCodes', who);
     const { SESSION_SECRET } = currentEnv();
-    const other = await newSession(env.DB, SESSION_SECRET, who.personId, Date.now());
+    const other = await newSession(
+      env.DB,
+      SESSION_SECRET,
+      who.personId,
+      Date.now(),
+      currentEnv().POLICY.sessionMaxMs,
+    );
     await other.statement.run();
     const second: Caller = {
       personId: who.personId,

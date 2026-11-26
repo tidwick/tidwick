@@ -24,7 +24,6 @@ export const STATE_SWATCH: Record<WeekState, string> = {
 };
 
 /** Bars drawn; the table carries every group. */
-export const MAX_BARS = 40;
 
 const WIDTH = 640;
 const LABEL = 170;
@@ -67,8 +66,8 @@ const shorten = (text: string): string =>
   text.length > LABEL_CHARS ? `${text.slice(0, LABEL_CHARS - 1)}…` : text;
 
 /** The chart for lines in table order, or null when no group has hours. */
-export function reportChart(lines: readonly ReportLine[]): Chart | null {
-  const shown = lines.slice(0, MAX_BARS);
+export function reportChart(lines: readonly ReportLine[], maxBars: number): Chart | null {
+  const shown = lines.slice(0, maxBars);
   const longest = max(shown, (line) => line.total) ?? 0;
   if (longest === 0) return null;
   const x = scaleLinear()

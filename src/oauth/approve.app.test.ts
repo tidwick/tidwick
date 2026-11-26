@@ -17,6 +17,7 @@ import {
   stubDocuments,
 } from '../../test/helpers/oauth';
 import { rowsOf } from '../db/test-support-agents';
+import { currentEnv } from '../lib/env';
 
 let stub: ReturnType<typeof stubDocuments>;
 afterEach(() => stub.restore());
@@ -165,7 +166,7 @@ describe('approving', () => {
     );
   });
 
-  it('a second approval for the same client replaces the first, and a sixth live grant is refused', async () => {
+  it('a second approval for the same client replaces the first, and a live grant past AGENT_TOKEN_MAX is refused', async () => {
     serve();
     const who = await caller();
     await approve(who, await search());
@@ -177,11 +178,14 @@ describe('approving', () => {
     expect(await live()).toHaveLength(1);
     const other = await addPerson();
     expect(other.id).not.toBe(who.personId);
-    for (let i = 0; i < 5; i += 1) {
+    const max = currentEnv().POLICY.agentTokenMax;
+    for (let i = 0; i < max; i += 1) {
       const id = `https://client${String(i)}.example/meta.json`;
       stub.restore();
       stub = stubDocuments({ [id]: document({ client_id: id }) });
-      expect((await approve(who, await search({ client_id: id }))).status).toBe(i < 4 ? 200 : 409);
+      expect((await approve(who, await search({ client_id: id }))).status).toBe(
+        i < max - 1 ? 200 : 409,
+      );
     }
   });
 });

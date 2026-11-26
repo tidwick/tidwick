@@ -22,6 +22,7 @@ import { currentEnv } from '../lib/env';
 import { issueEnrolment } from './enrol';
 import { newSession, SESSION_COOKIE } from './session';
 import { SSO_COOKIE } from './sso';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 let idp: MockIdp;
 beforeEach(async () => {
@@ -185,7 +186,13 @@ describe('SEC-39 confirming again through the identity provider', () => {
   it('asks the provider to authenticate again and stamps only the session that asked, from a fresh auth_time', async () => {
     const who = await caller([], { stepUpAgo: 20 * MINUTE });
     await link(who.personId, 'tenant-a', 'step-1');
-    const other = await newSession(env.DB, SESSION_SECRET, who.personId, Date.now() - 20 * MINUTE);
+    const other = await newSession(
+      env.DB,
+      SESSION_SECRET,
+      who.personId,
+      Date.now() - 20 * MINUTE,
+      DEFAULT_POLICY.sessionMaxMs,
+    );
     await other.statement.run();
     const heldBefore = (await storedFor('session', who.personId)).map((row) => row.step_up_at);
     const begun = await start('/auth/sso/step-up?provider=tenant-a&return=%2Faccount', who);

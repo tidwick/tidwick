@@ -8,7 +8,8 @@ import { countOf, onlyImportBatchId, projectIdNamed } from '../db/test-support-c
 import { applyImport, previewImport } from '../db/import-apply';
 import { allowedTasks } from '../db/project-tasks';
 import { isAppError } from './errors';
-import { MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, readImport } from './import';
+import { MAX_IMPORT_BYTES, readImport } from './import';
+import { DEFAULT_POLICY } from './policy';
 
 const bytes = (text: string): Uint8Array<ArrayBuffer> => new TextEncoder().encode(text);
 const FILE = bytes(fixture);
@@ -148,7 +149,7 @@ describe('import files', () => {
   it('SEC-25 a file over the size or row cap, or without a mapped column, is refused before any row is read', () => {
     const refused = (text: string): boolean => {
       try {
-        readImport(text, IMPORT_MAPPING);
+        readImport(text, IMPORT_MAPPING, DEFAULT_POLICY.importMaxRows);
         return false;
       } catch (error) {
         return isAppError(error, 'invalid_input');
@@ -157,12 +158,14 @@ describe('import files', () => {
     const row = '01/05/2026,ada@import.example,C,P,,DES,1,';
     expect(
       refused(
-        `${header}\n${Array(MAX_IMPORT_ROWS + 1)
+        `${header}\n${Array(DEFAULT_POLICY.importMaxRows + 1)
           .fill(row)
           .join('\n')}`,
       ),
     ).toBe(true);
-    expect(refused(`${header}\n${Array(MAX_IMPORT_ROWS).fill(row).join('\n')}`)).toBe(false);
+    expect(refused(`${header}\n${Array(DEFAULT_POLICY.importMaxRows).fill(row).join('\n')}`)).toBe(
+      false,
+    );
     expect(refused(`${header}\n${'x'.repeat(MAX_IMPORT_BYTES)}`)).toBe(true);
     expect(refused(header.replace('Hrs', 'Time'))).toBe(true);
     expect(refused('')).toBe(true);
@@ -172,6 +175,7 @@ describe('import files', () => {
     const read = readImport(
       `${header},Rate\r\n01/05/2026,ada@import.example,C,P,,DES,1,,=cmd|' /C calc'!A0\r\n`,
       IMPORT_MAPPING,
+      DEFAULT_POLICY.importMaxRows,
     );
     expect(read.rejected).toEqual([]);
     expect(Object.values(read.rows[0] ?? {}).join('|')).not.toContain('cmd');
@@ -181,11 +185,40 @@ describe('import files', () => {
     const read = readImport(
       `${header}\r\n01/05/2026,ada@import.example,C,P,,DES,"1,005",\r\n01/05/2026,ada@import.example,C,P,,DES,1.50,\r\n`,
       IMPORT_MAPPING,
+      DEFAULT_POLICY.importMaxRows,
     );
     expect(read.rows.map((r) => [r.hundredths, r.rounded])).toEqual([
       [101, true],
       [150, false],
     ]);
     expect(read.rows[0]?.projectNumber).toBeNull();
+  });
+
+  it('IMPORT_MAX_ROWS: a file one row over the configured limit is refused, one at it reads', () => {
+    const header = 'Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo';
+    const file = (rows: number) =>
+      `${header}\n${Array(rows).fill('01/05/2026,ada@import.example,C,P,,DES,1,').join('\n')}`;
+    expect(() => readImport(file(4), IMPORT_MAPPING, 3)).toThrow(/more than 3 rows/);
+    expect(readImport(file(3), IMPORT_MAPPING, 3).rows).toHaveLength(3);
+  });
+
+  it('IMPORT_MAX_NEW: a file naming more new clients and projects than the limit is refused whole, and applies at the limit', async () => {
+    const head = 'Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo\r\n';
+    const file = bytes(
+      `${head}01/05/2026,${PEOPLE[0]?.email ?? ''},KnobClient,KnobJob,,DES,1,\r\n`,
+    );
+    const clients = await countOf(env.DB, 'clients');
+    const limit = (importMaxNew: number) => ({
+      importMaxRows: DEFAULT_POLICY.importMaxRows,
+      importMaxNew,
+    });
+    const refused = await applyImport(ctx.admin, env.DB, ctx.keks, file, T0, limit(1)).catch(
+      (e: unknown) => e,
+    );
+    expect(isAppError(refused, 'invalid_input')).toBe(true);
+    expect((refused as Error).message).toContain('more than 1 new clients and projects');
+    expect(await countOf(env.DB, 'clients')).toBe(clients);
+    await applyImport(ctx.admin, env.DB, ctx.keks, file, T0, limit(2));
+    expect(await countOf(env.DB, 'clients')).toBe(clients + 1);
   });
 });

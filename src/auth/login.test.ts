@@ -4,6 +4,7 @@ import { adminScope } from '../../test/helpers/auth';
 import { completeLogin, loginOptions } from './login';
 import { revokeAccess } from './revoke';
 import { readSession } from './session';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 async function assertion(person: Enrolled, now = T0, tweaks = {}) {
   const d = deps();
@@ -19,7 +20,13 @@ describe('passkey login', () => {
     const login = await completeLogin(deps(), challengeId, response, T0 + MINUTE);
     expect(login.personId).toBe(person.personId);
     expect(login.sessionId).not.toBe(person.sessionId);
-    const session = await readSession(deps().db, deps().secret, login.sessionId, T0 + MINUTE);
+    const session = await readSession(
+      deps().db,
+      deps().secret,
+      login.sessionId,
+      T0 + MINUTE,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(session).toMatchObject({ personId: person.personId, mustEnrol: false });
   });
 

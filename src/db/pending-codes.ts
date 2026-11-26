@@ -2,8 +2,6 @@
 // The row is bound to the creating session by a keyed hash, and expired rows are pruned on every write and read.
 import { keyedHash } from '../auth/tokens';
 
-export const PENDING_CODES_MS = 10 * 60 * 1000;
-
 const PUT = `INSERT INTO pending_codes (person_id, session_hash, codes, expires_at) VALUES (?1, ?2, ?3, ?4)
 ON CONFLICT (person_id) DO UPDATE SET session_hash = excluded.session_hash, codes = excluded.codes,
   expires_at = excluded.expires_at`;
@@ -15,10 +13,11 @@ export function putPendingCodes(
   sessionHash: string,
   codes: readonly string[],
   now: number,
+  lifeMs: number,
 ): D1PreparedStatement[] {
   return [
     db.prepare('DELETE FROM pending_codes WHERE expires_at <= ?1').bind(now),
-    db.prepare(PUT).bind(personId, sessionHash, codes.join('\n'), now + PENDING_CODES_MS),
+    db.prepare(PUT).bind(personId, sessionHash, codes.join('\n'), now + lifeMs),
   ];
 }
 

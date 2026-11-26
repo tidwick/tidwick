@@ -33,7 +33,8 @@ export async function scheduled(
         sink: env.BACKUPS,
         recipient: env.BACKUP_RECIPIENT,
         copy: offsiteCopy(env.copy, fetcher),
-        ...(retryPauseMs === undefined ? {} : { retryPauseMs }),
+        retryPauseMs: retryPauseMs ?? env.policy.backupRetryPauseMs,
+        tries: env.policy.backupTries,
       },
       controller.scheduledTime,
     );

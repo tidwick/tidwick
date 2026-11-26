@@ -5,9 +5,12 @@ import { csrfToken } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
 
 export const session: MiddlewareHandler = async (context, next) => {
-  const { DB, SESSION_SECRET } = currentEnv();
+  const { DB, SESSION_SECRET, POLICY } = currentEnv();
   const raw = cookieValue(context.request.headers.get('cookie'), SESSION_COOKIE);
-  const live = raw === null ? null : await readSession(DB, SESSION_SECRET, raw, Date.now());
+  const live =
+    raw === null
+      ? null
+      : await readSession(DB, SESSION_SECRET, raw, Date.now(), POLICY.sessionIdleMs);
   context.locals.session = live;
   context.locals.csrf = live ? await csrfToken(SESSION_SECRET, live.rawId) : '';
   context.locals.cookies = [];

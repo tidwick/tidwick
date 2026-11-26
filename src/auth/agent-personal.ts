@@ -8,15 +8,13 @@ import { personById } from '../db/people';
 import { liveSessionCount } from '../db/sessions';
 import { AppError, fail } from '../lib/errors';
 import { newId } from '../lib/ids';
+import type { Policy } from '../lib/policy';
 import { keyedHash, randomToken } from './tokens';
 
 export const PERSONAL_CLIENT = 'token';
 export const LABEL_MAX = 60;
-/** Live personal tokens one person may hold; a sixth mint is refused. */
-export const MAX_LIVE_GRANTS = 5;
-/** The lives a token may be given, in days; 90 is the hard maximum. */
-export const LIFE_DAYS = [7, 30, 90] as const;
-export const DEFAULT_LIFE_DAYS = 30;
+/** The knobs a mint reads: the live-grant cap (`AGENT_TOKEN_MAX`) and the lives offered (`AGENT_TOKEN_DAYS`). */
+export type MintPolicy = Pick<Policy, 'agentTokenMax' | 'agentTokenDays'>;
 export const TOKEN_SCOPES = ['read', 'write', 'submit'] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -58,13 +56,14 @@ export async function mintPersonalToken(
   secret: string,
   personId: string,
   input: PersonalToken,
+  policy: MintPolicy,
   now: number,
 ): Promise<{ token: string; grantId: string; expiresAt: number }> {
   const label = input.label.trim();
   if (label === '' || label.length > LABEL_MAX)
     fail('invalid_input', 'a label of 1 to 60 characters');
-  if (!(LIFE_DAYS as readonly number[]).includes(input.days))
-    fail('invalid_input', 'a life of 7, 30 or 90 days');
+  if (!policy.agentTokenDays.includes(input.days))
+    fail('invalid_input', `a life of ${policy.agentTokenDays.join(', ')} days`);
   const scopes = TOKEN_SCOPES.filter((s) => input.scopes.includes(s));
   if (scopes.length === 0) fail('invalid_input', 'at least one scope');
   const token = randomToken();
@@ -73,7 +72,8 @@ export async function mintPersonalToken(
   const expiresAt = now + input.days * DAY_MS;
   await whileSignedIn(db, personId, now, () =>
     retryOnce(async () => {
-      if ((await listedGrantsOf(db, personId, now)).length >= MAX_LIVE_GRANTS) fail('agent_limit');
+      if ((await listedGrantsOf(db, personId, now)).length >= policy.agentTokenMax)
+        fail('agent_limit');
       const batch = await auditedBatch(scope, db);
       await batch.record(
         insertGrant(
@@ -86,7 +86,7 @@ export async function mintPersonalToken(
             redirectUri: '',
             scopes,
             expiresAt,
-            cap: MAX_LIVE_GRANTS,
+            cap: policy.agentTokenMax,
           },
           now,
         ),

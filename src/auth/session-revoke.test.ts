@@ -9,18 +9,25 @@ import { readSession, newSession } from './session';
 import { revokeOwnPasskey } from './revoke-passkey';
 import { keyedHash } from './tokens';
 import { unlinkSso } from './unlink-sso';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const { SESSION_SECRET } = currentEnv();
 const ISSUER = 'https://idp-a.example/a/v2.0';
 
 async function signedIn(personId: string): Promise<string> {
-  const { rawId, statement } = await newSession(env.DB, SESSION_SECRET, personId, T0);
+  const { rawId, statement } = await newSession(
+    env.DB,
+    SESSION_SECRET,
+    personId,
+    T0,
+    DEFAULT_POLICY.sessionMaxMs,
+  );
   await statement.run();
   return rawId;
 }
 
 const live = async (rawId: string) =>
-  (await readSession(env.DB, SESSION_SECRET, rawId, T0)) !== null;
+  (await readSession(env.DB, SESSION_SECRET, rawId, T0, DEFAULT_POLICY.sessionIdleMs)) !== null;
 
 describe('SEC-66 ending a credential ends the sessions it opened', () => {
   it('removing a passkey keeps the caller signed in and ends every other session of theirs', async () => {

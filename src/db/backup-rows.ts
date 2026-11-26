@@ -38,7 +38,7 @@ export const SKIPPED_TABLES = [
   'pending_codes',
 ];
 
-/** Rows per keyset page. */
+/** Fixed (platform limit): rows per keyset page, sized to D1's per-invocation query budget and a Worker's memory. */
 export const PAGE_ROWS = 2000;
 
 // Table names cannot be bound, so each statement is built once from the constant list above, never from input.

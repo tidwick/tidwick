@@ -14,6 +14,7 @@ import { logoutOthers } from './logout-others';
 import { offboard } from './offboard';
 import { reenrol } from './revoke';
 import { revokeOwnPasskey } from './revoke-passkey';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const { SESSION_SECRET } = currentEnv();
 
@@ -55,7 +56,7 @@ describe('revoking a person revokes their agents', () => {
   it('sign out everywhere, even with no other session to end', async () => {
     const p = await person();
     const seq = await headSeq();
-    const session = await newSession(env.DB, SESSION_SECRET, p.id, T0);
+    const session = await newSession(env.DB, SESSION_SECRET, p.id, T0, DEFAULT_POLICY.sessionMaxMs);
     await session.statement.run();
     const ended = await logoutOthers(
       systemScope(),

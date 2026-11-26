@@ -7,9 +7,11 @@ interface Props {
   lines: ReportLine[];
   /** What a bar is, in a phrase: "person", "client". */
   by: string;
+  /** `REPORT_MAX_BARS`: bars drawn; the rest are counted, not drawn. */
+  maxBars: number;
 }
-const { lines, by } = Astro.props;
-const chart = reportChart(lines);
+const { lines, by, maxBars } = Astro.props;
+const chart = reportChart(lines, maxBars);
 const description = `Hours by week state, one bar for each ${by}. The table below has the same figures.`;
 ---
 

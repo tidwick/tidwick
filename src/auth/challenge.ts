@@ -5,6 +5,7 @@ import { hostCookie } from './session';
 import { keyedHash, randomToken } from './tokens';
 
 export const CHALLENGE_COOKIE = '__Host-tidwick-challenge';
+/** Fixed (security floor): a passkey challenge is single-use and short so a captured one cannot be replayed later. */
 export const CHALLENGE_MS = 5 * 60 * 1000;
 
 export function challengeCookie(rawId: string): string {
