@@ -6,6 +6,7 @@ import assignmentsAdd from './assignments/add';
 import assignmentsAddAll from './assignments/addAll';
 import assignmentsRemove from './assignments/remove';
 import auditVerify from './audit/verify';
+import authAckCodes from './auth/ackCodes';
 import authAddPasskeyOptions from './auth/addPasskeyOptions';
 import authAddPasskeyVerify from './auth/addPasskeyVerify';
 import authEnrolOptions from './auth/enrolOptions';
@@ -68,6 +69,7 @@ export const server = {
     verify: auditVerify,
   },
   auth: {
+    ackCodes: authAckCodes,
     addPasskeyOptions: authAddPasskeyOptions,
     addPasskeyVerify: authAddPasskeyVerify,
     demoSignin: authDemoSignin,

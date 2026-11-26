@@ -15,7 +15,7 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 - SSO sessions are the same opaque sessions as passkey ones. Step-up accepts a fresh passkey assertion or a fresh SSO sign-in, the latter proven by `auth_time`. A provider that sends none (Google) cannot step up; its confirm button is hidden and its start route refuses.
 - tidwick keeps no access or refresh token from an identity provider. The ID token comes from the token endpoint over TLS, so its signature is not checked again (OpenID Connect Core 3.1.3.7).
 - A demo environment only may add a shared-password persona sign-in: four signals gate it (var, secret of 16 or more characters, demo banner, a seeded database marker), it is never enabled elsewhere, its sessions last two hours with no step-up prompt, and passkey login is unchanged. The password is not a secret: the sign-in page prints it, and only while all four signals hold.
-- Enrolment and recovery codes are hashed and single-use.
+- Enrolment and recovery codes are hashed (a new batch also waits in plain, ten minutes, for its session) and single-use.
 - Lockout applies to recovery only, never to a passkey or SSO login.
 - Sessions are opaque random tokens, stored HMAC-hashed, carried in a `__Host-` cookie.
 - The first admin is created by a local script (`just first-admin`), or once from `/setup` on an empty database with a one-time `SETUP_TOKEN` secret, compared in constant time, which the deployer deletes after; rescue is an operator recipe run with deploy credentials.

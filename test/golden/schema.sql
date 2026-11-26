@@ -138,6 +138,14 @@ CREATE TABLE oidc_flow (
   used_at INTEGER
 ) STRICT;
 
+-- table pending_codes
+CREATE TABLE pending_codes (
+  person_id TEXT PRIMARY KEY REFERENCES person (id),
+  session_hash TEXT NOT NULL,
+  codes TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+) STRICT;
+
 -- table person
 CREATE TABLE person (
   id TEXT PRIMARY KEY,

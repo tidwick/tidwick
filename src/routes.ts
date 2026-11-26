@@ -75,6 +75,7 @@ export const ACTIONS: Readonly<Record<string, Rule>> = {
   'auth.logoutOthers': MEMBER,
   'auth.revokePasskey': MEMBER_STEP_UP,
   'auth.regenerateCodes': MEMBER_STEP_UP,
+  'auth.ackCodes': MEMBER,
   'entries.save': MEMBER,
   'entries.addRow': MEMBER,
   'entries.removeRow': MEMBER,

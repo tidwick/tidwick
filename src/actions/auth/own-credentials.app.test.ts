@@ -2,7 +2,7 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { addPerson, storedFor } from '../../../test/helpers/auth';
-import { caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
+import { caller, getPage, rpcForm } from '../../../test/helpers/callers';
 import { codeHash, newRecoveryCode, normalizeCode } from '../../auth/recovery-codes';
 import { newSession } from '../../auth/session';
 import { insertCodes } from '../../db/recovery-codes';
@@ -73,15 +73,6 @@ describe('auth.regenerateCodes replaces the caller own recovery codes', () => {
     await withCodes(other.id, 4);
     await rpcForm('auth.regenerateCodes', who);
     expect(await unused(other.id)).toBe(4);
-  });
-
-  it('the account page shows the new codes once, after the form posts without script', async () => {
-    const who = await caller();
-    const posted = await formPost('/account', 'auth.regenerateCodes', who);
-    const html = await posted.text();
-    expect(html.match(/<li data-code[ >]/g) ?? []).toHaveLength(10);
-    const again = await (await getPage('/account', who)).text();
-    expect(again).not.toMatch(/<li data-code[ >]/);
   });
 });
 

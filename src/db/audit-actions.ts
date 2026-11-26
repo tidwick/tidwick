@@ -87,6 +87,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'auth.addPasskeyOptions': 'none',
   'auth.addPasskeyVerify': ['auth.addPasskey'],
   'auth.logout': 'none',
+  'auth.ackCodes': 'none',
   'auth.stepUpOptions': 'none',
   'auth.stepUpVerify': 'none',
   'auth.logoutOthers': ['auth.logoutOthers'],

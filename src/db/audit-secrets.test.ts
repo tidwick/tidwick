@@ -23,7 +23,14 @@ describe('no secret reaches the audit log', () => {
     const code = person.codes[0] ?? '';
     const recovered = await recover(d, person.email, code, T0 + MINUTE);
     const scope = await scopeFor(env.DB, person.personId);
-    const fresh = await regenerateCodes(scope, d.db, d.secret, person.personId, T0 + 2 * MINUTE);
+    const fresh = await regenerateCodes(
+      scope,
+      d.db,
+      d.secret,
+      person.personId,
+      T0 + 2 * MINUTE,
+      'sess',
+    );
     const week = await bookedWeek();
     const note = `audit probe note ${crypto.randomUUID()}`;
     const edit = { rowId: week.rowId, dow: 1, hundredths: 150, note };

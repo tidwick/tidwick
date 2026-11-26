@@ -20,6 +20,7 @@ export default defineAction({
         secret,
         session.personId,
         Date.now(),
+        session.rawId,
       );
       return { codes };
     }),

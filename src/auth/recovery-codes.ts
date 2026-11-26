@@ -1,6 +1,7 @@
-// Recovery codes: ten per person, 16 Crockford base32 characters (80 bits), stored only as hashes.
+// Recovery codes: ten per person, 16 Crockford base32 characters (80 bits), stored as hashes; the plain batch is also held ten minutes in pending_codes.
 import { auditedBatch, retryOnce } from '../db/audit';
 import { closeCodesOf, insertCodes, unusedCodeCount } from '../db/recovery-codes';
+import { putPendingCodes } from '../db/pending-codes';
 import type { Scope } from '../db/scope';
 import { keyedHash } from './tokens';
 
@@ -52,8 +53,10 @@ export async function regenerateCodes(
   secret: string,
   personId: string,
   now: number,
+  sessionId: string,
 ): Promise<string[]> {
   const { codes, hashes } = await freshCodes(secret);
+  const owner = await keyedHash(secret, 'pending', sessionId);
   await retryOnce(async () => {
     const unused = await unusedCodeCount(db, personId);
     const batch = await auditedBatch(scope, db);
@@ -69,6 +72,7 @@ export async function regenerateCodes(
       unused,
     );
     for (const insert of insertCodes(db, personId, hashes, now)) batch.also(insert);
+    for (const put of putPendingCodes(db, personId, owner, codes, now)) batch.also(put);
     await batch.run();
   });
   return codes;

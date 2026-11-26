@@ -11,11 +11,14 @@ test('a person enrols a passkey, keeps the recovery codes, signs out and signs b
 
   await page.goto('/account');
   await page.getByRole('button', { name: 'Make new recovery codes' }).click();
-  await expect(page.getByRole('heading', { name: 'Save your recovery codes' })).toBeVisible();
-  await expect(page.locator('[data-code]')).toHaveCount(10);
-  await page.getByRole('checkbox', { name: /I have saved these codes/ }).check();
-  await page.getByRole('link', { name: 'Continue' }).click();
   await expect(page).toHaveURL(/\/account$/);
+  await expect(page.locator('[data-code]')).toHaveCount(10);
+  // The codes live in a short-lived server record, so a reload shows the same ten until they are acknowledged.
+  const shown = await page.locator('[data-code]').allTextContents();
+  await page.reload();
+  expect(await page.locator('[data-code]').allTextContents()).toEqual(shown);
+  await page.getByRole('button', { name: 'I have saved these codes' }).click();
+  await expect(page.locator('[data-code]')).toHaveCount(0);
   await expect(page.getByText('10 unused codes left.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();

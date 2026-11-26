@@ -19,6 +19,7 @@ export const DROP_ORDER = [
   'task_code',
   'client_key',
   'recovery_code',
+  'pending_codes',
   'recovery_attempt',
   'auth_challenge',
   'oidc_flow',

@@ -21,7 +21,7 @@ Trusted: Cloudflare (Workers, D1, R2, Cron, their encryption at rest), the brows
 - Visitor or other site: forged ceremonies, guessed codes, CSRF, injected script. Closed by origin check, rate limits, strict CSP, no HTML sink; open: rate limit is approximate (ADR 0003, 0007). `/setup` on an unconfigured, empty instance shows binding names only; keys are made in the browser and never sent. Once it is configured and still empty, `/setup` can create the first admin once: the form needs `SETUP_TOKEN` (compared in constant time), counts against the login bucket and writes only into an empty database.
 - Signed-in member: cross-client reads, role escalation, writes to a locked week. Closed by the routes table and `Scope` (ADR 0004, 0005, 0009).
 - Stolen session: step-up (a fresh passkey or provider confirmation, 15 minutes) gates high-impact routes; the rest stays open until the session ends.
-- Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed).
+- Database reader: sees names, emails and hours in the clear, never notes or stored tokens (hashed, sealed). One exception: a person's new plain recovery codes sit in `pending_codes` for ten minutes, until acknowledged, readable only by the creating session; backups exclude them.
 - Database writer: audit triggers and the chain catch edits unless the writer recomputes the chain (ADR 0006).
 - Backup holder: sees nothing without the offline age identity and `NOTE_KEK` (ADR 0008).
 - Demo visitor: the shared demo password is the demo's only extra credential, and the four signals keep it out of every other deploy (ADR 0003).
