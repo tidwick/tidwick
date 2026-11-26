@@ -38,6 +38,10 @@ export const CATALOG = {
     status: 409,
     message: 'That is your only passkey and nothing else signs you in; add another way in first',
   },
+  agent_limit: {
+    status: 409,
+    message: 'You already hold five live agent tokens; revoke one first',
+  },
   chain_broken: { status: 500, message: 'The audit chain does not verify' },
   unauthenticated: { status: 401, message: 'Sign in first' },
   csrf: {

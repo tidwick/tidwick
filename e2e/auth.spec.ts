@@ -31,9 +31,8 @@ test('a person enrols a passkey, keeps the recovery codes, signs out and signs b
   await page.goto('/clients/no-such-client');
   await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
-  // /mcp was cut from 0.1, so it is a path nobody built.
-  expect((await page.goto('/mcp'))?.status()).toBe(404);
-  await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
+  // The dev server runs with MCP on: /mcp takes a POST with a bearer, so a browser's GET is a 405, not a page.
+  expect((await page.goto('/mcp'))?.status()).toBe(405);
 });
 
 test('a used enrolment link is refused with a plain message', async ({ page }, info) => {

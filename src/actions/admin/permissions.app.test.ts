@@ -52,6 +52,9 @@ const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
   'people.setRoles': [OUT, NO, NO, OK, OK, NO, NO],
   'people.offboard': [OUT, NO, NO, OK, OK, NO, NO],
   'submission.submit': [OUT, OK, OK, OK, OK, NO, OK],
+  // A token is a member's own: minting asks for a fresh passkey confirmation, revoking one does not.
+  'agents.mint': [OUT, OK, OK, OK, OK, NO, NO],
+  'agents.revoke': [OUT, OK, OK, OK, OK, NO, OK],
   'submission.approve': [OUT, NO, OK, NO, OK, NO, NO],
   'submission.return': [OUT, NO, OK, NO, OK, NO, NO],
   'entriesFor.save': [OUT, NO, OK, NO, OK, NO, NO],

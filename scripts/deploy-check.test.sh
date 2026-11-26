@@ -39,7 +39,7 @@ without() { local out='' n; for n in $1; do [ "$n" = "$2" ] || out="$out $n"; do
 config '"BACKUP_COPY": "s3"' https://time.firm.test
 passes 'prod with exactly the required secrets' "$prod"
 grep -q -- '--env' "$STUB_LOG" && fail 'prod must not pass --env'
-passes 'prod with optional secrets too' "$prod SETUP_TOKEN NOTE_KEK_PREVIOUS"
+passes 'prod with optional secrets too' "$prod SETUP_TOKEN MCP NOTE_KEK_PREVIOUS"
 for name in $prod; do
   refuses "prod missing $name" "$(without "$prod" "$name")"
   grep -q "$name" out.txt || fail "the failure for $name does not name it"

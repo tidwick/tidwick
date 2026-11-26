@@ -2,12 +2,15 @@
 import { actions } from 'astro:actions';
 import Heading from '../components/auth/heading.astro';
 import { DANGER, PRIMARY, SECONDARY } from '../components/auth/classes';
+import Sessions from '../components/account/sessions.astro';
+import Agents from '../components/account/agents.astro';
 import SsoLinks from '../components/auth/sso-links.astro';
 import { confirmLinks } from '../components/auth/sso-links';
 import Status from '../components/auth/status.astro';
 import SavedLine from '../components/saved-line.astro';
 import SignOutForm from '../components/sign-out-form.astro';
 import { Alert } from '../components/ui/alert';
+import { listedGrantsOf } from '../db/agent-grants';
 import { STEP_UP_MS } from '../auth/step-up';
 import { listedCredentialsOf } from '../db/credentials';
 import { liveIdentitiesOf } from '../db/identities';
@@ -23,15 +26,18 @@ const session = Astro.locals.session;
 if (!session) return Astro.redirect('/login');
 const ctx = pageContext(Astro);
 const renewed = Astro.getActionResult(actions.auth.regenerateCodes);
+const minted = Astro.getActionResult(actions.agents.mint);
 const posted = [
   Astro.getActionResult(actions.auth.ackCodes),
   Astro.getActionResult(actions.auth.revokePasskey),
   Astro.getActionResult(actions.auth.logoutOthers),
+  Astro.getActionResult(actions.agents.revoke),
 ];
 if (succeeded(posted)) return Astro.redirect(savedAt('/account'), 303);
 // Post, redirect, get: the new codes are read back from their short-lived record, so a reload shows them again.
 if (renewed && !renewed.error) return Astro.redirect('/account', 303);
-const problem = problemOf([...posted, renewed]);
+const problem = problemOf([...posted, renewed, minted]);
+const agents = currentEnv().MCP ? await listedGrantsOf(ctx.db, session.personId, Date.now()) : null;
 const newCodes = await pendingCodesOf(ctx.db, currentEnv().SESSION_SECRET, session, Date.now());
 const codesLeft = await unusedCodeCount(ctx.db, session.personId);
 const passkeys = await listedCredentialsOf(ctx.db, session.personId);
@@ -110,8 +116,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       )}
       {!session.mustEnrol && spare && passkeys.length > 0 && (
         <p data-remove-note class="text-sm text-muted-foreground">
-          Removing a passkey does not sign out a browser already signed in with it. Use Sign out
-          other sessions below for browsers.
+          Removing a passkey does not sign out a browser already signed in with it, but it does
+          revoke agent access. Use Sign out other sessions below for browsers.
         </p>
       )}
       <button type="button" data-passkey="add" data-csrf={ctx.csrf} class={ADD}>
@@ -214,21 +220,16 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       </section>
     )}
 
-    {!session.mustEnrol && (
-      <section aria-labelledby="sessions-h" class="grid gap-3">
-        <h2 id="sessions-h" class="text-lg font-semibold">
-          Other sessions
-        </h2>
-        <p class="text-sm text-muted-foreground">
-          Sign out every other browser and device. This one stays signed in.
-        </p>
-        <form method="POST" action={`/account${actions.auth.logoutOthers}`}>
-          <input type="hidden" name="_csrf" value={ctx.csrf} />
-          <button type="submit" class={DANGER}>
-            Sign out other sessions
-          </button>
-        </form>
-      </section>
+    {!session.mustEnrol && <Sessions csrf={ctx.csrf} />}
+
+    {!session.mustEnrol && agents && (
+      <Agents
+        csrf={ctx.csrf}
+        grants={agents}
+        confirmed={confirmed}
+        minted={minted?.data ?? null}
+        origin={currentEnv().ORIGIN}
+      />
     )}
 
     {recovery && <SignOutForm />}

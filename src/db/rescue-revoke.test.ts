@@ -2,9 +2,11 @@
 // it; the revoking rescue lands, revokes those passkeys and issues the link, and never while another admin can sign in.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { mintAgent } from '../../test/helpers/agent';
 import { addPerson, withPasskey } from '../../test/helpers/auth';
 import { keyedHash, randomToken } from '../auth/tokens';
 import { currentEnv } from '../lib/env';
+import { liveGrantIdsOf } from './agent-grants';
 import { checkChain } from './audit';
 import { openEnrolment } from './enrolments';
 import { rescueSql } from './rescue';
@@ -81,6 +83,30 @@ describe('rescue with --revoke-passkeys', () => {
     const again = await rowCounts(env.DB);
     await env.DB.exec(revoking.sql);
     expect(await rowCounts(env.DB)).toEqual(again);
+  });
+
+  it('a rescue that lands revokes the person’s agent grants and leaves another person’s alone (negative case: a no-op file revokes none)', async () => {
+    const ada = await addPerson(['admin']);
+    await withPasskey(ada.id);
+    const bystander = await addPerson(['admin']);
+    const mine = await mintAgent(ada.id);
+    const theirs = await mintAgent(bystander.id);
+    const blocked = await file(ada.id, true);
+    // Another admin can still sign in, so the file writes nothing.
+    await withPasskey(bystander.id);
+    await env.DB.exec(blocked.sql);
+    expect(await liveGrantIdsOf(env.DB, ada.id)).toEqual([mine.grantId]);
+    await env.DB.prepare('UPDATE credential SET revoked_at = 1 WHERE person_id = ?1')
+      .bind(bystander.id)
+      .run();
+    const open = await file(ada.id, true);
+    await env.DB.exec(open.sql);
+    expect(await liveGrantIdsOf(env.DB, ada.id)).toEqual([]);
+    expect(await liveGrantIdsOf(env.DB, bystander.id)).toEqual([theirs.grantId]);
+    const event = await env.DB.prepare(
+      "SELECT after_json FROM audit_event WHERE action = 'people.rescue' ORDER BY seq DESC",
+    ).first<{ after_json: string }>();
+    expect(event?.after_json).toContain('agent grants');
   });
 
   it('SEC-52 writes nothing while another admin holds a passkey (negative case: the same file lands without one)', async () => {

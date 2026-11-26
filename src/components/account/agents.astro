@@ -1,0 +1,148 @@
+---
+import { actions } from 'astro:actions';
+import { cn } from 'cn';
+import { DANGER, SECONDARY } from '../auth/classes';
+import { Input } from '../ui/input';
+import {
+  DEFAULT_LIFE_DAYS,
+  LABEL_MAX,
+  LIFE_DAYS,
+  MAX_LIVE_GRANTS,
+} from '../../auth/agent-personal';
+import type { ListedGrant } from '../../db/agent-grants';
+// Agent tokens on the account page: the ones held, a form to mint another, and a just-minted token shown once.
+// The token comes only from the posted Action's result, so a reload shows no token. The page hides this section
+// when MCP is off, and says to confirm first when the passkey confirmation has lapsed.
+interface Props {
+  csrf: string;
+  grants: readonly ListedGrant[];
+  confirmed: boolean;
+  /** The token the Action just minted, or null. */
+  minted: { token: string; label: string; expiresAt: number } | null;
+  origin: string;
+}
+const { csrf, grants, confirmed, minted, origin } = Astro.props;
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const hour = (ms: number) => `${new Date(ms).toISOString().slice(0, 13).replace('T', ' ')}:00 UTC`;
+const scopesOf = (json: string) => (JSON.parse(json) as string[]).join(', ');
+const MINT = cn(SECONDARY, 'w-fit');
+---
+
+<section aria-labelledby="agents-h" class="grid gap-3" data-agents>
+  <h2 id="agents-h" class="text-lg font-semibold">
+    Agent tokens
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    A token lets an agent such as Claude Code read and fill in your own weeks over MCP. It acts as
+    you, with a member's rights and only on the projects you are assigned. It cannot approve, export
+    or change settings, and it cannot make or revoke tokens.
+  </p>
+  {minted && (
+    <div class="grid gap-2 rounded-md border border-border p-4" data-agent-token>
+      <p class="text-sm font-medium">
+        Token "{minted.label}" is ready. It is shown once and is gone when you leave this page; copy
+        it now.
+      </p>
+      <label for="agent-token" class="sr-only">
+        New agent token
+      </label>
+      <Input
+        id="agent-token"
+        readOnly
+        value={minted.token}
+        autoComplete="off"
+        className="h-11 border-control font-mono md:h-9"
+      />
+      <p class="text-sm text-muted-foreground">
+        It stops working on {day(minted.expiresAt)}. With Claude Code:
+      </p>
+      <code class="block break-words rounded-md bg-muted p-3 text-xs">
+        {`claude mcp add --transport http tidwick ${origin}/mcp --header "Authorization: Bearer <token>"`}
+      </code>
+    </div>
+  )}
+  <ul class="divide-y divide-border rounded-md border border-border">
+    {grants.length === 0 && <li class="p-4 text-sm text-muted-foreground">No agent tokens.</li>}
+    {grants.map((g) => (
+      <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div class="text-sm">
+          <p class="font-medium">{g.client_name}</p>
+          <p class="text-muted-foreground">
+            {scopesOf(g.scopes)}
+            {' · '}created {day(g.created_at)}
+            {' · '}
+            {g.expires_at === null ? 'no end date' : `ends ${day(g.expires_at)}`}
+            {' · '}
+            {g.last_used_at === null ? 'never used' : `last used ${hour(g.last_used_at)}`}
+          </p>
+        </div>
+        <form method="POST" action={`/account${actions.agents.revoke}`}>
+          <input type="hidden" name="_csrf" value={csrf} />
+          <input type="hidden" name="id" value={g.id} />
+          <button type="submit" class={DANGER}>
+            Revoke
+          </button>
+        </form>
+      </li>
+    ))}
+  </ul>
+  {grants.length >= MAX_LIVE_GRANTS ? (
+    <p class="text-sm text-muted-foreground">
+      You hold {MAX_LIVE_GRANTS} tokens, the most allowed. Revoke one to make another.
+    </p>
+  ) : (
+    <form method="POST" action={`/account${actions.agents.mint}`} class="grid max-w-sm gap-3">
+      <input type="hidden" name="_csrf" value={csrf} />
+      <div class="grid gap-1.5">
+        <label for="agent-label" class="text-sm font-medium">
+          Label
+        </label>
+        <Input
+          id="agent-label"
+          name="label"
+          required
+          maxLength={LABEL_MAX}
+          autoComplete="off"
+          className="h-11 border-control md:h-9"
+        />
+      </div>
+      <div class="grid gap-1.5">
+        <label for="agent-days" class="text-sm font-medium">
+          Lasts
+        </label>
+        <select
+          id="agent-days"
+          name="days"
+          class="h-11 rounded-md border border-control bg-background px-3 text-base md:h-9 md:text-sm"
+        >
+          {LIFE_DAYS.map((d) => (
+            <option value={d} selected={d === DEFAULT_LIFE_DAYS}>
+              {d} days
+            </option>
+          ))}
+        </select>
+      </div>
+      <fieldset class="grid gap-1">
+        <legend class="text-sm font-medium">May</legend>
+        <label class="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" name="scopes" value="read" checked class="size-5" />
+          read your weeks
+        </label>
+        <label class="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" name="scopes" value="write" checked class="size-5" />
+          change hours and rows in a week you can still edit
+        </label>
+        <label class="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" name="scopes" value="submit" class="size-5" />
+          submit a week, which locks it until an accountant returns it
+        </label>
+      </fieldset>
+      <button type="submit" class={MINT}>
+        Make a token
+      </button>
+      {!confirmed && (
+        <p class="text-sm text-muted-foreground">Confirm with your passkey above first.</p>
+      )}
+    </form>
+  )}
+</section>

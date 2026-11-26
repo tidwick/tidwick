@@ -104,7 +104,7 @@ export async function loadWeek(
   requirePersonVisible(scope, personId);
   // A member reads every row of their own week, so hours on a project they no longer have are shown, read-only,
   // and not only counted toward the cap, the submit and the export.
-  const every = scope.kind === 'member';
+  const every = scope.kind === 'member' || scope.kind === 'agent';
   const [rows, cells, state, print] = await Promise.all([
     readRows(scope, db, personId, weekStart, every),
     readCells(scope, db, personId, weekStart, every),
