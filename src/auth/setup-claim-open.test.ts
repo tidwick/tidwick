@@ -11,6 +11,10 @@ describe('whether the setup claim is open', () => {
     expect(await claimOpen(env.DB)).toBe(true);
     await env.DB.exec((await bootstrapFile('ada@example.test')).sql);
     expect(await claimOpen(env.DB)).toBe(true);
+    // The demo seeds admins with no passkey; its marker keeps the claim shut there.
+    await env.DB.exec("INSERT INTO setting (key, value_json) VALUES ('demo', '1')");
+    expect(await claimOpen(env.DB)).toBe(false);
+    await env.DB.exec("DELETE FROM setting WHERE key = 'demo'");
     await withPasskey((await lockedOutAdmin(env.DB))?.id ?? '');
     expect(await claimOpen(env.DB)).toBe(false);
   });

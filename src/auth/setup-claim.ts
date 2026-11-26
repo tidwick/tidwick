@@ -5,6 +5,7 @@
 // passkey and no linked identity, so a lost first link needs no CLI; once a credential exists it writes nothing.
 import { bootstrapRefusal, claimInstance } from '../db/bootstrap';
 import { instanceEmpty } from '../db/empty';
+import { demoMarked } from '../db/demo';
 import { lockedOutAdmin, reissueLink } from '../db/rescue';
 import { ceremonyScope } from '../db/scope';
 import type { AuthEnv } from '../lib/env';
@@ -27,6 +28,7 @@ export function rpIdFits(origin: string, rpId: string): boolean {
 
 /** Whether the setup page may offer the claim: an empty database, or a sole admin who still cannot sign in. */
 export async function claimOpen(db: D1Database): Promise<boolean> {
+  if (await demoMarked(db)) return false;
   return (await instanceEmpty(db)) || (await lockedOutAdmin(db)) !== null;
 }
 
