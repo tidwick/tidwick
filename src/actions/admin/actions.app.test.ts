@@ -41,7 +41,6 @@ async function does(
 describe('the admin data Actions', () => {
   it('each Action writes once, is audited once, and the whole reference-data journey works', async () => {
     const admin = await caller([ADMIN]);
-    const member = await caller([]);
     const other = await caller([]);
     const tag = String(Date.now() % 10000).padStart(4, '0');
 

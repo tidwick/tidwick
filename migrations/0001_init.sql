@@ -133,6 +133,7 @@ CREATE TABLE entry (
 -- table firm
 CREATE TABLE firm (
   id TEXT PRIMARY KEY,
+  name TEXT NOT NULL COLLATE NOCASE UNIQUE,
   client_id TEXT NOT NULL UNIQUE REFERENCES client (id)
 ) STRICT;
 

@@ -129,7 +129,7 @@ CREATE TABLE entry (
 ) STRICT;
 
 -- table firm
-CREATE TABLE firm (
+CREATE TABLE "firm" (
   id TEXT PRIMARY KEY,
   client_id TEXT NOT NULL UNIQUE REFERENCES client (id)
 ) STRICT;
