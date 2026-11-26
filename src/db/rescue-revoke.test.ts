@@ -88,6 +88,8 @@ describe('rescue with --revoke-passkeys', () => {
     await withPasskey(ada.id);
     const bea = await addPerson(['admin']);
     await withPasskey(bea.id);
+    const member = await addPerson([]);
+    await withPasskey(member.id);
     const blocked = await file(ada.id, true);
     const before = await rowCounts(env.DB);
     await env.DB.exec(blocked.sql);
@@ -102,5 +104,23 @@ describe('rescue with --revoke-passkeys', () => {
     await env.DB.exec(open.sql);
     expect(await liveKeys(ada.id)).toBe(0);
     expect(await linkOpens(open.token)).toBe(true);
+    expect(await liveKeys(member.id)).toBe(1);
+  });
+
+  it('a used link makes the file inert: a passkey enrolled afterwards survives a replay', async () => {
+    const ada = await addPerson(['admin']);
+    await withPasskey(ada.id);
+    const revoking = await file(ada.id, true);
+    await env.DB.exec(revoking.sql);
+    expect(await liveKeys(ada.id)).toBe(0);
+    const hash = await keyedHash(currentEnv().SESSION_SECRET, 'enrol', revoking.token);
+    await env.DB.prepare('UPDATE enrolment SET used_at = ?2 WHERE token_hash = ?1')
+      .bind(hash, LATER + 1)
+      .run();
+    await withPasskey(ada.id);
+    const before = await rowCounts(env.DB);
+    await env.DB.exec(revoking.sql);
+    expect(await liveKeys(ada.id)).toBe(1);
+    expect(await rowCounts(env.DB)).toEqual(before);
   });
 });

@@ -94,6 +94,7 @@ AND EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
 AND ${gate}${sole}`;
   const ours = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${NO_ADMIN_SIGNS_IN}${sole}`;
   const oursBeforeRevoke = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${gate}${sole}`;
+  const link = q(input.enrolmentHash);
   const values: Cell[] = [
     event.seq,
     event.at,
@@ -106,7 +107,6 @@ AND ${gate}${sole}`;
     input.headHash,
     hash,
   ];
-  const link = q(input.enrolmentHash);
   return {
     hash,
     statements: [
@@ -115,7 +115,8 @@ SELECT ${values.map(q).join(', ')} WHERE ${eligible}`),
       ...(input.revokePasskeys === true
         ? [
             line(`UPDATE credential SET revoked_at = ${q(now)}
-WHERE person_id = ${person} AND revoked_at IS NULL AND ${oursBeforeRevoke}`),
+WHERE person_id = ${person} AND revoked_at IS NULL AND ${oursBeforeRevoke}
+AND NOT EXISTS (SELECT 1 FROM enrolment WHERE token_hash = ${link} AND used_at IS NOT NULL)`),
           ]
         : []),
       line(`UPDATE session SET revoked_at = ${q(now)}
