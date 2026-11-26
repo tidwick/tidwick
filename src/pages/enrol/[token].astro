@@ -1,9 +1,10 @@
 ---
 import Heading from '../../components/auth/heading.astro';
-import { PRIMARY, SECONDARY } from '../../components/auth/classes';
+import { PRIMARY } from '../../components/auth/classes';
 import SsoLinks from '../../components/auth/sso-links.astro';
 import { enrolLinks } from '../../components/auth/sso-links';
 import Status from '../../components/auth/status.astro';
+import CodesStep from '../../components/passkey/codes-step.astro';
 import Auth from '../../layouts/auth.astro';
 
 const token = Astro.params.token ?? '';
@@ -40,51 +41,7 @@ const sso = enrolLinks(token);
       </p>
     </noscript>
   </section>
-  <section data-enrol-done hidden class="grid gap-4 print:block">
-    <div>
-      <Heading text="Save your recovery codes">
-        Each code works once if you lose your passkey. They are shown only now, so copy or print
-        them and keep them somewhere safe.
-      </Heading>
-    </div>
-    <ol
-      data-codes
-      class="grid grid-cols-1 gap-2 rounded-md border border-border p-4 font-mono text-base sm:grid-cols-2 print:grid-cols-2"
-    ></ol>
-    <div class="grid gap-3 sm:grid-cols-2 print:hidden">
-      <button type="button" data-codes-copy class={SECONDARY}>
-        Copy the codes
-      </button>
-      <button type="button" data-codes-print class={SECONDARY}>
-        Print the codes
-      </button>
-    </div>
-    <p
-      data-codes-note
-      role="status"
-      aria-live="polite"
-      class="min-h-6 text-sm text-muted-foreground print:hidden"
-    ></p>
-    <label class="flex items-start gap-3 text-sm font-medium print:hidden">
-      <input
-        type="checkbox"
-        data-codes-confirm
-        class="mt-1 size-5 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      />
-      I have saved these codes. I understand they will not be shown again.
-    </label>
-    <a
-      href="/week"
-      data-codes-continue
-      aria-disabled="true"
-      class:list={[
-        PRIMARY,
-        'print:hidden aria-disabled:pointer-events-none aria-disabled:opacity-50',
-      ]}
-    >
-      Continue
-    </a>
-  </section>
+  <CodesStep next="/week" />
 </Auth>
 
 <script>

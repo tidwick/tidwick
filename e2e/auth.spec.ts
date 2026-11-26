@@ -9,7 +9,16 @@ test('a person enrols a passkey, keeps the recovery codes, signs out and signs b
   await finishEnrol(page);
   await expect(page.getByText(`Signed in as Sample ${info.project.name} user`)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Make new recovery codes' }).click();
+  await expect(page.getByRole('heading', { name: 'Save your recovery codes' })).toBeVisible();
+  await expect(page.locator('[data-code]')).toHaveCount(10);
+  await page.getByRole('checkbox', { name: /I have saved these codes/ }).check();
+  await page.getByRole('link', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByText('10 unused codes left.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await page.goto('/clients');
   await expect(page).toHaveURL(/\/login\?return=%2Fclients$/);

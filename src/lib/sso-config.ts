@@ -15,6 +15,11 @@ export interface SsoProvider {
   readonly hd: string | null;
 }
 
+const NO_AUTH_TIME: ReadonlySet<string> = new Set(['https://accounts.google.com']);
+
+/** Whether the provider reports `auth_time`, the only proof that a person signed in again; Google does not. */
+export const canStepUp = (p: SsoProvider): boolean => !NO_AUTH_TIME.has(p.issuer);
+
 export const SSO_LABEL_MAX = 40;
 const ID = /^[a-z0-9-]{1,24}$/;
 const DOMAIN = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/;

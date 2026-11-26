@@ -44,7 +44,8 @@ export function authorize(
   if (session.mustEnrol && !rule.recovery) fail('forbidden', 'add a passkey first');
   const held: readonly Role[] = ['member', ...grants];
   if (!rule.roles.some((role) => held.includes(role))) fail('forbidden');
-  if (rule.stepUp) requireStepUp(session, now);
+  // A recovery session proved itself with a code when it began; adding a passkey is how it ends, so age cannot block it.
+  if (rule.stepUp && !(session.mustEnrol && rule.recovery)) requireStepUp(session, now);
 }
 
 /** A signed-out page request goes to sign-in and comes back to the page; a path that is not a same-origin one is dropped. */

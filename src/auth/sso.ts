@@ -182,7 +182,7 @@ async function stepUp(env: Env, provider: SsoProvider, claims: Claims, flow: Flo
   );
   if (found?.person_id !== personId) fail('sso_failed');
   if (claims.authTime === null || claims.authTime < flow.created_at / 1000 - SKEW_S)
-    fail('step_up_required');
+    fail('sso_step_up_unsupported');
   const session = await liveSession(db, sessionHash);
   const alive = session?.person_id === personId && session.offboarded_at === null;
   if (!session || !alive || now >= session.expires_at || now - session.seen_at >= IDLE_MS)

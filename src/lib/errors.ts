@@ -70,6 +70,11 @@ export const CATALOG = {
     status: 403,
     message: 'That account is not linked to anyone here; ask an admin for an enrolment link',
   },
+  sso_step_up_unsupported: {
+    status: 403,
+    message:
+      'That provider cannot confirm you again just now; confirm with a passkey instead, or sign in with it afresh',
+  },
   sso_taken: { status: 409, message: 'That account is already linked to a person here' },
   recovery_failed: {
     status: 401,

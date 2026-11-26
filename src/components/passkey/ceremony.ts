@@ -5,6 +5,7 @@ import { actions } from 'astro:actions';
 import { wireCodes } from './codes';
 
 const UNSUPPORTED = 'This browser cannot use passkeys here. Update it, or try another browser.';
+const FAILED = 'That did not work. Try again.';
 const CANCELLED = 'No passkey was used. Try again when you are ready.';
 
 function say(text: string, tone: 'progress' | 'error' = 'progress'): void {
@@ -43,17 +44,25 @@ async function asserted(options: unknown): Promise<PublicKeyCredential | null> {
 function wire(selector: string, run: (button: HTMLButtonElement) => Promise<string | null>): void {
   const button = document.querySelector<HTMLButtonElement>(selector);
   if (!button) return;
-  button.addEventListener('click', () => {
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
     if (!supported()) {
       say(UNSUPPORTED, 'error');
       return;
     }
-    button.disabled = true;
-    say('Waiting for your passkey…');
-    void run(button).then((problem) => {
-      button.disabled = false;
+    void (async () => {
+      button.disabled = true;
+      say('Waiting for your passkey…');
+      let problem: string | null;
+      try {
+        problem = await run(button);
+      } catch {
+        problem = FAILED;
+      } finally {
+        button.disabled = false;
+      }
       say(problem ?? '', 'error');
-    });
+    })();
   });
 }
 
@@ -145,6 +154,18 @@ export function wireStepUp(): void {
     const done = await actions.auth.stepUpVerify({ _csrf, response: assertion(credential) });
     if (done.error) return done.error.message;
     window.location.reload();
+    return null;
+  });
+}
+
+/** Makes new recovery codes and shows them through the same step enrolment uses, so they are copied or printed first. */
+export function wireRegenerate(): void {
+  wire('[data-passkey="regen"]', async (button) => {
+    const body = new FormData();
+    body.set('_csrf', button.dataset.csrf ?? '');
+    const done = await actions.auth.regenerateCodes(body);
+    if (done.error) return done.error.message;
+    showCodes(done.data.codes);
     return null;
   });
 }

@@ -2,6 +2,7 @@
 // forms: `form-action 'self'` would cancel a POST that redirects off-site. None when SSO is off.
 import { liveIdentitiesOf } from '../../db/identities';
 import { currentEnv } from '../../lib/env';
+import { canStepUp } from '../../lib/sso-config';
 
 export interface SsoLink {
   href: string;
@@ -27,7 +28,7 @@ export const enrolLinks = (token: string): SsoLink[] =>
 export async function confirmLinks(personId: string, returnTo: string): Promise<SsoLink[]> {
   const { DB, SSO } = currentEnv();
   const held = new Set((await liveIdentitiesOf(DB, personId)).map((i) => i.issuer));
-  return SSO.filter((p) => held.has(p.issuer)).map((p) =>
+  return SSO.filter((p) => held.has(p.issuer) && canStepUp(p)).map((p) =>
     link('/auth/sso/step-up', { provider: p.id, return: returnTo }, `Confirm with ${p.label}`),
   );
 }

@@ -3,6 +3,7 @@ import { exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { withPasskey } from '../../../test/helpers/auth';
 import { caller, getPage, ORIGIN } from '../../../test/helpers/callers';
+import { link } from '../../../test/helpers/sso';
 
 const h1s = (html: string) => html.match(/<h1[\s>]/g)?.length ?? 0;
 
@@ -50,7 +51,7 @@ describe('the auth pages are labelled and structured', () => {
     const who = await caller();
     const first = await withPasskey(who.personId);
     const alone = await (await getPage('/account', who)).text();
-    expect(h1s(alone)).toBe(1);
+    expect(h1s(alone)).toBe(2);
     expect(alone).toContain('Your only passkey');
     expect(alone).not.toContain('revokePasskey');
     const second = await withPasskey(who.personId);
@@ -73,6 +74,33 @@ describe('the auth pages are labelled and structured', () => {
     expect(two).toMatch(/Removing a passkey does not sign out a browser already signed in with it/);
     expect(two).toMatch(/retires every old one, and does not sign out a browser/);
     expect(two).toContain('auth.logoutOthers');
+  });
+
+  it('passkeys carry a number, linked sign-ins are listed with their provider, and the hints point up', async () => {
+    const who = await caller([], { stepUpAgo: 20 * 60_000 });
+    await withPasskey(who.personId);
+    await withPasskey(who.personId);
+    await link(who.personId, 'tenant-a', 'listed-subject', 'someone@practice.example');
+    const html = await (await getPage('/account', who)).text();
+    expect(html).toMatch(/Passkey 1, added/);
+    expect(html).toMatch(/Passkey 2, added/);
+    expect(html).toContain('Linked sign-ins');
+    expect(html).toContain('Tenant A');
+    expect(html).toContain('someone@practice.example');
+    expect(html).toContain('Confirm above first.');
+    expect(html).not.toMatch(/passkey below first/);
+  });
+
+  it('a person with no linked sign-in sees no linked list, and a Google-only person is told to add a passkey', async () => {
+    const plain = await caller();
+    await withPasskey(plain.personId);
+    expect(await (await getPage('/account', plain)).text()).not.toContain('Linked sign-ins');
+    const google = await caller();
+    await link(google.personId, 'google', 'g-only');
+    const html = await (await getPage('/account', google)).text();
+    expect(html).toContain('Linked sign-ins');
+    expect(html).not.toContain('data-passkey="step-up"');
+    expect(html).toMatch(/Add a passkey to make sensitive\s+changes/);
   });
 
   it('a recovery session sees the passkeys but no remove button', async () => {
