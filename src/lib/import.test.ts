@@ -6,7 +6,7 @@ import { T0 } from '../../test/helpers/auth';
 import { approvedEntries } from '../db/export-rows';
 import { countOf, onlyImportBatchId, projectIdNamed } from '../db/test-support-csv';
 import { applyImport, previewImport } from '../db/import-apply';
-import { setProjectTasks } from '../db/project-tasks';
+import { allowedTasks } from '../db/project-tasks';
 import { isAppError } from './errors';
 import { MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, readImport } from './import';
 
@@ -18,9 +18,10 @@ beforeAll(async () => {
   ctx = await setupImport();
 });
 
-/** The fixture's first nine data lines are the ones that should land; their hours read by splitting on commas up to the last column. */
+/** The fixture's first nine data lines and its last two (new projects) are the ones that should land; their hours read by splitting on commas up to the last column. */
 function independentHundredths(): number {
-  const lines = fixture.trimEnd().split('\r\n').slice(1, 10);
+  const all = fixture.trimEnd().split('\r\n');
+  const lines = [...all.slice(1, 10), ...all.slice(-2)];
   return lines.reduce((sum, line) => {
     const [whole = '0', frac = ''] = (line.split(',')[6] ?? '').split('.');
     const places = frac.padEnd(3, '0');
@@ -37,19 +38,17 @@ describe('import', () => {
     expect(report).toMatchObject({
       applied: false,
       rowsRead: 17,
-      entries: 8,
+      entries: 10,
       roundedRows: 1,
-      rejectedCount: 8,
+      rejectedCount: 6,
       newClients: ['Ivywood Library'],
       weeksApproved: 5,
+      span: { from: '2026-01-05', to: '2026-01-13' },
     });
+    expect(report.approvedWeeks).toHaveLength(5);
     expect(report.hundredths).toBe(independentHundredths());
     expect(report.newProjects.map((p) => p.name).toSorted()).toEqual(['Annex', 'Reading room']);
-    expect(report.needsAdmin).toEqual([
-      'add task code ZZZ',
-      'allow DES on project "Annex"',
-      'allow DES on project "Reading room"',
-    ]);
+    expect(report.needsAdmin).toEqual(['add task code ZZZ']);
     expect(await countOf(env.DB, 'entries')).toBe(before);
     expect(await countOf(env.DB, 'clientsNamed', 'Ivywood Library')).toBe(0);
   });
@@ -63,17 +62,15 @@ describe('import', () => {
     expect(reasons.get(14)).toBe('malformed row: expected 8 cells, found 3');
     expect(reasons.get(15)).toBe('unknown task code "ZZZ"');
     expect(reasons.get(16)).toBe('day over 24 hours on 2026-01-05');
-    expect(reasons.get(17)).toBe('task DES is not allowed on the new project "Annex"');
-    expect(reasons.get(18)).toBe('task DES is not allowed on the new project "Reading room"');
-    expect(rejected).toHaveLength(8);
+    expect(rejected).toHaveLength(6);
   });
 
   it('applies the fixture: entries and hours equal an independent sum, notes join, weeks are approved', async () => {
     const projectsBefore = await countOf(env.DB, 'projects');
     const report = await applyImport(ctx.admin, env.DB, ctx.keks, FILE, T0);
-    expect(report).toMatchObject({ applied: true, rowsRead: 17, entries: 8, rejectedCount: 8 });
+    expect(report).toMatchObject({ applied: true, rowsRead: 17, entries: 10, rejectedCount: 6 });
     const hash = await onlyImportBatchId(env.DB);
-    expect(await countOf(env.DB, 'entriesOfImport', hash)).toBe(8);
+    expect(await countOf(env.DB, 'entriesOfImport', hash)).toBe(10);
     expect(await countOf(env.DB, 'hundredthsOfImport', hash)).toBe(independentHundredths());
     expect(await countOf(env.DB, 'approvedWeeksOfPrefix', 'imp-%')).toBe(5);
     const range = { from: '2026-01-05', to: '2026-01-18' };
@@ -98,23 +95,22 @@ describe('import', () => {
     const again = await applyImport(ctx.admin, env.DB, ctx.keks, FILE, T0 + 1);
     expect(again).toMatchObject({
       entries: 0,
-      alreadyApplied: 8,
-      rejectedCount: 8,
+      alreadyApplied: 10,
+      rejectedCount: 6,
       newClients: [],
     });
     expect(await countOf(env.DB, 'entries')).toBe(entries);
     expect(await countOf(env.DB, 'clients')).toBe(clients);
     expect(await countOf(env.DB, 'projects')).toBe(projects);
     expect(await countOf(env.DB, 'importBatches')).toBe(1);
-    expect(await countOf(env.DB, 'importBatchEntries')).toBe(8);
+    expect(await countOf(env.DB, 'importBatchEntries')).toBe(10);
   });
 
-  it('a rejected row lands once an admin allows its task, and the rows already written stay put', async () => {
+  it('the projects the file created allow the tasks its rows named, and the hours landed on them', async () => {
     const annex = await projectIdNamed(env.DB, 'Annex');
-    await setProjectTasks(ctx.admin, env.DB, annex, [ctx.taskIds[0] ?? ''], T0 + 2);
-    const retry = await applyImport(ctx.admin, env.DB, ctx.keks, FILE, T0 + 3);
-    expect(retry).toMatchObject({ entries: 1, alreadyApplied: 8, rejectedCount: 7 });
-    expect(await countOf(env.DB, 'importedEntries')).toBe(9);
+    const allowed = await allowedTasks(ctx.admin, env.DB, annex);
+    expect(allowed.map((t) => t.code)).toEqual(['DES']);
+    expect(await countOf(env.DB, 'importedEntries')).toBe(10);
   });
 
   it('SEC-25 a cell that already holds hours from elsewhere is rejected, not overwritten', async () => {
@@ -122,6 +118,27 @@ describe('import', () => {
     const report = await applyImport(ctx.admin, env.DB, ctx.keks, bytes(text), T0 + 4);
     expect(report).toMatchObject({ entries: 0, rejectedCount: 1 });
     expect(report.rejected[0]?.reason).toBe('that cell already holds hours from elsewhere');
+  });
+
+  it('a file that is not UTF-8 is refused by name and writes nothing, where the same text in UTF-8 reads', async () => {
+    const head = 'Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo\r\n';
+    const latin1 = new Uint8Array([
+      ...bytes(`${head}01/05/2026,${PEOPLE[0]?.email ?? ''},Caf`),
+      0xe9,
+      ...bytes(',Bar,,DES,1,\r\n'),
+    ]);
+    const clients = await countOf(env.DB, 'clients');
+    for (const run of [
+      previewImport,
+      (...a: Parameters<typeof previewImport>) => applyImport(a[0], a[1], ctx.keks, a[2], T0),
+    ]) {
+      const refused = await run(ctx.admin, env.DB, latin1).catch((error: unknown) => error);
+      expect(isAppError(refused, 'invalid_input')).toBe(true);
+      expect((refused as Error).message).toContain('not UTF-8');
+    }
+    expect(await countOf(env.DB, 'clients')).toBe(clients);
+    const utf8 = bytes(`${head}01/05/2026,${PEOPLE[0]?.email ?? ''},Café,Bar,,DES,1,\r\n`);
+    expect(await previewImport(ctx.admin, env.DB, utf8)).toMatchObject({ newClients: ['Café'] });
   });
 });
 

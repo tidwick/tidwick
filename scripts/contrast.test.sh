@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Proves contrast.ts: the stylesheet as committed passes, and the same stylesheet fails, naming the pair, when a
 # text colour is pushed toward its background, when the control border loses its contrast, when the focus ring
-# is pushed toward the muted surface a focused control sits on, and when a token a pair needs is missing.
+# is pushed toward the muted surface a focused control sits on, when a chart fill turns pale, and when a token a pair needs is missing.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
@@ -28,6 +28,11 @@ fi
 sed 's#^\(  --ring: \).*#\1oklch(0.93 0.01 260);#' "$css" > "$work/ring.css"
 if check ring || ! grep -q 'FAIL.*ring on muted' "$work/ring.log"; then
   echo "FAIL contrast self-test: a pale focus ring passed on the muted surface; add the ring on muted pair back to scripts/contrast.ts"
+  exit 1
+fi
+sed 's#^\(  --chart-3: \).*#\1oklch(0.9 0.05 65);#' "$css" > "$work/chart.css"
+if check chart || ! grep -q 'FAIL.*chart-3 on background' "$work/chart.log"; then
+  echo "FAIL contrast self-test: a pale chart fill passed; add the chart-N on background pairs back to scripts/contrast.ts"
   exit 1
 fi
 grep -v '^  --danger-surface:' "$css" > "$work/missing.css"

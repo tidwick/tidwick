@@ -59,3 +59,31 @@ export async function stampSubmission(
     .bind(personId, weekStart, state)
     .run();
 }
+
+/** Renames a client, to stage a name that holds markup or a formula. */
+export async function renameClient(db: D1Database, clientId: string, name: string): Promise<void> {
+  await db.prepare('UPDATE client SET name = ?1 WHERE id = ?2').bind(name, clientId).run();
+}
+
+export async function clientNameOf(db: D1Database, clientId: string): Promise<string> {
+  const row = await db
+    .prepare('SELECT name FROM client WHERE id = ?1')
+    .bind(clientId)
+    .first<{ name: string }>();
+  return row?.name ?? '';
+}
+
+/** The text a report prints for a person, project and task code. */
+export async function reportLabels(
+  db: D1Database,
+  ids: { personId: string; projectId: string; taskId: string },
+): Promise<{ email: string; project: string; code: string; task: string }> {
+  const row = await db
+    .prepare(
+      `SELECT p.email, pr.name AS project, t.code, t.name AS task
+       FROM person p, project pr, task_code t WHERE p.id = ?1 AND pr.id = ?2 AND t.id = ?3`,
+    )
+    .bind(ids.personId, ids.projectId, ids.taskId)
+    .first<{ email: string; project: string; code: string; task: string }>();
+  return row ?? { email: '', project: '', code: '', task: '' };
+}

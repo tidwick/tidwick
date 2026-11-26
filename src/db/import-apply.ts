@@ -1,9 +1,10 @@
 // Previewing and applying an import. The preview reads the file against the database and reports; the apply does
 // the same, creates the clients and projects the file names that do not exist, and writes every entry, week row,
-// assignment and approval in one batch with one `import.apply` event. `import_batch.id` is the file's SHA-256 and
+// assignment and approval in one batch with one `import.apply` event that lists the weeks it approved. `import_batch.id` is the file's SHA-256 and
 // every entry carries it, so a second apply under the same mapping finds its cells already written and adds
 // nothing, and an apply under another mapping is refused (SEC-25).
 import { fail } from '../lib/errors';
+import type { ImportPlan } from '../lib/import-types';
 import type { NoteKeks } from '../lib/note-crypto';
 import { auditedBatch, retryOnce } from './audit';
 import { keyRing } from './client-keys';
@@ -21,15 +22,9 @@ import {
   WEEKS_IMPORT_ONLY,
   WEEKS_UNCHANGED,
 } from './import-sql';
-import {
-  markAssignments,
-  MAX_SHOWN,
-  planFile,
-  reportOf,
-  type ImportReport,
-  type Run,
-} from './import-run';
+import { markAssignments, MAX_SHOWN, planFile, reportOf, type ImportReport } from './import-run';
 import { createProject } from './projects';
+import { setProjectTasks } from './project-tasks';
 import type { Scope } from './scope';
 
 export type { ImportReport };
@@ -44,34 +39,33 @@ export async function previewImport(
   if (scope.kind !== 'all') fail('forbidden');
   const run = await planFile(db, bytes);
   const known = await markAssignments(db, run.plan.assignments);
-  const pending = new Set(
-    run.plan.pendingAssignments.map(
-      (a) => `${a.personId}|${a.client.toLowerCase()}|${a.project.toLowerCase()}`,
-    ),
-  );
-  return reportOf(run, false, known.filter((a) => a.n === 1).length + pending.size);
+  return reportOf(run, false, known.filter((a) => a.n === 1).length);
 }
 
-/** Creates the clients and projects the file names that do not exist yet, each with its own audited event. */
+/**
+ * Creates the clients and projects the file names that do not exist yet, each with its own audited event and the
+ * tasks its rows name as the project's allowed list. The plan carried each under a planned id; the result maps
+ * those to the real ones.
+ */
 async function createReferences(
   scope: Scope,
   db: D1Database,
   kek: string,
-  run: Run,
+  plan: ImportPlan,
   now: number,
-): Promise<void> {
-  const { plan } = run;
+): Promise<Map<string, string>> {
   if (plan.newClients.length + plan.newProjects.length > MAX_NEW_REFERENCES) {
     fail(
       'invalid_input',
       `the file names more than ${String(MAX_NEW_REFERENCES)} new clients and projects; create them first`,
     );
   }
-  for (const name of plan.newClients) {
-    run.clientIds.set(name.toLowerCase(), (await createClient(scope, db, kek, name, now)).id);
+  const real = new Map<string, string>();
+  for (const c of plan.newClients) {
+    real.set(c.id, (await createClient(scope, db, kek, c.name, now)).id);
   }
   for (const p of plan.newProjects) {
-    const clientId = run.clientIds.get(p.client.toLowerCase()) ?? fail('not_found');
+    const clientId = real.get(p.clientId) ?? p.clientId;
     const made = await createProject(
       scope,
       db,
@@ -79,8 +73,21 @@ async function createReferences(
       { name: p.name, number: p.number ?? '' },
       now,
     );
-    run.projectIds.set(`${clientId}|${p.name.toLowerCase()}`, { id: made.id, clientId });
+    await setProjectTasks(scope, db, made.id, p.taskIds, now);
+    real.set(p.id, made.id);
   }
+  return real;
+}
+
+/** The plan with every planned id of a new client or project replaced by the real one. */
+function withRealIds(plan: ImportPlan, real: ReadonlyMap<string, string>): ImportPlan {
+  const id = (planned: string): string => real.get(planned) ?? planned;
+  return {
+    ...plan,
+    entries: plan.entries.map((e) => ({ ...e, clientId: id(e.clientId) })),
+    rows: plan.rows.map((r) => ({ ...r, clientId: id(r.clientId), projectId: id(r.projectId) })),
+    assignments: plan.assignments.map((a) => ({ ...a, projectId: id(a.projectId) })),
+  };
 }
 
 /**
@@ -105,19 +112,11 @@ export async function applyImport(
         `this file was applied under a different import mapping on ${appliedOn}, writing ${String(entries)} entries; correct those weeks through the lock, or save that mapping again`,
       );
     }
-    await createReferences(scope, db, keks.current, run, now);
-    const { plan } = run;
-    const assignments = await markAssignments(db, [
-      ...plan.assignments,
-      ...plan.pendingAssignments.flatMap((a) => {
-        const clientId = run.clientIds.get(a.client.toLowerCase());
-        const project =
-          clientId === undefined
-            ? undefined
-            : run.projectIds.get(`${clientId}|${a.project.toLowerCase()}`);
-        return project === undefined ? [] : [{ personId: a.personId, projectId: project.id }];
-      }),
-    ]);
+    const plan = withRealIds(
+      run.plan,
+      await createReferences(scope, db, keks.current, run.plan, now),
+    );
+    const assignments = await markAssignments(db, plan.assignments);
     const added = assignments.filter((a) => a.n === 1);
     const report = reportOf(run, true, added.length);
     const ring = keyRing(db, keks);
@@ -159,7 +158,13 @@ export async function applyImport(
           entries: report.entries,
           already_applied: report.alreadyApplied,
           rejected: report.rejectedCount,
+          hundredths: report.hundredths,
+          first_date: report.span?.from ?? null,
+          last_date: report.span?.to ?? null,
           weeks_approved: report.weeksApproved,
+          approved_weeks: plan.approveWeeks
+            .slice(0, MAX_SHOWN)
+            .map((w) => ({ person_id: w.personId, week_start: w.weekStart })),
           weeks_left_draft: report.weeksLeftDraft,
           assignments_added: added.length,
           assigned: added.slice(0, MAX_SHOWN).map((a) => ({ person_id: a.p, project_id: a.j })),
@@ -191,6 +196,11 @@ export async function applyImport(
     }
     for (const part of chunkJson(items))
       batch.also(db.prepare(INSERT_ENTRIES).bind(part, run.hash, now));
+    for (const part of chunkJson(
+      plan.ownApprovedWeeks.map((w) => ({ p: w.personId, w: w.weekStart })),
+    )) {
+      batch.also(db.prepare(WEEKS_IMPORT_ONLY).bind(part, run.hash));
+    }
     for (const part of chunkJson(
       plan.approveWeeks.map((w) => ({ p: w.personId, w: w.weekStart })),
     )) {

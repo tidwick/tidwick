@@ -36,6 +36,10 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   await expect(page.getByRole('heading', { name: 'Preview' })).toBeVisible();
   await expect(page.getByText('unknown person nobody@practice.example')).toBeVisible();
   await expect(page.getByText('Rows read')).toBeVisible();
+  // The preview totals what it would write: the one row that resolves has 3.5 hours on one day.
+  await expect(page.getByText('Hours to write')).toBeVisible();
+  await expect(page.getByText('3.50', { exact: true })).toBeVisible();
+  await expect(page.getByText('2031-03-17 to 2031-03-17')).toBeVisible();
 
   await page.goto('/account');
   // The page already says "Confirmed until" from sign-in, so the proof is the reload the confirmation causes.
@@ -48,8 +52,17 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   await page.goto('/reports');
   await page.getByLabel('From').fill('2031-03-10');
   await page.getByLabel('To').fill('2031-03-16');
+  await page.getByLabel('Report', { exact: true }).selectOption('week');
+  // Enter in a date field shows the report; it must not start an audited download.
+  let downloaded = false;
+  page.on('download', () => (downloaded = true));
+  await page.getByLabel('To').press('Enter');
+  await expect(page).toHaveURL(/kind=week/);
+  await expect(page.getByRole('table', { name: /^Hours by week, 2031-03-10/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /^Hours by week/ })).toBeVisible();
+  expect(downloaded).toBe(false);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Hours by week' }).click();
+  await page.getByRole('button', { name: 'Download CSV' }).click();
   const saved = await download;
   expect(saved.suggestedFilename()).toMatch(/^report-week-2031-03-10-2031-03-16\.csv$/);
   const path = await saved.path();

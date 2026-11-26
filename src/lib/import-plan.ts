@@ -1,8 +1,9 @@
 // Resolving read rows against what the database holds, with no database in sight: which person, client, project
 // and task each row means, which cells are new, already applied from this file, or blocked, and what an admin
 // must add before a rejected row can land. A touched week with no submission is approved only when it holds
-// nothing but this file's entries; one holding the owner's own hours stays draft for the owner to submit. The
-// same plan feeds the preview and the apply. Pure.
+// nothing but this file's entries; one holding the owner's own hours stays draft for the owner to submit. An
+// approved week takes this file's hours only when this file's earlier apply approved it. The same plan feeds the
+// preview and the apply. Pure.
 import { DAY_CAP } from './hours';
 import type { ImportRow } from './import';
 import { key, KEY, resolveRows, type Resolved } from './import-resolve';
@@ -27,10 +28,11 @@ export function planImport(
     newClients: [],
     newProjects: [],
     assignments: [],
-    pendingAssignments: [],
     needsAdmin: [],
     weeks: [],
     approveWeeks: [],
+    ownApprovedWeeks: [],
+    span: null,
     draftWeeks: [],
   };
   const reject = (lines: readonly number[], reason: string): void => {
@@ -47,8 +49,10 @@ export function planImport(
   );
   const dayTotal = new Map<string, number>();
   const othersWrote = new Set<string>();
+  const fileWrote = new Set<string>();
   for (const c of existing.cells) {
     if (c.importId !== batchId) othersWrote.add(key(c.personId, c.weekStart));
+    else fileWrote.add(key(c.personId, c.weekStart));
     const day = key(c.personId, c.weekStart, c.dow);
     dayTotal.set(day, (dayTotal.get(day) ?? 0) + c.hundredths);
   }
@@ -74,6 +78,13 @@ export function planImport(
     const state = stateOf.get(week);
     if (state === 'submitted' || state === 'returned') {
       reject(lines(cell), `the week of ${row.weekStart} is ${state}`);
+      continue;
+    }
+    if (state === 'approved' && (othersWrote.has(week) || !fileWrote.has(week))) {
+      reject(
+        lines(cell),
+        `the week of ${row.weekStart} is approved, and this file did not approve it`,
+      );
       continue;
     }
     if (cell.note.length > NOTE_MAX) {
@@ -127,6 +138,11 @@ export function planImport(
       note: cell.note,
     });
     touched.add(week);
+    if (plan.span === null) plan.span = { from: row.date, to: row.date };
+    else {
+      if (row.date < plan.span.from) plan.span.from = row.date;
+      if (row.date > plan.span.to) plan.span.to = row.date;
+    }
     assigned.set(key(personId, projectId), { personId, projectId });
   }
   plan.assignments = [...assigned.values()];
@@ -135,8 +151,9 @@ export function planImport(
     return { personId, weekStart, state: stateOf.get(week) ?? null };
   });
   for (const week of plan.weeks) {
-    if (week.state !== null) continue;
     const target = { personId: week.personId, weekStart: week.weekStart };
+    if (week.state === 'approved') plan.ownApprovedWeeks.push(target);
+    if (week.state !== null) continue;
     if (othersWrote.has(key(week.personId, week.weekStart))) plan.draftWeeks.push(target);
     else plan.approveWeeks.push(target);
   }

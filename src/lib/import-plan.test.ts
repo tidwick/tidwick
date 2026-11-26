@@ -45,7 +45,7 @@ describe('import plan', () => {
     expect(plan.entries[0]).toMatchObject({ hundredths: 525, note: 'a; b' });
   });
 
-  it('a week already submitted or returned takes no rows, and an approved one does', () => {
+  it('a week already submitted or returned takes no rows', () => {
     for (const state of ['submitted', 'returned']) {
       const plan = planImport(
         [row()],
@@ -56,14 +56,83 @@ describe('import plan', () => {
       expect(plan.entries).toEqual([]);
       expect(plan.rejected[0]?.reason).toBe(`the week of 2026-01-05 is ${state}`);
     }
-    const approved = planImport(
-      [row()],
+  });
+
+  it('an approved week takes rows only when this file approved it and nothing else is in it', () => {
+    const submissions = [{ personId: 'p1', weekStart: '2026-01-05', state: 'approved' }];
+    const cell = (importId: string | null, dow: number) => ({
+      personId: 'p1',
+      weekStart: '2026-01-05',
+      projectId: 'j1',
+      taskId: 't1',
+      dow,
+      hundredths: 100,
+      importId,
+    });
+    const refused = 'the week of 2026-01-05 is approved, and this file did not approve it';
+    for (const cells of [[], [cell(null, 1)], [cell('h', 1), cell(null, 2)]]) {
+      const plan = planImport([row()], REF, { ...NONE, submissions, cells }, 'h');
+      expect(plan.entries).toEqual([]);
+      expect(plan.rejected[0]?.reason).toBe(refused);
+    }
+    const own = planImport([row()], REF, { ...NONE, submissions, cells: [cell('h', 1)] }, 'h');
+    expect(own.entries).toHaveLength(1);
+    expect(own.ownApprovedWeeks).toEqual([{ personId: 'p1', weekStart: '2026-01-05' }]);
+    expect(own.approveWeeks).toEqual([]);
+  });
+
+  it('a project the file creates takes the tasks its rows name, in one plan', () => {
+    const rows = [
+      row({ project: 'Annex', projectNumber: '26-0009' }),
+      row({ line: 3, project: 'Annex', task: 'OLD2', dow: 1, date: '2026-01-06' }),
+      row({ line: 4, client: 'Birch', project: 'Annex', dow: 2, date: '2026-01-07' }),
+    ];
+    const ref = {
+      ...REF,
+      tasks: [...REF.tasks, { id: 't3', code: 'OLD2', name: 'Two', archived: false }],
+    };
+    const plan = planImport(rows, ref, NONE, 'h');
+    expect(plan.rejected).toEqual([]);
+    expect(plan.newClients.map((c) => c.name)).toEqual(['Birch']);
+    const [annex, birch] = plan.newProjects;
+    expect(annex).toMatchObject({ clientId: 'c1', number: '26-0009', taskIds: ['t1', 't3'] });
+    expect(birch).toMatchObject({ client: 'Birch', taskIds: ['t1'] });
+    expect(birch?.clientId).toBe(plan.newClients[0]?.id);
+    expect(plan.entries.map((e) => e.clientId)).toEqual(['c1', 'c1', birch?.clientId]);
+    expect(plan.rows.map((r) => r.projectId)).toEqual([annex?.id, annex?.id, birch?.id]);
+    expect(plan.assignments.map((a) => a.projectId).toSorted()).toEqual(
+      [annex?.id, birch?.id].toSorted(),
+    );
+    expect(plan.needsAdmin).toEqual([]);
+  });
+
+  it('a new project named twice with different numbers keeps the first and rejects the other', () => {
+    const plan = planImport(
+      [
+        row({ project: 'Annex', projectNumber: '26-0009' }),
+        row({ line: 3, project: 'Annex', projectNumber: '26-0010', dow: 1, date: '2026-01-06' }),
+      ],
       REF,
-      { ...NONE, submissions: [{ personId: 'p1', weekStart: '2026-01-05', state: 'approved' }] },
+      NONE,
       'h',
     );
-    expect(approved.entries).toHaveLength(1);
-    expect(approved.approveWeeks).toEqual([]);
+    expect(plan.rejected.map((r) => r.reason)).toEqual(['project "Annex" is 26-0009, not 26-0010']);
+    expect(plan.entries).toHaveLength(1);
+  });
+
+  it('the plan reports the first and last date of its entries', () => {
+    const plan = planImport(
+      [
+        row({ date: '2026-01-07', dow: 2 }),
+        row({ line: 3 }),
+        row({ line: 4, date: '2026-01-06', dow: 1 }),
+      ],
+      REF,
+      NONE,
+      'h',
+    );
+    expect(plan.span).toEqual({ from: '2026-01-05', to: '2026-01-07' });
+    expect(planImport([], REF, NONE, 'h').span).toBeNull();
   });
 
   it('a project number that names another project, or disagrees with the project, is rejected', () => {
