@@ -4,6 +4,7 @@ import { expect } from 'vitest';
 import { completeEnrolment, enrolOptions, issueEnrolment } from '../../src/auth/enrol';
 import { insertCredential } from '../../src/db/credentials';
 import { insertIdentity } from '../../src/db/identities';
+import { insertSession } from '../../src/db/sessions';
 import { GRANTS, type Grant } from '../../src/db/roles';
 import { scopeFor, type Scope } from '../../src/db/scope';
 import { storedRows, type StoredTable } from '../../src/db/stored-rows';
@@ -53,6 +54,19 @@ export async function withPasskey(personId: string, given?: string): Promise<str
   const row = { id, personId, publicKey: new Uint8Array([1]), counter: 0, transports: [] };
   await insertCredential(env.DB, row, T0).run();
   return id;
+}
+
+/** Gives a person one live session row, as a sign-in would, to stand for the sign-in an agent grant rests on. */
+export async function withSession(personId: string, now = T0): Promise<void> {
+  serial += 1;
+  const row = {
+    idHash: `fixture-session-${String(serial)}`,
+    personId,
+    expiresAt: now + 14 * DAY,
+    mustEnrol: false,
+    stepUpAt: now,
+  };
+  await insertSession(env.DB, row, now).run();
 }
 
 /** Links a person to an identity at an identity provider, as an enrolment would have; returns the identity's id. */

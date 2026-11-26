@@ -24,7 +24,7 @@ import { recordEnrolment } from './enrol';
 
 /**
  * Adds a person's agent grants' revocation to `batch`, with an `agents.revoke` event only when there are grants to
- * revoke. Every path that cuts a person's own access calls it, so an agent never outlives the sign-in behind it.
+ * revoke (the statement is queued either way). Every path that cuts a person's own access calls it, so an agent never outlives the sign-in behind it.
  */
 export async function recordGrantRevocation(
   batch: AuditedBatch,
@@ -33,7 +33,11 @@ export async function recordGrantRevocation(
   now: number,
 ): Promise<void> {
   const grants = await liveGrantIdsOf(db, personId);
-  if (grants.length === 0) return;
+  if (grants.length === 0) {
+    // Nothing to name, but a grant that slips in before the batch runs still ends with it.
+    batch.also(revokeGrantsOf(db, personId, now));
+    return;
+  }
   await batch.record(
     revokeGrantsOf(db, personId, now),
     {

@@ -2,6 +2,7 @@
 // grant, label, scopes and end date, and never the token or its hash.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { withSession } from '../../test/helpers/auth';
 import { eventsAfter, headSeq, memberScope } from '../../test/helpers/reference';
 import { mintPersonalToken, revokeOwnGrant } from '../auth/agent-personal';
 import { keyedHash } from '../auth/tokens';
@@ -13,6 +14,7 @@ const NOW = Date.UTC(2026, 5, 1);
 describe('agent tokens are audited', () => {
   it("'agents.mint' adds one event with the grant, label, scopes and end, and no token text", async () => {
     const { id, scope } = await memberScope();
+    await withSession(id, NOW);
     const secret = currentEnv().SESSION_SECRET;
     const head = await headSeq();
     const minted = await mintPersonalToken(
@@ -43,6 +45,7 @@ describe('agent tokens are audited', () => {
 
   it("'agents.grant' adds one event with the client and scopes, never the code, and replaces the client's earlier grant", async () => {
     const { id, scope } = await memberScope();
+    await withSession(id, NOW);
     const secret = currentEnv().SESSION_SECRET;
     const request = {
       client: { id: 'https://client.example/meta.json', name: 'Example Agent', redirectUris: [] },
@@ -73,6 +76,7 @@ describe('agent tokens are audited', () => {
 
   it("'agents.revoke' adds one event naming the grant, and a second revoke of it adds none", async () => {
     const { id, scope } = await memberScope();
+    await withSession(id, NOW);
     const { grantId } = await mintPersonalToken(
       scope,
       env.DB,
