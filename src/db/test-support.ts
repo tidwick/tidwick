@@ -194,3 +194,17 @@ export async function seedProjects(
   }
   await db.batch(rows);
 }
+
+/** A grant row made with no sign-in behind it, as `just dev-agent-token` and the test fixtures need; `insertGrant` refuses one. */
+export function fixtureGrant(
+  db: D1Database,
+  grant: { id: string; personId: string; clientName: string; scopes: readonly string[] },
+  now: number,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO agent_grant (id, person_id, client_id, client_name, redirect_uri, scopes, created_at)
+VALUES (?1, ?2, 'https://client.example/metadata', ?3, 'http://127.0.0.1/callback', ?4, ?5)`,
+    )
+    .bind(grant.id, grant.personId, grant.clientName, JSON.stringify(grant.scopes), now);
+}

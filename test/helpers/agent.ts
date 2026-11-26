@@ -2,6 +2,7 @@
 // account page's passkey confirmation. And a caller for `/mcp` through the built Worker.
 import { env, exports } from 'cloudflare:workers';
 import { insertToken } from '../../src/db/agent-grants';
+import { fixtureGrant } from '../../src/db/test-support';
 import { agentScopeFor, type Scope } from '../../src/db/scope';
 import { newId } from '../../src/lib/ids';
 import { currentEnv } from '../../src/lib/env';
@@ -34,16 +35,14 @@ export async function mintAgent(personId: string, options: AgentOptions = {}): P
   const token = randomToken();
   const hash = await keyedHash(currentEnv().SESSION_SECRET, options.kind ?? 'agent_access', token);
   await env.DB.batch([
-    env.DB.prepare(
-      `INSERT INTO agent_grant (id, person_id, client_id, client_name, redirect_uri, scopes, created_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    ).bind(
-      grantId,
-      personId,
-      'https://client.example/metadata',
-      options.clientName ?? 'Test agent',
-      'http://127.0.0.1/callback',
-      JSON.stringify(options.scopes ?? ALL_SCOPES),
+    fixtureGrant(
+      env.DB,
+      {
+        id: grantId,
+        personId,
+        clientName: options.clientName ?? 'Test agent',
+        scopes: options.scopes ?? ALL_SCOPES,
+      },
       now,
     ),
     insertToken(env.DB, {
