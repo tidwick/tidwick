@@ -7,7 +7,7 @@ import { PAGES } from '../routes';
 describe('a path nobody built', () => {
   it('answers 404 signed out and signed in, with no route-table row', async () => {
     const member = await caller();
-    for (const path of ['/no-such-page', '/mcp/tools', '/oauth/token']) {
+    for (const path of ['/no-such-page', '/mcp/tools', '/oauth/other']) {
       expect((await getPage(path, null)).status, path).toBe(404);
       expect((await getPage(path, member)).status, path).toBe(404);
       expect(PAGES).not.toHaveProperty(path);

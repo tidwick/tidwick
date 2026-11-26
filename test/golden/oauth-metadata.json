@@ -1,0 +1,44 @@
+{
+  "protectedResource": {
+    "resource": "http://localhost:4321/mcp",
+    "authorization_servers": [
+      "http://localhost:4321"
+    ],
+    "scopes_supported": [
+      "read",
+      "write",
+      "submit",
+      "offline_access"
+    ],
+    "bearer_methods_supported": [
+      "header"
+    ],
+    "resource_name": "tidwick"
+  },
+  "authorizationServer": {
+    "issuer": "http://localhost:4321",
+    "authorization_endpoint": "http://localhost:4321/oauth/authorize",
+    "token_endpoint": "http://localhost:4321/oauth/token",
+    "response_types_supported": [
+      "code"
+    ],
+    "grant_types_supported": [
+      "authorization_code",
+      "refresh_token"
+    ],
+    "code_challenge_methods_supported": [
+      "S256"
+    ],
+    "token_endpoint_auth_methods_supported": [
+      "none"
+    ],
+    "client_id_metadata_document_supported": true,
+    "authorization_response_iss_parameter_supported": true,
+    "scopes_supported": [
+      "read",
+      "write",
+      "submit",
+      "offline_access"
+    ]
+  }
+}

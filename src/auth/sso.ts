@@ -30,6 +30,8 @@ export const FLOW_MS = 10 * 60 * 1000;
 const SKEW_S = 30;
 const DEFAULT_RETURN = '/week';
 const SAFE_PATH = /^\/(?![/\\])(?!auth(?:[/?#]|$))[\x21-\x7e]{0,199}$/;
+/** A client's authorize request carries its client address, redirect and challenge, so it may run to 2000 characters. */
+const AUTHORIZE_PATH = /^\/oauth\/authorize\?[\x21-\x7e]{1,1970}$/;
 
 export const ssoCookie = (rawId: string): string =>
   hostCookie(SSO_COOKIE, rawId, FLOW_MS / 1000, 'Lax');
@@ -42,7 +44,7 @@ export function providerOf(env: Env, id: string | null): SsoProvider {
 
 /** A same-origin path (one `/`, printable ASCII), or the default: never an absolute URL, `//host` or `/\host`. */
 export function safeReturn(value: string | null, fallback = DEFAULT_RETURN): string {
-  return value !== null && SAFE_PATH.test(value) ? value : fallback;
+  return value !== null && (SAFE_PATH.test(value) || AUTHORIZE_PATH.test(value)) ? value : fallback;
 }
 
 export type FlowStart =

@@ -13,4 +13,4 @@ Architecture decision records. An ADR records a decision costly to reverse that 
 - [0011](0011-ui-architecture.md) Visual system and week grid layout
 - [0012](0012-testing-and-toolchain.md) Declarative gate, npm, Workers test pool
 - [0013](0013-report-chart.md) Server-rendered report chart with d3-scale
-- [0014](0014-agent-surface.md) Agent surface: MCP over personal tokens
+- [0014](0014-agent-surface.md) Agent surface: MCP with personal tokens and OAuth

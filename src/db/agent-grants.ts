@@ -17,7 +17,7 @@ WHERE ?9 IS NULL OR (SELECT count(*) FROM agent_grant WHERE person_id = ?2 AND r
   AND (expires_at IS NULL OR expires_at > ?7)) < ?9`;
 
 const INSERT_TOKEN =
-  'INSERT INTO agent_token (hash, grant_id, kind, expires_at) VALUES (?1, ?2, ?3, ?4)';
+  'INSERT INTO agent_token (hash, grant_id, kind, expires_at, challenge) VALUES (?1, ?2, ?3, ?4, ?5)';
 
 const BY_ACCESS = `SELECT g.id, g.person_id, g.client_id, g.client_name, g.scopes
 FROM agent_token t JOIN agent_grant g ON g.id = t.grant_id
@@ -30,7 +30,7 @@ WHERE id = ?1 AND (last_used_at IS NULL OR last_used_at <= ?2 - ?3)`;
 const LIVE_OF =
   'SELECT id FROM agent_grant WHERE person_id = ?1 AND revoked_at IS NULL ORDER BY id';
 
-const LISTED = `SELECT id, client_name, scopes, created_at, expires_at, last_used_at FROM agent_grant
+const LISTED = `SELECT id, client_id, client_name, scopes, created_at, expires_at, last_used_at FROM agent_grant
 WHERE person_id = ?1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?2) ORDER BY created_at DESC, id`;
 
 const REVOKE_ONE =
@@ -57,6 +57,7 @@ export interface NewGrant {
 
 export interface ListedGrant {
   id: string;
+  client_id: string;
   client_name: string;
   scopes: string;
   created_at: number;
@@ -82,9 +83,18 @@ export function insertGrant(db: D1Database, grant: NewGrant, now: number): D1Pre
 
 export function insertToken(
   db: D1Database,
-  token: { hash: string; grantId: string; kind: AgentTokenKind; expiresAt: number },
+  token: {
+    hash: string;
+    grantId: string;
+    kind: AgentTokenKind;
+    expiresAt: number;
+    /** The PKCE S256 challenge a code was issued under. */
+    challenge?: string;
+  },
 ): D1PreparedStatement {
-  return db.prepare(INSERT_TOKEN).bind(token.hash, token.grantId, token.kind, token.expiresAt);
+  return db
+    .prepare(INSERT_TOKEN)
+    .bind(token.hash, token.grantId, token.kind, token.expiresAt, token.challenge ?? null);
 }
 
 /** The live grant behind an access-token hash that has not expired, or null. */

@@ -1,5 +1,6 @@
 // The edge renderer for MCP: catalog errors as JSON-RPC errors or tool results, and a refused bearer as RFC 6750.
 // Beside the catalog's other renderers (error-responses.ts); the catalog itself gains no text for it.
+import { currentEnv } from '../lib/env';
 import { CATALOG, errorMessage, type ErrorCode } from '../lib/errors';
 
 /** JSON-RPC and MCP protocol error codes this server answers with. */
@@ -75,7 +76,9 @@ export function bearerRefusal(
 ): Response {
   const forbidden = error === 'insufficient_scope';
   const code: ErrorCode = forbidden ? 'forbidden' : 'unauthenticated';
-  const challenge = ['Bearer realm="tidwick"'];
+  // `resource_metadata` (RFC 9728) is how a client finds where to sign in.
+  const metadata = `${currentEnv().ORIGIN}/.well-known/oauth-protected-resource`;
+  const challenge = ['Bearer realm="tidwick"', `resource_metadata="${metadata}"`];
   if (error !== 'missing_token') challenge.push(`error="${error}"`);
   if (scope !== undefined) challenge.push(`scope="${scope}"`);
   const response = rpcError(

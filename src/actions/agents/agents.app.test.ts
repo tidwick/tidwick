@@ -2,12 +2,14 @@
 // through the real middleware. The token is shown once, stored only as a hash, and never reaches the audit log.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { CLIENT_ID, connect, document, stubDocuments } from '../../../test/helpers/oauth';
 import { call2025, mcp } from '../../../test/helpers/agent';
 import { addPerson } from '../../../test/helpers/auth';
 import { caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
 import { MAX_LIVE_GRANTS } from '../../auth/agent-personal';
 import { endGrantsOf, rowsOf } from '../../db/test-support-agents';
 
+let stub: ReturnType<typeof stubDocuments>;
 const TOKEN = /[A-Za-z0-9_-]{43}/;
 const fields = { label: 'Laptop', days: '30', scopes: ['read', 'write'] };
 
@@ -160,5 +162,28 @@ describe('SEC-61 listing and revoking agent tokens', () => {
     await endGrantsOf(env.DB, who.personId, 1);
     expect((await mcp(token, call2025('list_projects'))).status).toBe(401);
     expect(await (await getPage('/account', who)).text()).not.toContain('Fading');
+  });
+});
+
+describe('approved apps on the account page', () => {
+  it('lists an app a person approved beside their tokens, and Revoke ends it and its tokens', async () => {
+    stub = stubDocuments({ [CLIENT_ID]: document({ client_name: 'Example Agent' }) });
+    try {
+      const who = await caller();
+      const { tokens } = await connect(who);
+      const html = await (await getPage('/account', who)).text();
+      expect(html).toContain('Example Agent');
+      expect(html).toContain('app at client.example');
+      const id = (await rowsOf(env.DB, 'agent_grant')).findLast(
+        (g) => g.person_id === who.personId,
+      )?.id;
+      expect((await mcp(tokens.access_token ?? '', call2025('list_projects'))).status).toBe(200);
+      const revoked = await formPost('/account', 'agents.revoke', who, { id: String(id) });
+      expect(revoked.status).toBe(303);
+      expect((await mcp(tokens.access_token ?? '', call2025('list_projects'))).status).toBe(401);
+      expect(await (await getPage('/account', who)).text()).not.toContain('app at client.example');
+    } finally {
+      stub.restore();
+    }
   });
 });

@@ -107,3 +107,27 @@ export function demoPassword(source: Source): string | null {
   const value = source['DEMO_PASSWORD'];
   return typeof value === 'string' && value.length >= DEMO_PASSWORD_MIN ? value : null;
 }
+
+/**
+ * `MCP_CLIENTS`: the https address prefixes, comma separated, of redirect URIs a client may use besides the
+ * built-in ones. Each is an https URL with a path that ends in a slash, no query and no fragment, so a prefix can
+ * never be satisfied by a longer host name; anything else fails by name. Unset or empty is none.
+ */
+export function clientPrefixes(source: Source): readonly string[] {
+  const value = optionalText(source, 'MCP_CLIENTS');
+  if (value === null) return [];
+  const prefixes = value.split(',').map((entry) => entry.trim());
+  for (const prefix of prefixes) {
+    const url = URL.canParse(prefix) ? new URL(prefix) : null;
+    if (
+      !url ||
+      url.protocol !== 'https:' ||
+      url.search !== '' ||
+      url.hash !== '' ||
+      url.href !== prefix ||
+      !prefix.endsWith('/')
+    )
+      fail('missing_binding', 'MCP_CLIENTS');
+  }
+  return prefixes;
+}

@@ -348,7 +348,7 @@ playwright-version:
     echo "version=$(npx --no-install playwright --version | awk '{print $2}')" >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
 # The deployed sites answer as the code says they do, GET only: the demo's sign-in is open, /login carries its CSP and a
-# hashed script that loads, /week sends a signed-out visitor to sign in, /mcp and /setup do not exist there, and the project site is up.
+# hashed script that loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
 live:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -366,6 +366,8 @@ live:
     want /week "$(get "$t/week" $demo/week)" 303
     grep -qi '^location: /login?return=%2Fweek' "$t/week.h" || { echo "FAIL live: /week does not send a signed-out visitor to /login?return=%2Fweek"; exit 1; }
     want /mcp "$(get "$t/mcp" $demo/mcp)" 404
+    want /.well-known/oauth-protected-resource "$(get "$t/prm" $demo/.well-known/oauth-protected-resource)" 404
+    want /oauth/authorize "$(get "$t/authorize" $demo/oauth/authorize)" 404
     want /setup "$(get "$t/setup" $demo/setup)" 404
     want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
     echo "PASS live"

@@ -14,8 +14,17 @@ import { RPC_PATTERN } from './authz';
 export type CsrfVerdict =
   'ok' | 'foreign_origin' | 'too_large' | 'missing_token' | 'wrong_token' | 'cookie_and_bearer';
 
-/** The only path whose callers authenticate with a bearer: the MCP route. */
-const AGENT_PATHS: ReadonlySet<string> = new Set(['/mcp']);
+/** The paths whose callers are not browsers: the MCP route, which takes a bearer, and the token endpoint, which takes a form. */
+const AGENT_PATHS: ReadonlySet<string> = new Set(['/mcp', '/oauth/token']);
+
+/** The route patterns that exist only while `MCP` is on; off, each is a 404 before a session or a table row is read. */
+const MCP_ONLY: ReadonlySet<string> = new Set([
+  ...AGENT_PATHS,
+  '/oauth/authorize',
+  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-protected-resource/mcp',
+  '/.well-known/oauth-authorization-server',
+]);
 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 const FORM = /^(application\/x-www-form-urlencoded|multipart\/form-data)/i;
@@ -126,7 +135,8 @@ export function formPage(request: Request, origin: string): string {
 export const csrf: MiddlewareHandler = async (context, next) => {
   const { MCP, ORIGIN, SESSION_SECRET } = currentEnv();
   const agent = AGENT_PATHS.has(context.url.pathname);
-  if (agent && !MCP) return rpcRefusal('not_found');
+  if (!MCP && MCP_ONLY.has(context.routePattern))
+    return agent ? rpcRefusal('not_found') : errorPage(context, 'not_found');
   const verdict = await csrfVerdict(
     context.request,
     ORIGIN,
