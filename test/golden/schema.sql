@@ -71,22 +71,17 @@ CREATE TABLE client (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL COLLATE NOCASE UNIQUE,
   created_at INTEGER NOT NULL,
-  archived_at INTEGER,
-  erased_at INTEGER
-) STRICT;
+  archived_at INTEGER) STRICT;
 
 -- table client_key
 CREATE TABLE client_key (
   client_id TEXT NOT NULL REFERENCES client (id),
   version INTEGER NOT NULL CHECK (version > 0),
-  wrapped BLOB,
-  iv BLOB,
+  wrapped BLOB NOT NULL,
+  iv BLOB NOT NULL,
   kek_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  destroyed_at INTEGER,
-  PRIMARY KEY (client_id, version),
-  CHECK ((wrapped IS NULL) = (destroyed_at IS NOT NULL)),
-  CHECK ((wrapped IS NULL) = (iv IS NULL))
+  PRIMARY KEY (client_id, version)
 ) STRICT;
 
 -- table credential
@@ -149,7 +144,7 @@ CREATE TABLE import_batch (
 CREATE TABLE oidc_flow (
   id_hash TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
-  purpose TEXT NOT NULL CHECK (purpose IN ('login', 'enrol', 'step_up', 'link')),
+  purpose TEXT NOT NULL CHECK (purpose IN ('login', 'enrol', 'step_up')),
   person_id TEXT REFERENCES person (id),
   session_hash TEXT,
   enrol_hash TEXT,

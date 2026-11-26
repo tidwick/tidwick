@@ -23,6 +23,13 @@ test('an admin edits a person, offboards them after a confirm step, and reinstat
   await expect(page.getByRole('heading', { name: 'Lifecycle Renamed' })).toBeVisible();
   await expect(page.getByText('LC-1')).toBeVisible();
 
+  await page.getByLabel('Project', { exact: true }).selectOption({ index: 0 });
+  await page.getByRole('button', { name: 'Assign', exact: true }).click();
+  const removeOne = page.getByRole('button', { name: /^Remove Lifecycle Renamed from / });
+  await expect(removeOne).toHaveCount(1);
+  await removeOne.click();
+  await expect(removeOne).toHaveCount(0);
+
   await page.getByRole('link', { name: 'Offboard' }).click();
   await expect(page.getByRole('heading', { name: 'Offboard Lifecycle Renamed?' })).toBeVisible();
   await page.getByRole('link', { name: 'Cancel' }).click();

@@ -12,15 +12,14 @@ export interface ClientRow {
   name: string;
   created_at: number;
   archived_at: number | null;
-  erased_at: number | null;
 }
 
-const LIST = `SELECT c.id, c.name, c.created_at, c.archived_at, c.erased_at FROM client c
+const LIST = `SELECT c.id, c.name, c.created_at, c.archived_at FROM client c
 WHERE ?1 IS NULL
   OR c.id IN (SELECT p.client_id FROM project p WHERE p.id IN (SELECT value FROM json_each(?1)))
 ORDER BY c.name`;
 
-const ONE = `SELECT c.id, c.name, c.created_at, c.archived_at, c.erased_at FROM client c
+const ONE = `SELECT c.id, c.name, c.created_at, c.archived_at FROM client c
 WHERE c.id = ?2 AND (?1 IS NULL
   OR c.id IN (SELECT p.client_id FROM project p WHERE p.id IN (SELECT value FROM json_each(?1))))`;
 
@@ -77,7 +76,7 @@ export async function createClient(
     batch.also(insertClientKey(db, id, key, now));
     await runTaken(batch);
   });
-  return { id, name, created_at: now, archived_at: null, erased_at: null };
+  return { id, name, created_at: now, archived_at: null };
 }
 
 async function runTaken(batch: AuditedBatch): Promise<void> {

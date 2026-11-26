@@ -73,22 +73,13 @@ describe('the seed is usable for notes', () => {
     }
   });
 
-  it('a client with no key refuses a note in its own words, not as erased', async () => {
+  it('a client with no key refuses a note in its own words', async () => {
     await env.DB.exec(
       "INSERT INTO client (id, name, created_at) VALUES ('no-key', 'Keyless Example', 1);",
     );
     await expect(seal(keyRing(env.DB, keks()), 'no-key', 'entry', 'a note')).rejects.toMatchObject({
       code: 'no_client_key',
     });
-    await env.DB.exec(
-      [
-        "INSERT INTO client (id, name, created_at, erased_at) VALUES ('erased', 'Erased Example', 1, 2);",
-        "INSERT INTO client_key (client_id, version, wrapped, iv, kek_id, created_at, destroyed_at) VALUES ('erased', 1, NULL, NULL, 'x', 1, 2);",
-      ].join('\n'),
-    );
-    await expect(seal(keyRing(env.DB, keks()), 'erased', 'entry', 'a note')).rejects.toThrow(
-      /has been erased/,
-    );
   });
 
   it('the current-week rows are ten, carry readable notes, and saveCells with a note lands on each', async () => {

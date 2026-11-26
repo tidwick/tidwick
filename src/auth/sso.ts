@@ -222,9 +222,6 @@ export async function finishFlow(
     return { sessionId: await signIn(env, provider, claims, now), returnTo };
   if (flow.purpose === 'enrol')
     return { sessionId: await enrol(env, provider, claims, flow, now), returnTo };
-  if (flow.purpose === 'step_up') {
-    await stepUp(env, provider, claims, flow, now);
-    return { sessionId: null, returnTo };
-  }
-  return fail('sso_failed');
+  await stepUp(env, provider, claims, flow, now);
+  return { sessionId: null, returnTo };
 }

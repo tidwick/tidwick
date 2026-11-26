@@ -1,7 +1,7 @@
 // A single sign-in under way, stored under the hash of its id and claimed once by a single UPDATE … RETURNING. The
 // id is also the `state` sent to the provider and the value of the flow cookie (src/auth/sso.ts).
 
-export type FlowPurpose = 'login' | 'enrol' | 'step_up' | 'link';
+export type FlowPurpose = 'login' | 'enrol' | 'step_up';
 
 export interface FlowRow {
   provider: string;

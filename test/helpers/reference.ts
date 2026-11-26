@@ -47,6 +47,7 @@ export async function eventsAfter(seq: number) {
 
 export interface AuditEventRow {
   seq: number;
+  at: number;
   actor_id: string | null;
   action: string;
   client_id: string | null;

@@ -19,7 +19,7 @@ import {
 } from '../../../components/ui/table';
 import { listFirms } from '../../../db/firms';
 import { listPeople } from '../../../db/people';
-import { accessByPerson } from '../../../db/people-access';
+import { accessByPerson, NO_ACCESS } from '../../../db/people-access';
 import { searchTerm } from '../../../lib/search';
 import { fieldErrors, pageContext, postedFields, problemOf, savedAt } from '../../_context';
 
@@ -158,7 +158,7 @@ const roleNames = (roles: string) =>
               className="max-md:justify-end max-md:before:content-none"
             >
               <AccessBadge
-                access={access.get(person.id) ?? { passkeys: 0, sso: 0, openLinks: 0 }}
+                access={access.get(person.id) ?? NO_ACCESS}
                 offboarded={person.offboarded_at !== null}
               />
             </TableCell>

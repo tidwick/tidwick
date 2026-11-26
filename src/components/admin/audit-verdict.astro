@@ -18,11 +18,20 @@ const events =
     <span class="font-mono text-xs" data-head>
       {verdict.head.slice(0, 16)}
     </span>
+    .{' '}
+    {verdict.backupSeq === null
+      ? 'No backup has run yet, so the log is not compared with one; a log rewritten end to end would pass this check.'
+      : `Event ${String(verdict.backupSeq)} matches the last good backup.`}
   </Alert>
 )}
 {verdict.state === 'broken' && (
   <Alert variant="danger" role="alert" className="font-medium">
     {`The chain breaks at event ${String(verdict.seq)}: it was changed, removed or inserted after it was written. Treat the log as tampered with. Restore from the last good backup to compare it, as docs/ARCHITECTURE.md, Backup and restore, says.`}
+  </Alert>
+)}
+{verdict.state === 'diverged' && (
+  <Alert variant="danger" role="alert" className="font-medium">
+    {`The chain verifies, but event ${String(verdict.seq)} no longer matches the head the last good backup recorded. Treat the log as rewritten. Restore from that backup to compare it, as docs/ARCHITECTURE.md, Backup and restore, says.`}
   </Alert>
 )}
 {verdict.state === 'unfinished' && (

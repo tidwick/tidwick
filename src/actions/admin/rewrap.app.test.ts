@@ -80,7 +80,11 @@ describe('SEC-32 keys.rewrap runs only for an admin with step-up', () => {
     expect((await weekOf(b.who, WEEK)).rows[0]?.cells[0]?.note).toBe('site walk');
 
     const done = await (await getPage('/admin/settings?saved=1', admin)).text();
-    expect(done).toContain('Delete NOTE_KEK_PREVIOUS');
+    const until = new Date(Math.max(...events.map((e) => e.at)) + 40 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    expect(done).toContain(`Keep NOTE_KEK_PREVIOUS until ${until}`);
+    expect(done).not.toContain('Delete NOTE_KEK_PREVIOUS now');
     expect(done).not.toContain('?_action=keys.rewrap');
     const again = await rpcForm('keys.rewrap', admin);
     expect(again.status).toBe(200);

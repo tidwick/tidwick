@@ -23,7 +23,11 @@ const REMOVE =
   'DELETE FROM assignment WHERE project_id = ?1 AND person_id = ?2 AND assigned_at = ?3';
 const UNASSIGNED = `SELECT p.client_id, p.id FROM project p JOIN client c ON c.id = p.client_id
 WHERE p.archived_at IS NULL AND c.archived_at IS NULL
-  AND NOT EXISTS (SELECT 1 FROM assignment a WHERE a.project_id = p.id AND a.person_id = ?1)`;
+  AND NOT EXISTS (SELECT 1 FROM assignment a WHERE a.project_id = p.id AND a.person_id = ?1)
+ORDER BY p.id LIMIT ?2`;
+
+/** Projects one assign-to-all press adds: two statements each (the row and its event) must stay under D1's 1000 per batch. */
+export const ASSIGN_ALL_MAX = 400;
 const ONE = 'SELECT assigned_at FROM assignment WHERE project_id = ?1 AND person_id = ?2';
 
 /** Active people assigned to a project the scope can see; a miss is `not_found`. */
@@ -102,20 +106,22 @@ export async function removeAssignment(
 
 /**
  * Assigns an active person to every live project they are not on, one `assignments.add` event each, in one
- * batch; a one-shot, not a standing rule. Returns how many were added.
+ * batch; a one-shot, not a standing rule. At most `max` are added per call, so a firm with more projects presses it
+ * again until it returns 0. Returns how many were added.
  */
 export async function addAllAssignments(
   scope: Scope,
   db: D1Database,
   personId: string,
   now: number,
+  max: number = ASSIGN_ALL_MAX,
 ): Promise<number> {
   requireAll(scope);
   const person = await personById(db, personId);
   if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {
     const todo = (
-      await db.prepare(UNASSIGNED).bind(personId).all<{ client_id: string; id: string }>()
+      await db.prepare(UNASSIGNED).bind(personId, max).all<{ client_id: string; id: string }>()
     ).results;
     if (todo.length === 0) return 0;
     const batch = await auditedBatch(scope, db);

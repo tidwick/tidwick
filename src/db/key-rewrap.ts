@@ -30,10 +30,10 @@ export interface RewrapResult {
 }
 
 const COUNTS = `SELECT kek_id, count(*) AS keys FROM client_key
-WHERE wrapped IS NOT NULL GROUP BY kek_id`;
+GROUP BY kek_id`;
 
 const PAGE = `SELECT client_id, version, wrapped, iv FROM client_key
-WHERE kek_id = ?1 AND wrapped IS NOT NULL ORDER BY client_id, version LIMIT ?2`;
+WHERE kek_id = ?1 ORDER BY client_id, version LIMIT ?2`;
 
 const MOVE = `UPDATE client_key SET wrapped = ?3, iv = ?4, kek_id = ?5
 WHERE client_id = ?1 AND version = ?2 AND kek_id = ?6 AND wrapped = ?7 AND iv = ?8`;
@@ -43,6 +43,17 @@ interface KeyRow {
   version: number;
   wrapped: ArrayBuffer | number[];
   iv: ArrayBuffer | number[];
+}
+
+/** Days a retired NOTE_KEK is kept after the last re-wrap: the longest a backup that needs it stays off-account (ADR 0008). */
+export const KEEP_PREVIOUS_DAYS = 40;
+
+/** When the last key was re-wrapped, or null when none ever was. */
+export async function lastRewrapAt(db: D1Database): Promise<number | null> {
+  const row = await db
+    .prepare("SELECT max(at) AS at FROM audit_event WHERE action = 'keys.rewrap'")
+    .first<{ at: number | null }>();
+  return row?.at ?? null;
 }
 
 export async function keyStatus(db: D1Database, keks: NoteKeks): Promise<KeyStatus> {

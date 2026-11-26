@@ -3,6 +3,7 @@ import { actions } from 'astro:actions';
 import AccessBadge from '../../../components/admin/access-badge.astro';
 import Assignments from '../../../components/admin/person-assignments.astro';
 import PersonConfirm from '../../../components/admin/person-confirm.astro';
+import PersonRoles from '../../../components/admin/person-roles.astro';
 import PersonEdit from '../../../components/admin/person-edit.astro';
 import PostForm from '../../../components/admin/post-form.astro';
 import SignInMethods from '../../../components/admin/sign-in-methods.astro';
@@ -12,8 +13,12 @@ import { Badge } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
 import { listFirms } from '../../../db/firms';
 import { liveIdentitiesOf } from '../../../db/identities';
-import { accessByPerson, assignmentsOf } from '../../../db/people-access';
-import { GRANTS } from '../../../db/roles';
+import {
+  accessByPerson,
+  assignableProjects,
+  assignmentsOf,
+  NO_ACCESS,
+} from '../../../db/people-access';
 import { personDetail } from '../../../db/people';
 import { errorPage } from '../../../middleware/error-responses';
 import {
@@ -32,24 +37,23 @@ const reissued = Astro.getActionResult(actions.people.reenrol);
 const unlocked = Astro.getActionResult(actions.people.unlock);
 const roles = Astro.getActionResult(actions.people.setRoles);
 const all = Astro.getActionResult(actions.assignments.addAll);
+const added = Astro.getActionResult(actions.assignments.add);
+const removed = Astro.getActionResult(actions.assignments.remove);
 const offboarded = Astro.getActionResult(actions.people.offboard);
 const updated = Astro.getActionResult(actions.people.update);
 const reinstated = Astro.getActionResult(actions.people.reinstate);
 const unlinked = Astro.getActionResult(actions.people.unlinkSso);
 if (succeeded([offboarded])) return Astro.redirect(savedAt('/admin/people'), 303);
-if (succeeded([roles, all, unlinked, updated, reinstated]))
+if (succeeded([roles, all, added, removed, unlinked, updated, reinstated]))
   return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const person = await personDetail(ctx.scope, ctx.db, id);
 if (!person) return errorPage(Astro, 'not_found');
 const held = new Set(person.roles.split(','));
 const link = issued?.data?.link ?? reissued?.data?.link ?? null;
 const active = person.offboarded_at === null;
-const access = (await accessByPerson(ctx.db, Date.now())).get(id) ?? {
-  passkeys: 0,
-  sso: 0,
-  openLinks: 0,
-};
+const access = (await accessByPerson(ctx.db, Date.now())).get(id) ?? NO_ACCESS;
 const assigned = await assignmentsOf(ctx.scope, ctx.db, id);
+const assignable = active ? await assignableProjects(ctx.scope, ctx.db, id) : [];
 const identities = await liveIdentitiesOf(ctx.db, id);
 const firms = await listFirms(ctx.db);
 const typed = updated?.error ? await postedFields(Astro) : null;
@@ -68,6 +72,8 @@ const confirmLink = (danger = false) =>
     roles,
     offboarded,
     all,
+    added,
+    removed,
     unlinked,
     updated,
     reinstated,
@@ -125,7 +131,13 @@ const confirmLink = (danger = false) =>
     </p>
   )}
 
-  <Assignments csrf={ctx.csrf} person={person} assigned={assigned} active={active} />
+  <Assignments
+    csrf={ctx.csrf}
+    person={person}
+    assigned={assigned}
+    assignable={assignable}
+    active={active}
+  />
 
   <StepUp
     csrf={ctx.csrf}
@@ -200,34 +212,7 @@ const confirmLink = (danger = false) =>
         identities={identities}
       />
 
-      <section aria-labelledby="roles-h" class="grid max-w-md gap-3">
-        <h2 id="roles-h" class="text-lg font-semibold">
-          Roles
-        </h2>
-        <p class="text-sm text-muted-foreground">Everyone is a member. These are extra.</p>
-        <PostForm
-          action={actions.people.setRoles}
-          csrf={ctx.csrf}
-          label="Save roles"
-          fields={{ id: person.id }}
-        >
-          <fieldset class="grid gap-2">
-            <legend class="sr-only">Roles</legend>
-            {GRANTS.map((grant) => (
-              <label class="flex min-h-11 items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  name="grants"
-                  value={grant}
-                  checked={held.has(grant)}
-                  class="size-5"
-                />
-                {grant.replaceAll('_', ' ')}
-              </label>
-            ))}
-          </fieldset>
-        </PostForm>
-      </section>
+      <PersonRoles csrf={ctx.csrf} personId={person.id} held={held} />
 
       <section aria-labelledby="off-h" class="grid max-w-md gap-3">
         <h2 id="off-h" class="text-lg font-semibold">

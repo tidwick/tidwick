@@ -4,7 +4,8 @@ import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { adminScope, T0 } from '../../test/helpers/auth';
 import { memberScope } from '../../test/helpers/reference';
-import { appendEvent, readHead } from './audit';
+import { appendEvent, hashAt, readHead } from './audit';
+import { recordRun } from './backup-runs';
 import { PAGE_ROWS } from './backup-rows';
 import { tamperTarget } from './test-support-backup';
 import { REQUEST_QUERIES, verifyAudit } from './audit-verify';
@@ -30,6 +31,7 @@ describe('verifying the audit chain on demand', () => {
       state: 'intact',
       events: head.seq,
       head: head.hash,
+      backupSeq: null,
     });
   });
 
@@ -56,6 +58,41 @@ describe('verifying the audit chain on demand', () => {
   it('a member scope is refused', async () => {
     const { scope } = await memberScope();
     await expect(verifyAudit(scope, env.DB)).rejects.toMatchObject({ code: 'forbidden' });
+  });
+
+  const record = (seq: number, hash: string) =>
+    recordRun(env.DB, {
+      id: `run-${String(seq)}`,
+      started_at: T0,
+      finished_at: T0 + 1,
+      object_key: 'k',
+      bytes: 1,
+      chars: 1,
+      chain_seq: seq,
+      chain_head: hash,
+      status: 'ok',
+      error: null,
+    });
+
+  it('a log that agrees with the last good backup names the seq the backup vouches for', async () => {
+    await append(3);
+    const head = await readHead(env.DB);
+    await record(head.seq, head.hash);
+    expect(await verifyAudit(await adminScope(), env.DB)).toMatchObject({
+      state: 'intact',
+      backupSeq: head.seq,
+    });
+  });
+
+  it('a log that chains but no longer holds the backup head is diverged, not intact', async () => {
+    await append(3);
+    const head = await readHead(env.DB);
+    expect(await hashAt(env.DB, head.seq)).toBe(head.hash);
+    await record(head.seq, 'f'.repeat(64));
+    expect(await verifyAudit(await adminScope(), env.DB)).toEqual({
+      state: 'diverged',
+      seq: head.seq,
+    });
   });
 
   it('an event rewritten with database access is reported at its seq', async () => {

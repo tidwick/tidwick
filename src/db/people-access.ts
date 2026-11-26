@@ -3,6 +3,9 @@
 import { fail } from '../lib/errors';
 import type { Scope } from './scope';
 
+/** What a person with no sign-in method has. */
+export const NO_ACCESS: Access = { passkeys: 0, sso: 0, openLinks: 0 };
+
 export interface Access {
   /** Passkeys not revoked. */
   passkeys: number;
@@ -54,4 +57,30 @@ export async function assignmentsOf(
 ): Promise<PersonAssignment[]> {
   if (scope.kind !== 'all') fail('forbidden');
   return (await db.prepare(ASSIGNMENTS).bind(personId).all<PersonAssignment>()).results;
+}
+
+export interface AssignableProject {
+  id: string;
+  project: string;
+  client: string;
+}
+
+/** Most projects the person page lists to assign one at a time; assign-to-all covers the rest. */
+export const ASSIGNABLE_SHOWN = 300;
+
+const ASSIGNABLE = `SELECT p.id, p.name AS project, c.name AS client FROM project p
+JOIN client c ON c.id = p.client_id
+WHERE p.archived_at IS NULL AND c.archived_at IS NULL
+  AND NOT EXISTS (SELECT 1 FROM assignment a WHERE a.project_id = p.id AND a.person_id = ?1)
+ORDER BY c.name, p.name LIMIT ?2`;
+
+/** The live projects a person is not yet assigned to, by client then name. */
+export async function assignableProjects(
+  scope: Scope,
+  db: D1Database,
+  personId: string,
+): Promise<AssignableProject[]> {
+  if (scope.kind !== 'all') fail('forbidden');
+  return (await db.prepare(ASSIGNABLE).bind(personId, ASSIGNABLE_SHOWN).all<AssignableProject>())
+    .results;
 }

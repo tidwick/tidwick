@@ -32,7 +32,6 @@ export const SKIPPED_TABLES = [
   'session',
   'auth_challenge',
   'recovery_attempt',
-  'rate_window',
   'agent_grant',
   'agent_token',
   'oidc_flow',

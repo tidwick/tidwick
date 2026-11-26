@@ -30,7 +30,7 @@ interface TaskRecord {
 }
 
 const PEOPLE = 'SELECT id, email, offboarded_at FROM person';
-const CLIENTS = 'SELECT id, name, archived_at FROM client WHERE erased_at IS NULL';
+const CLIENTS = 'SELECT id, name, archived_at FROM client';
 const PROJECTS = 'SELECT id, client_id, name, number, archived_at FROM project';
 const TASKS = 'SELECT id, code, name, archived_at FROM task_code';
 const ALLOWED = 'SELECT project_id, task_code_id FROM project_task WHERE archived_at IS NULL';

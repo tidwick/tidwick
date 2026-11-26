@@ -155,7 +155,7 @@ Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just re
 
 Numbers live in code; see the cited ADR.
 
-- Client erasure is not built; notes cannot be shredded. `client.erased_at` and `client_key.destroyed_at` are reserved; nothing writes them.
+- Client erasure is not built; notes cannot be shredded.
 - Enrolment links are shown once to the issuing admin, never emailed. `addPasskeyVerify` revokes no other passkey.
 - `NOTE_KEK` rotation re-wraps client keys, it does not re-key notes: an old KEK plus an old read still opens them. It lives in the same account as the data.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.
