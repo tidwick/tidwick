@@ -10,6 +10,7 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 - One test file: `just test src/lib/week.test.ts` (builds first; app and demo tests need it). A file's suffix picks its project: `.app.test.ts`, `.demo.test.ts`, `.dom.test.ts[x]`, else unit.
 - `just dev`, `just seed`, `just dev-session <who>`, `just golden` (rewrite goldens, review the diff), `just fmt`. `just --list` has the rest.
 - Deploy: ARCHITECTURE, Deploy. Never run against a live account from a working session.
+- No migrations before v0.1.0: edit `migrations/0001_init.sql` in place (`just golden` after); `just guard` fails any other file.
 - A failing check prints one FAIL line that names the next action; write new checks the same way.
 
 ## Invariants
