@@ -1,6 +1,7 @@
 ---
 import { actions } from 'astro:actions';
-import type { PersonAssignment } from '../../db/people-access';
+import { ASSIGN_ALL_MAX } from '../../db/assignments';
+import type { AssignableProject, PersonAssignment } from '../../db/people-access';
 import { Badge } from '../ui/badge';
 import {
   Table,
@@ -13,14 +14,18 @@ import {
 } from '../ui/table';
 import Empty from './empty.astro';
 import PostForm from './post-form.astro';
-// The projects a person is assigned to, and for an active person the one-click assignment to every live project.
+import SelectField from './select-field.astro';
+// The projects a person is assigned to, each removable, and for an active person an assign select and the one-click
+// assignment to every live project.
 interface Props {
   csrf: string;
   person: { id: string; name: string };
   assigned: PersonAssignment[];
+  /** Live projects the person is not on. */
+  assignable: AssignableProject[];
   active: boolean;
 }
-const { csrf, person, assigned, active } = Astro.props;
+const { csrf, person, assigned, assignable, active } = Astro.props;
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 ---
 
@@ -40,6 +45,9 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
           <TableHead>Project</TableHead>
           <TableHead>Client</TableHead>
           <TableHead>Assigned</TableHead>
+          <TableHead>
+            <span class="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -64,10 +72,38 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
             <TableCell data-label="Assigned" className="tabular-nums text-muted-foreground">
               {day(a.assigned_at)}
             </TableCell>
+            <TableCell className="md:text-right">
+              <PostForm
+                compact
+                action={actions.assignments.remove}
+                csrf={csrf}
+                label="Remove"
+                named={`Remove ${person.name} from ${a.project}`}
+                tone="plain"
+                fields={{ projectId: a.project_id, personId: person.id }}
+              />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  )}
+  {active && assignable.length > 0 && (
+    <div class="max-w-md rounded-lg border border-border p-4">
+      <PostForm
+        action={actions.assignments.add}
+        csrf={csrf}
+        label="Assign"
+        fields={{ personId: person.id }}
+      >
+        <SelectField
+          label="Project"
+          field="projectId"
+          required
+          options={assignable.map((p) => ({ value: p.id, label: `${p.client}: ${p.project}` }))}
+        />
+      </PostForm>
+    </div>
   )}
   {active && (
     <PostForm
@@ -76,6 +112,10 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
       label="Assign to all live projects"
       tone="plain"
       fields={{ personId: person.id }}
-    />
+    >
+      <p class="text-sm text-muted-foreground">
+        One press adds up to {ASSIGN_ALL_MAX} projects; press again while projects remain to assign.
+      </p>
+    </PostForm>
   )}
 </section>

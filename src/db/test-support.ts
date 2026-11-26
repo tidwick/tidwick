@@ -175,3 +175,22 @@ export function failingDb(db: D1Database, fragment: string, message: string): D1
     },
   });
 }
+
+/** Inserts `count` live projects under a client in one batch, for tests that need more than a cap. */
+export async function seedProjects(
+  db: D1Database,
+  clientId: string,
+  count: number,
+  at: number,
+): Promise<void> {
+  const rows: D1PreparedStatement[] = [];
+  for (let n = 0; n < count; n++) {
+    const id = crypto.randomUUID();
+    rows.push(
+      db
+        .prepare('INSERT INTO project (id, client_id, name, created_at) VALUES (?1, ?2, ?3, ?4)')
+        .bind(id, clientId, `Seed ${id}`, at),
+    );
+  }
+  await db.batch(rows);
+}

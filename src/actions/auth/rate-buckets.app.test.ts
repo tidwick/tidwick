@@ -31,6 +31,13 @@ const recover = (ip: string) =>
 describe('SEC-37 each public auth Action counts against its own bucket', () => {
   it('SEC-37 one address makes 100 login starts and 100 login finishes, none refused, and its 31st recovery is refused', async () => {
     const ip = '203.0.113.21';
+    // The strict bucket is a 60 s fixed window: burst it first, before the slower 200 login calls, so the 31 calls
+    // cannot straddle a window roll. The login bucket (300) cannot be refused by a roll, only relieved.
+    const recoveries: number[] = [];
+    for (let i = 0; i < 31; i++) recoveries.push((await recover(ip)).status);
+    expect(recoveries.slice(0, 30).filter((s) => s === 429)).toEqual([]);
+    expect(recoveries[30]).toBe(429);
+
     const person = await enrolledPerson();
     const d = deps();
     const { options } = await loginOptions(d, Date.now());
@@ -42,10 +49,5 @@ describe('SEC-37 each public auth Action counts against its own bucket', () => {
       statuses.push((await json('auth.loginVerify', ip, { response })).status);
     expect(statuses.filter((s) => s === 429)).toEqual([]);
     expect(statuses.slice(0, 100).every((s) => s === 200)).toBe(true);
-
-    const recoveries: number[] = [];
-    for (let i = 0; i < 31; i++) recoveries.push((await recover(ip)).status);
-    expect(recoveries.slice(0, 30).filter((s) => s === 429)).toEqual([]);
-    expect(recoveries[30]).toBe(429);
   });
 });

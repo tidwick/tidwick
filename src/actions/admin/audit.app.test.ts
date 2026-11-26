@@ -122,6 +122,7 @@ describe('SEC-33 audit.verify checks the chain on demand and writes nothing', ()
       const text = await form.text();
       expect(text).toContain('The chain is intact');
       expect(text).toContain(`${String(before)} events checked`);
+      expect(text).toContain('No backup has run yet');
     }
     expect(await eventsAfter(before)).toEqual([]);
   });

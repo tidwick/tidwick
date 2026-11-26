@@ -11,8 +11,8 @@ The firm must show who changed what, and a compromised admin must not be able to
 
 - D1 triggers refuse UPDATE and DELETE on the log and refuse a wrong `seq` or `prev_hash`.
 - One module writes entries.
-- Actor and client are plain ids with no foreign keys, so deleting a person never edits history.
-- The chain check is bounded by the query budget, alerts when it cannot finish, and writes nothing.
+- Actor and client are foreign keys to `person` and `client`. Neither table is ever deleted from (a person is offboarded, a client archived), so history keeps what it points at and deleting either is refused.
+- The chain check is bounded by the query budget, alerts when it cannot finish, and writes nothing. It also compares the log with the head the last good backup recorded, because a log rewritten end to end still chains.
 
 ## Consequences
 

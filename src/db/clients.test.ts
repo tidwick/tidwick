@@ -20,10 +20,8 @@ describe('clients', () => {
         version: number;
         wrapped: ArrayBuffer;
         iv: ArrayBuffer;
-        destroyed_at: number | null;
       }>();
     expect(key?.version).toBe(1);
-    expect(key?.destroyed_at).toBeNull();
     const plain = await unwrapClientKey(kek(), client.id, 1, {
       wrapped: new Uint8Array(key?.wrapped ?? new ArrayBuffer(0)),
       iv: new Uint8Array(key?.iv ?? new ArrayBuffer(0)),

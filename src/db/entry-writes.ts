@@ -139,11 +139,7 @@ export async function seal(
   note: string,
 ): Promise<[Uint8Array | null, Uint8Array | null, number | null]> {
   if (note === '') return [null, null, null];
-  const key =
-    (await ring.current(clientId)) ??
-    ((await ring.has(clientId))
-      ? fail('forbidden', 'that client has been erased')
-      : fail('no_client_key'));
+  const key = (await ring.current(clientId)) ?? fail('no_client_key');
   const sealed = await sealNote(key.key, clientId, entryId, note);
   return [sealed.ct, sealed.iv, key.version];
 }

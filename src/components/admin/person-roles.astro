@@ -1,0 +1,41 @@
+---
+import { actions } from 'astro:actions';
+import { GRANTS } from '../../db/roles';
+import PostForm from './post-form.astro';
+// The extra roles an admin gives one person; everyone is a member without any.
+interface Props {
+  csrf: string;
+  personId: string;
+  held: Set<string>;
+}
+const { csrf, personId, held } = Astro.props;
+---
+
+<section aria-labelledby="roles-h" class="grid max-w-md gap-3">
+  <h2 id="roles-h" class="text-lg font-semibold">
+    Roles
+  </h2>
+  <p class="text-sm text-muted-foreground">Everyone is a member. These are extra.</p>
+  <PostForm
+    action={actions.people.setRoles}
+    csrf={csrf}
+    label="Save roles"
+    fields={{ id: personId }}
+  >
+    <fieldset class="grid gap-2">
+      <legend class="sr-only">Roles</legend>
+      {GRANTS.map((grant) => (
+        <label class="flex min-h-11 items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            name="grants"
+            value={grant}
+            checked={held.has(grant)}
+            class="size-5"
+          />
+          {grant.replaceAll('_', ' ')}
+        </label>
+      ))}
+    </fieldset>
+  </PostForm>
+</section>

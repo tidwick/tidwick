@@ -17,7 +17,13 @@ import {
   TableRowHead,
 } from '../../components/ui/table';
 import { backupStatus } from '../../backup/status';
-import { keyStatus, REWRAP_PAGE, REWRAP_PAGES } from '../../db/key-rewrap';
+import {
+  KEEP_PREVIOUS_DAYS,
+  keyStatus,
+  lastRewrapAt,
+  REWRAP_PAGE,
+  REWRAP_PAGES,
+} from '../../db/key-rewrap';
 import { projectsWithoutNumber } from '../../db/projects';
 import { BACKUP_AGE_CEILING, BACKUP_AGE_DEFAULT, loadSettings } from '../../db/settings';
 import { backupsBound, currentCopy, currentEnv, noteKeks } from '../../lib/env';
@@ -47,6 +53,11 @@ const zones = timeZoneChoices(shown.timeZone).map((zone) => ({ value: zone, labe
 const unnumbered = await projectsWithoutNumber(ctx.scope, ctx.db, SHOWN + 1);
 const keks = noteKeks();
 const keys = await keyStatus(ctx.db, keks);
+const rewrappedAt = await lastRewrapAt(ctx.db);
+const keepUntil =
+  rewrappedAt === null
+    ? null
+    : new Date(rewrappedAt + KEEP_PREVIOUS_DAYS * 86_400_000).toISOString().slice(0, 10);
 const env = currentEnv();
 const status = await backupStatus(ctx.db, {
   copy: currentCopy(),
@@ -154,6 +165,7 @@ const status = await backupStatus(ctx.db, {
     csrf={ctx.csrf}
     status={keys}
     rotating={keks.previous !== null}
+    keepUntil={keepUntil}
     perRun={REWRAP_PAGE * REWRAP_PAGES}
   />
 

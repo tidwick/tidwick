@@ -20,22 +20,21 @@ export interface DataKey {
 }
 
 export interface KeyRing {
-  /** The client's newest key, or null when the client's keys were destroyed by erasure. */
+  /** The client's newest key, or null when it has none. */
   current(clientId: string): Promise<DataKey | null>;
-  /** Whether the client has any key row, live or destroyed; false means it never got one. */
+  /** Whether the client has any key row, false means it never got one. */
   has(clientId: string): Promise<boolean>;
-  /** One version of the client's key, or null when it was destroyed. */
+  /** One version of the client's key, or null when no such version exists. */
   version(clientId: string, version: number): Promise<Bytes | null>;
 }
 
-// `client_key.destroyed_at` is reserved: nothing writes it, so every key row is live and erasure is not built.
 const NEWEST = `SELECT version, wrapped, iv, kek_id FROM client_key
-WHERE client_id = ?1 AND destroyed_at IS NULL ORDER BY version DESC LIMIT 1`;
+WHERE client_id = ?1 ORDER BY version DESC LIMIT 1`;
 
 const ANY = 'SELECT 1 AS found FROM client_key WHERE client_id = ?1 LIMIT 1';
 
 const ONE = `SELECT version, wrapped, iv, kek_id FROM client_key
-WHERE client_id = ?1 AND version = ?2 AND destroyed_at IS NULL`;
+WHERE client_id = ?1 AND version = ?2`;
 
 /**
  * A ring that remembers every key it has unwrapped, so a request reads each client's key row once. A row under
