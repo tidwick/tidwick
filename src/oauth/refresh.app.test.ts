@@ -62,6 +62,16 @@ describe('refreshing', () => {
     ).toBe('invalid_scope');
   });
 
+  it("does not narrow on refresh: a narrower scope is accepted and the response names the grant's own scopes", async () => {
+    const who = await caller();
+    const { tokens } = await connect(who);
+    const next = await (
+      await refresh(tokens.refresh_token ?? '', { scope: 'read' })
+    ).json<Record<string, string>>();
+    expect(next.scope).toBe(tokens.scope);
+    expect(next.scope).toContain('write');
+  });
+
   it('gives a refresh token 30 idle days, and is refused once they have passed', async () => {
     const who = await caller();
     const { tokens } = await connect(who);

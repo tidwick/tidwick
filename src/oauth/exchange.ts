@@ -160,6 +160,7 @@ export async function exchange(
     const { grant } = await spend(env, field(form, 'refresh_token'), 'refresh', now);
     const held = JSON.parse(grant.scopes) as string[];
     if (grant.client_id !== client) throw gone();
+    // A refresh never narrows: the grant's scopes are the token's, and the response names them.
     if (asked.some((s) => !held.includes(s)))
       throw new OauthError('invalid_scope', 'The scope is wider than the grant.');
     return issue(env, grant, false, now);

@@ -22,6 +22,8 @@ async function post(
 const ELSEWHERE = [
   '/account?_action=agents.revoke',
   '/oauth/authorize?_action=agents.grant',
+  '/oauth/token?_action=agents.revoke',
+  '/mcp?_action=agents.revoke',
   '/login?_action=auth.recover',
   '/week',
   '/approvals',
@@ -49,6 +51,16 @@ describe('SEC-65 a cross-origin browser POST is refused everywhere but the token
   it('SEC-65 lets the same form through the gate from ORIGIN (negative case: the check can pass)', async () => {
     const who = await caller();
     for (const path of ['/account?_action=agents.revoke', '/login?_action=auth.recover']) {
+      expect((await post(path, ORIGIN, who.raw, `_csrf=${who.token}&id=x`)).status, path).not.toBe(
+        403,
+      );
+    }
+  });
+
+  it('SEC-65 holds an Action post on an agent path to the token check, so a request with Origin but no _csrf is refused', async () => {
+    const who = await caller();
+    for (const path of ['/oauth/token?_action=agents.revoke', '/mcp?_action=agents.revoke']) {
+      expect((await post(path, ORIGIN, who.raw)).status, path).toBe(403);
       expect((await post(path, ORIGIN, who.raw, `_csrf=${who.token}&id=x`)).status, path).not.toBe(
         403,
       );

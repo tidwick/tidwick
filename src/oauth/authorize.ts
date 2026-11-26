@@ -40,14 +40,15 @@ function need(params: URLSearchParams, name: string): string {
   return value;
 }
 
-/** The tool scopes a `scope` value asks for; an unknown word is `invalid_scope`. */
+/** The tool scopes a `scope` value asks for; an unknown word is `invalid_scope`. A value of only `offline_access` asks for `read`, never for every tool. */
 export function scopesAsked(value: string | null): ToolScope[] {
   const words = (value ?? '').split(/\s+/).filter((w) => w !== '');
   for (const word of words) {
     if (!(SCOPES_SUPPORTED as readonly string[]).includes(word))
       throw new OauthError('invalid_scope', 'A scope that was asked for is not offered.');
   }
-  return TOOL_SCOPES.filter((s) => words.includes(s));
+  const tools = TOOL_SCOPES.filter((s) => words.includes(s));
+  return tools.length === 0 && words.length > 0 ? ['read'] : tools;
 }
 
 /** Reads the authorize query: PKCE S256 only, the resource this server's `/mcp`, a client its policy accepts. */
