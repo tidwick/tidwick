@@ -35,3 +35,7 @@ Each is pinned exact. The `d3-*` pair is justified in ADR 0013.
 - `class-variance-authority`, `cn`, `lucide-react`: the component variants, class joining and icons of the UI.
 - `@fontsource-variable/geist`: the self-hosted typeface, so no request leaves for a font.
 - `d3-scale`, `d3-array`: the report chart's scales (ADR 0013).
+
+## Dev dependencies of note
+
+- `@axe-core/playwright`: the accessibility scan the browser specs run on the main pages (`e2e/a11y.spec.ts`). It ships in no build; hand-written rules would miss what a maintained rule set finds.

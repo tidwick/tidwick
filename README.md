@@ -4,6 +4,11 @@
 
 Weekly timesheet for professional-services firms on Cloudflare Workers, D1 and R2. AGPL-3.0 reference implementation: a technical person deploys it into the firm's own Cloudflare account; nobody hosts it. Version 0, author-tested only.
 
+**Try it: [demo.tidwick.dev/demo](https://demo.tidwick.dev/demo).** Pick one of four invented people; the data is reset every night.
+
+<p align="center"><img src="docs/screenshots/week.png" alt="The week grid: hours per project and task, Monday to Sunday, with a row of recent weeks above it" width="720"></p>
+<p align="center"><img src="docs/screenshots/approvals.png" alt="The approvals list an accounting admin works through" width="440"> <img src="docs/screenshots/week-phone.png" alt="The same week grid at phone width" width="180"></p>
+
 Week grid, clients and projects, three roles, submit/approve/lock, audit log, CSV export and import, passkey login and optional single sign-on (OpenID Connect), per-client note encryption, nightly encrypted off-account backup.
 
 ## Never
@@ -16,15 +21,24 @@ Week grid, clients and projects, three roles, submit/approve/lock, audit log, CS
 - Copying another product's assets, text or look.
 - Real data, secrets or a Cloudflare login in tests.
 
+## Before you deploy
+
+The button gets you a running Worker; a firm's instance needs more, and the nightly backup fails until it is done.
+
+- A Cloudflare account on the Workers Paid plan, and a second Cloudflare account for the off-account backup copy.
+- A domain on that account, for passkeys and for the alert mail (Email Routing, with the alert address verified).
+- Someone who owns the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`). Losing `NOTE_KEK` loses every note.
+- About an hour, and a terminal for the backup bucket and its secrets.
+
 ## Deploy
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tidwick/tidwick)
 
-The steps after the button are in `docs/ARCHITECTURE.md`, Deploy.
+The button ends at a Worker that answers `/setup`. The steps after it, from the first admin to the first backup, are in `docs/ARCHITECTURE.md`, Deploy.
 
 ## Run
 
-`mise install; eval "$(mise env)"; just install; just check; just seed; just dev` (no Cloudflare account needed)
+`mise install; eval "$(mise env)"; just install; just check; just seed; just dev` (no Cloudflare account needed), then `just dev-session <who>` prints a Cookie header that signs you in as a seeded person, with no passkey. `just demo-local` serves the demo's data and personas at `localhost:4321/demo`.
 
 Design: `docs/ARCHITECTURE.md`, decisions: `docs/adr/`. Deploy: Deploy section there.
 Security: report vulnerabilities privately through the repository's security advisory form; no support commitment. No claim is made that the software is flaw-free.

@@ -39,6 +39,9 @@ const SUBMITTERS = PROJECTS.map((project) => `submit-${project}`);
 const ACCOUNTANTS = PROJECTS.map((project) => `acct-${project}`);
 // For the CSV spec: an accounting admin per project who previews an import, edits the mappings and downloads a report.
 const CSV_ACCOUNTANTS = PROJECTS.map((project) => `csv-${project}`);
+// For the recovery spec, a member who recovers with a code; for the settings spec, an admin who also gets the accessibility scan.
+const RECOVERERS = PROJECTS.map((project) => `recover-${project}`);
+const SETTERS = PROJECTS.map((project) => `admin-set-${project}`);
 const ids: Record<string, string> = {};
 for (const [i, project] of [
   ...PROJECTS,
@@ -48,6 +51,8 @@ for (const [i, project] of [
   ...SUBMITTERS,
   ...ACCOUNTANTS,
   ...CSV_ACCOUNTANTS,
+  ...RECOVERERS,
+  ...SETTERS,
 ].entries()) {
   const id = `00000000-0000-4000-a000-${String(i).padStart(12, '0')}`;
   ids[project] = id;

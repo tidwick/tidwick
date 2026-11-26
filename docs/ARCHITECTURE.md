@@ -105,20 +105,20 @@ The button clones `main`, so it deploys the last release. It builds on Node from
 7. Delete `SETUP_TOKEN`. Add the 35-day expiry to `tidwick-backups`; `/setup` repeats the command.
 8. Update by a documented merge from a release tag: in the clone, `git pull https://github.com/tidwick/tidwick vX.Y.Z && git push`; the build migrates and deploys.
 
-Lab checklist, run by hand each release, on a fresh account. Order: merge the release PR to `next`, fast-forward `main` (`git push origin origin/next:main`), run the lab, then tag. The button clones `main`, so the lab only sees the release after the fast-forward:
+Lab checklist, run by hand each release, on a fresh Cloudflare account that has never seen tidwick, through the button and the dashboard only: no `just`, no `wrangler`, no local clone. A step that needs a terminal is a failure to record, not a step to skip. Order: merge the release PR to `next`, fast-forward `main` (`git push origin origin/next:main`), run the lab, then tag. The button clones `main`, so the lab only sees the release after the fast-forward:
 
-- Real button from the README, build green.
-- `/setup` lists the missing values; claim the first admin.
-- Passkey enrolled and used on a phone.
-- Use it for a week: submit, approve, lock.
+- Press the real button from the README; the build is green and the Worker answers on workers.dev.
+- `/setup` lists the missing values; generate the secrets there, enter them under Settings, Variables and Secrets, and edit `RP_ID` in the cloned repository's `wrangler.jsonc` through GitHub's web editor.
+- Claim the first admin with the token, enrol a passkey on a phone, delete `SETUP_TOKEN`.
+- Use it for a week: add a client, a project and a person, enter hours, submit, approve, lock.
 - Export the CSV and open it.
-- MCP `tools/list` answers with a token.
+- `/admin/settings` shows the backup status; press "Send test alert" and "Back up now" and read the result.
 - `/healthz` is 200 the next day, after the 03:00 backup.
-- Restore drill: `just restore` a real backup into a local D1.
+- The restore walk below is a separate lab; it needs a terminal by design.
 
 ## 10. Operate
 
-- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (40 days).
+- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys under NOTE_KEK" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (40 days).
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.

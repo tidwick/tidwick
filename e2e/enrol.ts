@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // Written by test/e2e/prepare.ts, which `just e2e` runs first: one open enrolment link per synthetic person.
 const tokens = JSON.parse(readFileSync('.wrangler/e2e-tokens.json', 'utf8')) as Record<
@@ -25,8 +25,18 @@ export async function startEnrol(page: Page, token: string): Promise<void> {
     },
   });
   await page.goto(`/enrol/${token}`);
-  await page.getByRole('button', { name: 'Create a passkey' }).click();
-  await expect(page.getByRole('heading', { name: 'Save your recovery codes' })).toBeVisible();
+  const create = page.getByRole('button', { name: 'Create a passkey' });
+  const codes = page.getByRole('heading', { name: 'Save your recovery codes' });
+  // The public auth limit is 30 a minute and the suite is fast enough to meet it; a refusal waits out the window.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await create.click();
+    const refused = page.getByText('Too many attempts');
+    await expect(codes.or(refused)).toBeVisible();
+    if (await codes.isVisible()) return;
+    test.setTimeout(test.info().timeout + 65_000);
+    await page.waitForTimeout(30_000);
+  }
+  await expect(codes).toBeVisible();
 }
 
 /** Ticks the box that says the codes are saved, which enables Continue, and leaves for the week page. */
