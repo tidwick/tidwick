@@ -72,7 +72,13 @@ export const authz: MiddlewareHandler = async (context, next) => {
     if (context.routePattern === RPC_PATTERN) return errorResponse(error.code);
     if (error.code === 'unauthenticated' && ['GET', 'HEAD'].includes(context.request.method))
       return signInRedirect(context.url);
-    return errorPage(context, error.code);
+    const confirm = { href: '/account', label: 'Confirm on your account' };
+    return errorPage(
+      context,
+      error.code,
+      undefined,
+      error.code === 'step_up_required' ? confirm : undefined,
+    );
   }
   return next();
 };

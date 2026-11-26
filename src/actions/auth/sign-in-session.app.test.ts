@@ -43,12 +43,12 @@ function verify(
   );
 }
 
-async function passkeyLogin(planted: Caller): Promise<Response> {
+async function passkeyLogin(planted: Caller, back?: string): Promise<Response> {
   const person = await enrolledPerson();
   const d = deps();
   const { options, challengeId } = await loginOptions(d, Date.now());
   const response = await person.authenticator.assert(options, d.rp.origin);
-  return verify('auth.loginVerify', planted, challengeId, { response });
+  return verify('auth.loginVerify', planted, challengeId, { response, return: back });
 }
 
 async function enrolment(planted: Caller): Promise<Response> {
@@ -85,6 +85,24 @@ describe('SEC-06 a new session id at every sign-in', () => {
       expect(await live(fresh ?? '')).toBe(true);
     });
   }
+});
+
+describe('a passkey login goes on to the page asked for', () => {
+  it('SEC-51 a same-site return is followed, anything else goes to the week', async () => {
+    const next = async (back?: string) => (await passkeyLogin(await caller([]), back)).text();
+    expect(await next('/clients')).toContain('/clients');
+    for (const bad of [
+      '//evil.example',
+      'https://evil.example/x',
+      '/\\evil.example',
+      '/auth/sso/enrol?token=t',
+    ]) {
+      const body = await next(bad);
+      expect(body, bad).toContain('/week');
+      expect(body, bad).not.toContain('evil');
+      expect(body, bad).not.toContain('/auth');
+    }
+  });
 });
 
 describe('adding a passkey ends where the new passkey is listed', () => {

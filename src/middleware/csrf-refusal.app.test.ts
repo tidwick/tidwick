@@ -40,6 +40,9 @@ describe('what a refused post answers', () => {
         }),
       );
     expect(await (await post(`${ORIGIN}/clients?x=1`)).text()).toContain('href="/clients?x=1"');
+    expect(await (await post(`${ORIGIN}/clients?a=1&b=<2>`)).text()).toContain(
+      'href="/clients?a=1&amp;b=%3C2%3E"',
+    );
     const saved = await (await post(`${ORIGIN}/clients?saved=1`)).text();
     expect(saved).toMatch(linkTo('/clients'));
     expect(saved).not.toContain('saved=1');

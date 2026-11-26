@@ -22,8 +22,12 @@ describe('a signed-out request to a page goes to sign-in and returns', () => {
     expect(queried.headers.get('location')).toBe('/login?return=%2Faudit%3Fwho%3Da%2520b');
   });
 
-  it('SEC-60 a return that is not a path of this site is dropped, never followed', () => {
-    for (const bad of ['http://localhost//evil.example/x', 'http://localhost/\\evil.example']) {
+  it('SEC-49 a return that is not a path of this site is dropped, never followed', () => {
+    for (const bad of [
+      'http://localhost//evil.example/x',
+      'http://localhost/\\evil.example',
+      'http://localhost/auth/sso/enrol?token=t',
+    ]) {
       const location = signInRedirect(new URL(bad)).headers.get('location');
       expect(location, bad).toBe('/login');
     }
@@ -32,7 +36,7 @@ describe('a signed-out request to a page goes to sign-in and returns', () => {
     );
   });
 
-  it('SEC-60 the sign-in page carries only a safe return to the passkey button', async () => {
+  it('SEC-49 the sign-in page carries only a safe return to the passkey button', async () => {
     const page = async (path: string) => (await getPage(path, null)).text();
     expect(await page('/login?return=/clients')).toContain('data-return="/clients"');
     for (const bad of ['//evil.example', 'https://evil.example/x', '/\\evil.example'])
@@ -70,6 +74,13 @@ describe('a refusal is the app page with the person’s own way home', () => {
     expect(html).toContain('href="/approvals">Go to approvals');
   });
 
+  it('a stale step-up links to the account, where it is confirmed', async () => {
+    const who = await caller([ACCOUNTING], { stepUpAgo: 60 * 60 * 1000 });
+    const response = await getPage('/approvals/x/2026-01-05', who);
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(/<a[^>]*href="\/account"[^>]*>Confirm on your account/);
+  });
+
   it('an address of the error page itself is a 404, and signed out its link is sign-in', async () => {
     const response = await getPage('/error', null);
     expect(response.status).toBe(404);
@@ -85,7 +96,7 @@ describe('every page shows the same navigation for the same grants', () => {
     [ACCOUNTING, ADMIN],
   ];
 
-  it('SEC-61 each page a role can open, and the refusal page, list one set of links', async () => {
+  it('SEC-50 each page a role can open, and the refusal page, list one set of links', async () => {
     const routes = builtRoutes()
       .filter((r) => r.origin === 'project')
       .map((r) => r.route)

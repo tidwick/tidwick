@@ -49,6 +49,16 @@ referrer-policy: same-origin
 strict-transport-security: max-age=63072000; includeSubDomains
 x-content-type-options: nosniff
 
+# GET /week signed out 303
+cache-control: no-store
+content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+cross-origin-opener-policy: same-origin
+location: /login?return=%2Fweek
+permissions-policy: accelerometer=(), autoplay=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), publickey-credentials-create=(self), publickey-credentials-get=(self)
+referrer-policy: same-origin
+strict-transport-security: max-age=63072000; includeSubDomains
+x-content-type-options: nosniff
+
 # POST /_actions/people.setRoles signed out 401
 cache-control: no-store
 content-security-policy: default-src 'none'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'

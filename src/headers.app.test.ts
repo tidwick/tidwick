@@ -127,6 +127,7 @@ describe('SEC-19 every response carries the strict header set and CSP', () => {
         'GET /admin/people as a member',
         await getPage('/admin/people', await caller([])),
       ),
+      headerBlock('GET /week signed out', await getPage('/week', null)),
       headerBlock(
         'POST /_actions/people.setRoles signed out',
         await post('/_actions/people.setRoles'),
@@ -139,7 +140,7 @@ describe('SEC-19 every response carries the strict header set and CSP', () => {
 
   it('every golden block lists the whole set, and dropping or changing one header breaks the match', async () => {
     const recorded = (golden ?? '').trim().split('\n\n');
-    expect(recorded.length).toBe(8);
+    expect(recorded.length).toBe(9);
     for (const block of recorded) {
       for (const name of SET) expect(block, block.split('\n')[0]).toContain(`\n${name}: `);
     }

@@ -35,6 +35,7 @@ describe('errorPage', () => {
       back,
     });
     expect(page.status).toBe(CATALOG.invalid_input.status);
+    expect(await page.clone().text()).toContain('<a href="/">Home</a>');
     expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8');
     const html = await page.text();
     expect(html).toContain('&lt;b&gt;a &amp; b&lt;/b&gt;');
