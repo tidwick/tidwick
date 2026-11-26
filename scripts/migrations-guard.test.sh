@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proves migrations-guard.sh in a scratch repository: with no tag an edit passes; with an annotated tag an edit, a
+# Proves migrations-guard.sh in a scratch repository: with no tag an edit of 0001 passes and any other migration file fails; with an annotated tag an edit, a
 # delete and a rename of a tagged migration fail and a new migration passes; a lightweight tag does not count; the
 # newest tag reachable from HEAD is the base.
 set -euo pipefail
@@ -31,6 +31,13 @@ grep -q 'PASS migrations (pre-release: no tag yet)' out.txt || fail 'the pre-rel
 git commit -q -am edit
 git tag light
 passes 'a lightweight tag is not a release'
+echo 'CREATE TABLE x (id TEXT);' > migrations/0002_x.sql
+refuses 'an extra file with no tag, untracked'
+grep -q 'edit migrations/0001_init.sql in place; new migrations start after v0.1.0' out.txt || fail 'the pre-release failure does not give the rule'
+git add migrations
+refuses 'an extra file with no tag, staged'
+git commit -q -m extra
+refuses 'an extra file with no tag, committed'
 back
 
 fresh

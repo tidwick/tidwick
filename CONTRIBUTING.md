@@ -38,7 +38,7 @@ The deploy recipes (ARCHITECTURE, Deploy) act on a real Cloudflare account. Noth
 
 `just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at both widths; `just live` checks that both public sites answer after each deploy, and the weekly run also checks advisories (`just audit`). It runs typecheck, lint, format check, build, a Worker deploy dry-run, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
 
-Migrations freeze at the first release tag: before it, `migrations/` may be edited (the demo resets itself on deploy); from it on, a file that exists at the newest tag `v*` cannot be modified, renamed or deleted, and a change is a new file. CI clones the full history for this.
+There are no migrations before v0.1.0: `migrations/` holds only `0001_init.sql`, edited in place (the demo resets itself on deploy), and `just guard` fails any other file. Migrations freeze at the first release tag: from it on, a file that exists at the newest tag `v*` cannot be modified, renamed or deleted, and a change is a new file. CI clones the full history for this.
 
 The boundaries those checks hold, and the tests that hold the rest, are listed in `docs/ARCHITECTURE.md`, Boundaries enforced by gates.
 
