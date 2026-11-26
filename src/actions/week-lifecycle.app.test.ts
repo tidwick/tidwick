@@ -216,4 +216,13 @@ describe('an offboarded person’s open week', () => {
     const reader = await scopeFor(env.DB, who.personId);
     expect(await weekState(reader, env.DB, w.who.personId, WEEK)).toBe('approved');
   });
+
+  it('an approval on their behalf needs a fresh passkey confirmation; a stale one changes nothing', async () => {
+    const w = await bookedWeek();
+    await offboard(w.who.personId);
+    const stale = await caller([ACCOUNTING], { stepUpAgo: 16 * 60_000 });
+    expect((await decide('approve', stale, w)).status).toBe(403);
+    const reader = await scopeFor(env.DB, stale.personId);
+    expect(await weekState(reader, env.DB, w.who.personId, WEEK)).toBe('draft');
+  });
 });

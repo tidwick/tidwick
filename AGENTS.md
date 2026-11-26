@@ -23,7 +23,7 @@ Read `docs/ARCHITECTURE.md` (diagrams first), then the ADR index `docs/adr/READM
 
 - No new docs. CONTRIBUTING, Design changes, says when to amend ARCHITECTURE or add an ADR.
 - A rule that must hold lives in a test, a lint, or a comment at the code site, never only in prose.
-- No per-directory READMEs, runbooks, changelog prose or session logs (`just guard`).
+- No per-directory READMEs, runbooks or session logs (`just guard`).
 
 ## Commit
 
