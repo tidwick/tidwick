@@ -8,6 +8,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cd "$work"
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.test GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.test
+unset GITHUB_ACTIONS
 fail() { echo "FAIL migrations-guard self-test: $1; fix scripts/migrations-guard.sh"; [ ! -f out.txt ] || cat out.txt; exit 1; }
 passes() { "$script" > out.txt 2>&1 || fail "$1 must pass"; }
 refuses() { ! "$script" > out.txt 2>&1 || fail "$1 must fail"; grep -q '^FAIL migrations' out.txt || fail "$1 printed no FAIL line"; return 0; }
