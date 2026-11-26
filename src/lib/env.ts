@@ -4,6 +4,7 @@ import type { NoteKeks } from './note-crypto';
 import {
   binding,
   choice,
+  clientPrefixes,
   demoPassword,
   hasMethods,
   mailOf,
@@ -44,6 +45,8 @@ export interface Env {
   MCP: boolean;
   /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
   MCP_NOTES: 'off' | 'read';
+  /** Redirect URI prefixes (https, ending in a slash) of the clients OAuth accepts besides claude.ai and loopback; empty by default. */
+  MCP_CLIENTS: readonly string[];
   /** The identity providers `SSO_PROVIDERS` allows, each with its `SSO_SECRET_<ID>`; none turns every `/auth/sso/*` route into a 404. */
   SSO: readonly SsoProvider[];
   BACKUP_RECIPIENT: string;
@@ -82,6 +85,7 @@ function parse(source: Source, gaps?: string[]): Env {
     MCP_NOTES: field(() =>
       choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
     ),
+    MCP_CLIENTS: field(() => clientPrefixes(source)),
     SSO: field(() => ssoProviders(providersText(source), source)),
     BACKUP_RECIPIENT: field(() => recipient(source, 'BACKUP_RECIPIENT')),
     SESSION_SECRET: field(() => secret(source, 'SESSION_SECRET', isSessionSecret)),

@@ -1,6 +1,7 @@
 // The Action registry: one Action per file under `src/actions/<group>/<name>.ts`, each imported by name so
 // `actions.<group>.<name>` is typed for pages and scripts. The import is named `<group><Name>`, since
 // two groups can share a file name.
+import agentsGrant from './agents/grant';
 import agentsMint from './agents/mint';
 import agentsRevoke from './agents/revoke';
 import alertsTest from './alerts/test';
@@ -60,6 +61,7 @@ import taskCodesUpdate from './taskCodes/update';
 
 export const server = {
   agents: {
+    grant: agentsGrant,
     mint: agentsMint,
     revoke: agentsRevoke,
   },

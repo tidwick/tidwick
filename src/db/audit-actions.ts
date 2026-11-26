@@ -13,6 +13,7 @@ export const AUDIT_EVENTS = [
   'auth.regenerateCodes',
   'auth.revokePasskey',
   'agents.mint',
+  'agents.grant',
   'agents.revoke',
   'people.create',
   'people.issueEnrolment',
@@ -94,6 +95,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'auth.logout': 'none',
   'auth.ackCodes': 'none',
   'agents.mint': ['agents.mint'],
+  'agents.grant': ['agents.grant'],
   'agents.revoke': ['agents.revoke'],
   'auth.stepUpOptions': 'none',
   'auth.stepUpVerify': 'none',
@@ -161,6 +163,8 @@ export const AUDIT_OF_PAGES: Readonly<Record<string, readonly AuditEvent[]>> = {
   '/reports/[kind].csv': ['reports.download'],
   // A GET: the provider's redirect finishes an enrolment, which an enrolment link's use audits. A sign-in and a step-up are no event, as with a passkey.
   '/auth/sso/callback': ['auth.enrol', 'people.revokeEnrolments'],
+  // A spent code or refresh token presented again cuts its grant, as the agent's own revoke.
+  '/oauth/token': ['agents.revoke'],
 };
 
 /** Events written by code that is neither an Action nor a page: the CLI bootstrap, the operator rescue and the nightly demo wipe. */

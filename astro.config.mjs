@@ -45,7 +45,14 @@ export default defineConfig({
   devToolbar: { enabled: false },
   // A CSV upload may weigh 2 MB (MAX_IMPORT_BYTES in src/lib/import.ts); Astro's own 1 MB Action limit would answer
   // 413 first, so the limit is 3 MB, MAX_POST_BYTES in src/lib/limits.ts, and the importer names its own cap.
-  security: { csp: { directives: [...CSP_DIRECTIVES] }, actionBodySizeLimit: 3 * 1024 * 1024 },
+  // Astro's own origin check is off so there is one gate, not two that can disagree: src/middleware/csrf.ts judges the
+  // Origin of every POST (stricter, since Astro lets a missing Origin pass), and the token endpoint, whose callers are
+  // not browsers, is its one exception. src/middleware/csrf-origin.app.test.ts holds that every other route refuses.
+  security: {
+    checkOrigin: false,
+    csp: { directives: [...CSP_DIRECTIVES] },
+    actionBodySizeLimit: 3 * 1024 * 1024,
+  },
   integrations: [react(), themeScript()],
   vite: { plugins: [rootRelativeModules(), tailwindcss()] },
 });

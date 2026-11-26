@@ -3,6 +3,7 @@
   "include": [
     ".astro/types.d.ts",
     "src/**/*",
+    "src/pages/.well-known/**/*",
     "test/**/*",
     "e2e/**/*",
     "scripts/**/*",

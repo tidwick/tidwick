@@ -20,7 +20,9 @@ CREATE TABLE agent_token (
   hash TEXT PRIMARY KEY,
   grant_id TEXT NOT NULL REFERENCES agent_grant (id),
   kind TEXT NOT NULL CHECK (kind IN ('code', 'access', 'refresh')),
-  expires_at INTEGER NOT NULL
+  expires_at INTEGER NOT NULL,
+  challenge TEXT,
+  used_at INTEGER
 ) STRICT;
 
 -- table assignment

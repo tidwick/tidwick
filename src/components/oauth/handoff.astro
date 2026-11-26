@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/base.astro';
+import { LINK } from '../auth/classes';
+// What approving answers with. A 303 after the approve POST would be cancelled by Chrome, because the policy's
+// `form-action 'self'` also covers the redirect a form leads to, so the answer is a 200 with a link and a meta
+// refresh to the client's address. The code sits in that address, so the page is sent with `no-store` and
+// `no-referrer` (src/headers.ts keeps the stricter policy) and the address never reaches a log as a referrer.
+interface Props {
+  location: string;
+  client: string;
+  host: string;
+}
+const { location, client, host } = Astro.props;
+---
+
+<Base title="Returning to the app · tidwick">
+  <meta slot="head" http-equiv="refresh" content={`0;url=${location}`} />
+  <main id="main" class="mx-auto grid max-w-md gap-block px-gutter py-section" data-handoff>
+    <h1 class="text-2xl font-semibold tracking-tight">Approved</h1>
+    <p class="text-muted-foreground">
+      You are being sent back to {client} at {host}. If nothing happens,{' '}
+      <a href={location} class={LINK} data-handoff-link>
+        continue to {client}
+      </a>
+      .
+    </p>
+  </main>
+</Base>

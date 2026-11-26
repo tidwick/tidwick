@@ -116,6 +116,8 @@ const REVIEWED = new Set([
   // An agent's input problems: schema paths and the messages our own schemas and `readCells` write.
   "issues.map((i) => `${pathText(i.path)}: ${i.message}`).join('; ')",
   "problems.join('; ')",
+  // `OauthError` messages are fixed sentences written in src/oauth/, none of which echoes the request.
+  'error.message',
 ]);
 
 /** The second argument of each `fail(code, detail)` call in `text`. */

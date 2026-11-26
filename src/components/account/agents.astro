@@ -8,9 +8,11 @@ import {
   LABEL_MAX,
   LIFE_DAYS,
   MAX_LIVE_GRANTS,
+  PERSONAL_CLIENT,
 } from '../../auth/agent-personal';
 import type { ListedGrant } from '../../db/agent-grants';
-// Agent tokens on the account page: the ones held, a form to mint another, and a just-minted token shown once.
+// Agent tokens on the account page: the ones held, whether made here or approved for an app (the same Revoke ends
+// either), a form to mint another, and a just-minted token shown once.
 // The token comes only from the posted Action's result, so a reload shows no token. The page hides this section
 // when MCP is off, and says to confirm first when the passkey confirmation has lapsed.
 interface Props {
@@ -26,6 +28,9 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const hour = (ms: number) => `${new Date(ms).toISOString().slice(0, 13).replace('T', ' ')}:00 UTC`;
 const scopesOf = (json: string) => (JSON.parse(json) as string[]).join(', ');
 const MINT = cn(SECONDARY, 'w-fit');
+// An approved app is named by the address of its own client document; a token made here has none.
+const appHost = (id: string) =>
+  id === PERSONAL_CLIENT || !URL.canParse(id) ? null : new URL(id).host;
 ---
 
 <section aria-labelledby="agents-h" class="grid gap-3" data-agents>
@@ -33,9 +38,9 @@ const MINT = cn(SECONDARY, 'w-fit');
     Agent tokens
   </h2>
   <p class="text-sm text-muted-foreground">
-    A token lets an agent such as Claude Code read and fill in your own weeks over MCP. It acts as
-    you, with a member's rights and only on the projects you are assigned. It cannot approve, export
-    or change settings, and it cannot make or revoke tokens.
+    A token, or an app you approved, lets an agent such as Claude read and fill in your own weeks
+    over MCP. It acts as you, with a member's rights and only on the projects you are assigned. It
+    cannot approve, export or change settings, and it cannot make or revoke tokens.
   </p>
   {minted && (
     <div class="grid gap-2 rounded-md border border-border p-4" data-agent-token>
@@ -62,11 +67,18 @@ const MINT = cn(SECONDARY, 'w-fit');
     </div>
   )}
   <ul class="divide-y divide-border rounded-md border border-border">
-    {grants.length === 0 && <li class="p-4 text-sm text-muted-foreground">No agent tokens.</li>}
+    {grants.length === 0 && (
+      <li class="p-4 text-sm text-muted-foreground">No agent tokens or approved apps.</li>
+    )}
     {grants.map((g) => (
       <li class="flex flex-wrap items-center justify-between gap-3 p-4">
         <div class="text-sm">
-          <p class="font-medium">{g.client_name}</p>
+          <p class="font-medium">
+            {g.client_name}
+            {appHost(g.client_id) && (
+              <span class="font-normal text-muted-foreground">{` · app at ${appHost(g.client_id) ?? ''}`}</span>
+            )}
+          </p>
           <p class="text-muted-foreground">
             {scopesOf(g.scopes)}
             {' · '}created {day(g.created_at)}

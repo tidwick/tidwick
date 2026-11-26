@@ -52,10 +52,16 @@ const EVERY_RESPONSE: Readonly<Record<string, string>> = {
   'permissions-policy': PERMISSIONS_POLICY,
 };
 
-/** Sets every security and caching header; a policy Astro rendered with its hashes is kept. */
+/**
+ * Sets every security and caching header; a policy Astro rendered with its hashes is kept, and so is a response's own
+ * `no-referrer`, which only the OAuth hand-off page sends (src/pages/oauth/authorize.astro) and which is stricter.
+ */
 export function withHeaders(request: Request, response: Response): Response {
   const out = new Response(response.body, response);
-  for (const [name, value] of Object.entries(EVERY_RESPONSE)) out.headers.set(name, value);
+  const stricter = out.headers.get('referrer-policy') === 'no-referrer';
+  for (const [name, value] of Object.entries(EVERY_RESPONSE)) {
+    if (!(stricter && name === 'referrer-policy')) out.headers.set(name, value);
+  }
   // `astro dev` hashes nothing and inlines Vite's styles and scripts, so there the policy is left off.
   if (!import.meta.env.DEV && !out.headers.has('content-security-policy')) {
     out.headers.set('content-security-policy', CSP_DIRECTIVES.join('; '));

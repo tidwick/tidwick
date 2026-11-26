@@ -1,0 +1,70 @@
+---
+import { actions } from 'astro:actions';
+import Auth from '../../layouts/auth.astro';
+import Heading from '../../components/auth/heading.astro';
+import { LINK } from '../../components/auth/classes';
+import Consent from '../../components/oauth/consent.astro';
+import Handoff from '../../components/oauth/handoff.astro';
+import { throttleAgent } from '../../auth/rate-limit';
+import { currentEnv } from '../../lib/env';
+import { readAuthorize, returnAddress, type AuthRequest } from '../../oauth/authorize';
+import { OauthError } from '../../oauth/error';
+import { pageContext, problemOf } from '../_context';
+
+// A client's request for access, for a signed-in member (a signed-out visitor is sent to sign in and back by
+// the route table). A refused request is shown here as text and never redirected, since its address is not yet vetted.
+const env = currentEnv();
+const ctx = pageContext(Astro);
+const granted = Astro.getActionResult(actions.agents.grant);
+const approved = granted && !granted.error ? granted.data : null;
+let request: AuthRequest | null = null;
+let refusal: string | null = problemOf([granted]);
+if (approved) {
+  Astro.response.headers.set('referrer-policy', 'no-referrer');
+} else {
+  try {
+    await throttleAgent(env.RATE_LIMIT, env.SESSION_SECRET, { person: ctx.personId });
+    request = await readAuthorize(Astro.url.searchParams, env);
+  } catch (error) {
+    if (!(error instanceof OauthError)) throw error;
+    refusal ??= error.message;
+  }
+  if (request === null) Astro.response.status = 400;
+}
+const post = new URL(Astro.url);
+post.searchParams.set('_action', 'agents.grant');
+---
+
+{approved ? (
+  <Handoff location={approved.location} client={approved.client} host={approved.host} />
+) : (
+  <Auth title="Connect an app">
+    {request ? (
+      <>
+        {refusal && (
+          <p class="text-sm font-medium text-danger" role="alert">
+            {refusal}
+          </p>
+        )}
+        <Consent
+          request={request}
+          csrf={ctx.csrf}
+          until={ctx.stepUpUntil}
+          action={`${post.pathname}${post.search}`}
+          denied={returnAddress(request, env.ORIGIN, { error: 'access_denied' })}
+          notes={env.MCP_NOTES === 'read'}
+        />
+      </>
+    ) : (
+      <>
+        <Heading text="This request cannot be approved">Nothing was granted.</Heading>
+        <p class="text-sm font-medium" role="alert" data-refusal>
+          {refusal}
+        </p>
+        <a href="/account" class={LINK}>
+          Back to your account
+        </a>
+      </>
+    )}
+  </Auth>
+)}

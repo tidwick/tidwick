@@ -22,7 +22,7 @@ function complete(): Record<string, unknown> {
 }
 
 /** Vars a local run may set in .dev.vars that wrangler.jsonc sets only for the demo environment. */
-const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES', 'SSO_PROVIDERS'];
+const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES', 'MCP_CLIENTS', 'SSO_PROVIDERS'];
 
 function caught(source: object): AppError {
   try {
@@ -134,6 +134,26 @@ describe('typed env', () => {
       expect(caught({ ...complete(), DEMO_BANNER }).detail).toBe('DEMO_BANNER');
     }
     expect(env).not.toHaveProperty('DEMO_BANNER');
+  });
+
+  it('MCP_CLIENTS is a list of https prefixes ending in a slash, and anything else is refused by name', () => {
+    expect(readEnv(complete()).MCP_CLIENTS).toEqual([]);
+    expect(readEnv({ ...complete(), MCP_CLIENTS: '' }).MCP_CLIENTS).toEqual([]);
+    expect(
+      readEnv({ ...complete(), MCP_CLIENTS: 'https://a.example/cb/, https://b.example/' })
+        .MCP_CLIENTS,
+    ).toEqual(['https://a.example/cb/', 'https://b.example/']);
+    for (const MCP_CLIENTS of [
+      'http://a.example/',
+      'https://a.example',
+      'https://a.example/cb',
+      'https://a.example/?x=1',
+      'https://a.example/#f',
+      'a.example',
+      'https://a.example/,',
+      7,
+    ])
+      expect(caught({ ...complete(), MCP_CLIENTS }).detail).toBe('MCP_CLIENTS');
   });
 
   it('MCP is off by default and its notes withheld: only "on" opens the agent routes, only "read" shows notes', () => {

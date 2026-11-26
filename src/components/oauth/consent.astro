@@ -1,0 +1,74 @@
+---
+import { cn } from 'cn';
+import StepUp from '../admin/step-up.astro';
+import Heading from '../auth/heading.astro';
+import { LINK, PRIMARY } from '../auth/classes';
+import { onlyLoopback } from '../../oauth/redirect';
+import type { AuthRequest } from '../../oauth/authorize';
+// The page a person approves a client on: who is asking, where the code will go, what they may do, and a passkey
+// confirmation, since a grant lets a program act as them. Read and write are ticked and submit is not. The client's
+// name is the client's own words, so it is escaped by the template and never trusted for anything.
+interface Props {
+  request: AuthRequest;
+  csrf: string;
+  /** When the passkey confirmation ends, or null; the approve button waits for one. */
+  until: number | null;
+  /** The address the form posts to, which carries the whole request. */
+  action: string;
+  /** Where Deny sends the person: the client's redirect with `access_denied`. */
+  denied: string;
+  notes: boolean;
+}
+const { request, csrf, until, action, denied, notes } = Astro.props;
+const { client } = request;
+const clientHost = new URL(client.id).host;
+const redirectHost = new URL(request.redirectUri).host;
+const loopback = onlyLoopback(client.redirectUris);
+const LABELS = {
+  read: 'read your weeks',
+  write: 'change hours and rows in a week you can still edit',
+  submit: 'submit a week, which locks it until an accountant returns it',
+} as const;
+---
+
+<Heading text={`Connect ${client.name}?`}>
+  {client.name} ({clientHost}) asks to act as you in tidwick, with a member's rights on the projects
+  you are assigned to. It cannot approve, export or change settings.
+</Heading>
+{loopback ? (
+  <p class="text-sm font-medium" data-loopback>
+    This program runs on the computer you are using now, and approving sends you back to it.
+  </p>
+) : (
+  <p class="text-sm text-muted-foreground">Approving sends you to {redirectHost}.</p>
+)}
+{notes && (
+  <p class="text-sm text-muted-foreground">
+    Notes you wrote are sent to this agent's provider when it reads them.
+  </p>
+)}
+<StepUp csrf={csrf} until={until} unlocks="approving a connection" />
+<form method="POST" action={action} class="grid gap-3">
+  <input type="hidden" name="_csrf" value={csrf} />
+  <fieldset class="grid gap-1">
+    <legend class="text-sm font-medium">It may</legend>
+    {request.offered.map((scope) => (
+      <label class="flex min-h-11 items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          name="scopes"
+          value={scope}
+          checked={scope !== 'submit'}
+          class="size-5"
+        />
+        {LABELS[scope]}
+      </label>
+    ))}
+  </fieldset>
+  <button type="submit" class={PRIMARY} disabled={until === null}>
+    Approve
+  </button>
+  <a href={denied} class={cn(LINK, 'w-fit text-sm')}>
+    Deny
+  </a>
+</form>
