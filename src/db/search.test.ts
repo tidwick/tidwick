@@ -6,7 +6,7 @@ import { SEED_IDS } from '../../test/seed/build';
 import { loadSeed } from '../../test/seed/load';
 import { submittedStatements } from '../../test/seed/submitted';
 import { currentEnv } from '../lib/env';
-import { submittedWeeks } from './approvals';
+import { approvalWeeks } from './approvals';
 import { listPeople } from './people';
 import { scopeFor, systemScope } from './scope';
 
@@ -61,10 +61,10 @@ describe('searching the approvals list over the 100-person seed', () => {
 
   it('a name keeps that person’s weeks and drops everyone else’s', async () => {
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
-    const all = await submittedWeeks(admin, env.DB);
+    const all = (await approvalWeeks(admin, env.DB, { state: 'submitted' })).weeks;
     expect(all).toHaveLength(40);
     // The submitters are the 4th to the 33rd person; Dev is every tenth from the 4th, and the first ten submit twice.
-    const dev = await submittedWeeks(admin, env.DB, 'dev ');
+    const dev = (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'dev ' })).weeks;
     expect(dev).toHaveLength(4);
     expect(new Set(dev.map((w) => w.person_id))).toEqual(
       new Set([SEED_IDS.person(4), SEED_IDS.person(14), SEED_IDS.person(24)]),
@@ -73,15 +73,26 @@ describe('searching the approvals list over the 100-person seed', () => {
 
   it('an email or accounting code finds a person, and a term nobody holds finds nothing', async () => {
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
-    expect(await submittedWeeks(admin, env.DB, 'elin.abernath@larkspur')).toHaveLength(2);
-    expect(await submittedWeeks(admin, env.DB, 'R1003')).toHaveLength(2);
-    expect(await submittedWeeks(admin, env.DB, 'zzzz')).toEqual([]);
-    expect(await submittedWeeks(admin, env.DB, '%')).toEqual([]);
+    expect(
+      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'elin.abernath@larkspur' }))
+        .weeks,
+    ).toHaveLength(2);
+    expect(
+      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'R1003' })).weeks,
+    ).toHaveLength(2);
+    expect(
+      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'zzzz' })).weeks,
+    ).toEqual([]);
+    expect((await approvalWeeks(admin, env.DB, { state: 'submitted', term: '%' })).weeks).toEqual(
+      [],
+    );
   });
 
   it('a member scope is refused a search as it is refused the list', async () => {
     const member = await scopeFor(env.DB, SEED_IDS.person(3));
-    await expect(submittedWeeks(member, env.DB, 'dev')).rejects.toMatchObject({
+    await expect(
+      approvalWeeks(member, env.DB, { state: 'submitted', term: 'dev' }),
+    ).rejects.toMatchObject({
       code: 'not_found',
     });
   });

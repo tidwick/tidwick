@@ -1,0 +1,34 @@
+---
+import { formatHours } from '../../lib/hours';
+import { writtenDate } from '../../lib/dates';
+import type { RecentWeek } from '../../db/my-weeks';
+import WeekStateBadge from './week-state-badge.astro';
+// The owner's last weeks as one strip of links, returned weeks first, each with its state and hours.
+interface Props {
+  weeks: RecentWeek[];
+  /** The week the page shows, which the strip marks as the current page. */
+  shown: string;
+}
+const { weeks, shown } = Astro.props;
+---
+
+<nav aria-label="My weeks">
+  <h2 class="mb-2 text-sm font-semibold">My weeks</h2>
+  <ul class="flex flex-wrap gap-2">
+    {weeks.map((week) => (
+      <li>
+        <a
+          class="flex min-h-11 flex-col gap-0.5 rounded-lg border border-control px-3 py-1.5 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          href={`/week/${week.weekStart}`}
+          aria-current={week.weekStart === shown ? 'page' : undefined}
+        >
+          <span class="tabular-nums">{writtenDate(week.weekStart)}</span>
+          <span class="flex items-center gap-2">
+            <WeekStateBadge state={week.state} />
+            <span class="tabular-nums text-muted-foreground">{formatHours(week.total)} h</span>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>

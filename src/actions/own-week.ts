@@ -4,17 +4,17 @@ import type { ActionAPIContext } from 'astro:actions';
 import { loadWeek } from '../db/week-view';
 import { currentEnv, noteKeks } from '../lib/env';
 import { fail } from '../lib/errors';
-import type { WeekView } from '../lib/week';
+import type { LoadedWeek } from '../lib/week';
 import { scopeOf } from './context';
 
 export async function personWeek(
   context: ActionAPIContext,
   personId: string,
   weekStart: string,
-): Promise<WeekView> {
+): Promise<LoadedWeek> {
   return loadWeek(scopeOf(context), currentEnv().DB, noteKeks(), personId, weekStart);
 }
 
-export async function ownWeek(context: ActionAPIContext, weekStart: string): Promise<WeekView> {
+export async function ownWeek(context: ActionAPIContext, weekStart: string): Promise<LoadedWeek> {
   return personWeek(context, scopeOf(context).actorId ?? fail('forbidden'), weekStart);
 }

@@ -6,13 +6,16 @@ import WeekStateBadge from '../../../components/admin/week-state-badge.astro';
 import WeekEdits from '../../../components/admin/week-edits.astro';
 import { WeekGrid } from '../../../components/week-grid/week-grid';
 import { exportNoteLimit } from '../../../db/csv-settings';
+import { nextWaiting } from '../../../db/approvals';
 import { personById } from '../../../db/people';
 import { editsOfWeek } from '../../../db/week-edits';
+import { weekDecision } from '../../../db/week-decision';
 import { loadWeek } from '../../../db/week-view';
+import { LINK } from '../../../components/auth/classes';
 import { writtenDate } from '../../../lib/dates';
 import { noteKeks } from '../../../lib/env';
 import { formatHours } from '../../../lib/hours';
-import { isWeekStart, weekDates, weekTotal } from '../../../lib/week';
+import { isWeekStart, neighbourWeek, weekDates, weekTotal } from '../../../lib/week';
 import { errorPage } from '../../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
 
@@ -24,14 +27,21 @@ if (!person) return errorPage(Astro, 'not_found');
 
 const path = Astro.url.pathname;
 const edited = Astro.getActionResult(actions.entriesFor.save);
-const posted = [
-  Astro.getActionResult(actions.submission.approve),
-  Astro.getActionResult(actions.submission.return),
-  edited,
-];
-if (succeeded(posted)) return Astro.redirect(savedAt(edited ? `${path}?edit=1` : path), 303);
+const approved = Astro.getActionResult(actions.submission.approve);
+const posted = [approved, Astro.getActionResult(actions.submission.return), edited];
+if (succeeded(posted)) {
+  if (approved && Astro.url.searchParams.get('next') === '1') {
+    const waiting = await nextWaiting(ctx.scope, ctx.db, personId, weekStart);
+    const to = waiting ? `/approvals/${waiting.person_id}/${waiting.week_start}` : '/approvals';
+    return Astro.redirect(savedAt(to), 303);
+  }
+  return Astro.redirect(savedAt(edited ? `${path}?edit=1` : path), 303);
+}
 
 const week = await loadWeek(ctx.scope, ctx.db, noteKeks(), personId, weekStart);
+const decision = await weekDecision(ctx.scope, ctx.db, personId, weekStart);
+const previous = neighbourWeek(weekStart, -1);
+const next = neighbourWeek(weekStart, 1);
 const edits = await editsOfWeek(ctx.scope, ctx.db, personId, weekStart);
 const noteLimit = await exportNoteLimit(ctx.db);
 const days = weekDates(weekStart);
@@ -42,6 +52,9 @@ const STATE = {
   approved: 'approved',
   returned: 'returned to the person',
 };
+const decided =
+  decision.at === null ? '' : writtenDate(new Date(decision.at).toISOString().slice(0, 10));
+const by = decision.by === null ? '' : ` by ${decision.by}`;
 const label = `${person.name}, week of ${writtenDate(weekStart)}`;
 ---
 
@@ -51,6 +64,16 @@ const label = `${person.name}, week of ${writtenDate(weekStart)}`;
     <a class="underline underline-offset-2" href="/approvals">
       Back to approvals
     </a>
+    {previous !== null && (
+      <a class={`${LINK} ml-3`} href={`/approvals/${personId}/${previous}`}>
+        Previous week
+      </a>
+    )}
+    {next !== null && (
+      <a class={`${LINK} ml-3`} href={`/approvals/${personId}/${next}`}>
+        Next week
+      </a>
+    )}
   </Fragment>
 
   <section aria-labelledby="decide-h" class="grid gap-4 rounded-lg border border-border p-4">
@@ -69,6 +92,24 @@ const label = `${person.name}, week of ${writtenDate(weekStart)}`;
         {editing ? 'Stop editing' : 'Edit through the lock'}
       </a>
     </div>
+    {week.state === 'approved' && decided !== '' && (
+      <p class="text-sm">
+        Approved{by} on {decided}.
+      </p>
+    )}
+    {week.state === 'returned' && decided !== '' && (
+      <p class="text-sm">
+        Returned{by} on {decided}
+        {decision.reason !== null && (
+          <>
+            : {'\u201c'}
+            {decision.reason}
+            {'\u201d'}
+          </>
+        )}
+        .
+      </p>
+    )}
     <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="approving, returning and editing" />
     <p class="text-xs text-muted-foreground">
       Return unlocks the week for {person.name}. An edit through the lock is recorded below with the
@@ -86,6 +127,8 @@ const label = `${person.name}, week of ${writtenDate(weekStart)}`;
     weekStart={weekStart}
     days={days}
     state={week.state}
+    fingerprint={week.fingerprint}
+    offboarded={person.offboarded_at !== null}
     rows={week.rows}
     options={[]}
     addProjectId=""

@@ -20,7 +20,11 @@ const stale = () => caller([ACCOUNTING], { stepUpAgo: 16 * MINUTE });
 
 const submit = (who: Caller) => rpcForm('submission.submit', who, { weekStart: WEEK });
 const decide = (event: 'approve' | 'return', who: Caller, b: Booking) =>
-  rpcForm(`submission.${event}`, who, { personId: b.who.personId, weekStart: WEEK });
+  rpcForm(`submission.${event}`, who, {
+    personId: b.who.personId,
+    weekStart: WEEK,
+    ...(event === 'return' ? { reason: 'Check the hours' } : {}),
+  });
 const editFor = (who: Caller, b: Booking, ...cells: Fields[]) =>
   rpcForm(
     'entriesFor.save',

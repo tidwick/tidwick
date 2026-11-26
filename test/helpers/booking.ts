@@ -11,7 +11,7 @@ import { addRow as addWeekRow } from '../../src/db/week-rows';
 import { loadWeek } from '../../src/db/week-view';
 import { scopeFor } from '../../src/db/scope';
 import { currentEnv, noteKeks } from '../../src/lib/env';
-import type { WeekView } from '../../src/lib/week';
+import type { LoadedWeek } from '../../src/lib/week';
 import { adminScope, T0 } from './auth';
 import { caller, rpcForm, type Caller, type Fields } from './callers';
 import { unique } from './reference';
@@ -73,7 +73,7 @@ export async function booking(): Promise<Booking> {
 }
 
 /** The member's own week as the grid would show it. */
-export async function weekOf(who: Caller, weekStart: string): Promise<WeekView> {
+export async function weekOf(who: Caller, weekStart: string): Promise<LoadedWeek> {
   const scope = await scopeFor(env.DB, who.personId);
   return loadWeek(scope, env.DB, noteKeks(), who.personId, weekStart);
 }

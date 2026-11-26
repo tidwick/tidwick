@@ -29,10 +29,31 @@ describe('the approver decides from the bar beside the week total', () => {
     expect(approve?.method).toBe('post');
     expect(fieldsOf(approve)).toEqual({
       _csrf: 'token',
+      fingerprint: '0.0.0',
       personId: 'person-1',
       weekStart: '2026-01-05',
     });
     expect(approve).not.toBe(back);
+  });
+
+  it('a submitted week also offers Approve and open next, which posts to the same Action marked to go on', () => {
+    renderGrid({ ...forProps, state: 'submitted' });
+    const next = owner(/^Approve and open next$/);
+    expect(next?.getAttribute('action')).toBe('/week/2026-01-05?_action=submission.approve&next=1');
+    expect(fieldsOf(next)).toMatchObject({ fingerprint: '0.0.0', personId: 'person-1' });
+  });
+
+  it('Return asks for a reason in the bar, a required field of the Return form', () => {
+    renderGrid({ ...forProps, state: 'submitted' });
+    const reason = screen.getByRole<HTMLInputElement>('textbox', { name: 'Reason for returning' });
+    expect(reason.required).toBe(true);
+    expect(reason.name).toBe('reason');
+    expect(reason.form).toBe(owner(/^Return to the person$/));
+  });
+
+  it('the forms carry the fingerprint the page was drawn with', () => {
+    renderGrid({ ...forProps, state: 'approved', fingerprint: '2.1400.1780000000000' });
+    expect(fieldsOf(owner(/^Return to the person$/)).fingerprint).toBe('2.1400.1780000000000');
   });
 
   it('the decision buttons sit in the same bar as the week total', () => {
@@ -45,6 +66,17 @@ describe('the approver decides from the bar beside the week total', () => {
     renderGrid({ ...forProps, state: 'approved' });
     expect(screen.getByRole('button', { name: /^Return to the person$/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Approve$/ })).toBeNull();
+  });
+
+  it('a person who has left has their open week approved on their behalf, and a returned week is never returned again', () => {
+    for (const state of ['draft', 'returned'] as const) {
+      const view = renderGrid({ ...forProps, state, offboarded: true });
+      expect(screen.getByRole('button', { name: 'Approve on behalf' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Return to the person$/ })).toBeNull();
+      view.unmount();
+    }
+    renderGrid({ ...forProps, state: 'draft' });
+    expect(screen.queryByRole('button', { name: 'Approve on behalf' })).toBeNull();
   });
 
   it('a draft or returned week offers no decision, and the owner never sees one', () => {

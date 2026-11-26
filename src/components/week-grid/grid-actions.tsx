@@ -1,10 +1,13 @@
 // The bar under the grid: Save, Submit week and Copy last week for an editable week, the unsaved flag, the
 // approver's Approve and Return when the week awaits a decision, what the last save said, and the week total, which stays in view at
 // the foot of the window however long the grid grows, on a phone as on a wide screen.
+import { Fragment } from 'react';
 import { formatHours } from '../../lib/hours';
 import { Button } from '../ui/button';
-import { decisionFormId, type Decision } from './decide-forms';
+import { Input } from '../ui/input';
+import { decisionFormId, type Choice } from './decide-forms';
 import { GridMessages, type Message } from './grid-messages';
+import { SubmitWeek } from './submit-week';
 
 export interface GridActionsProps {
   path: string;
@@ -16,7 +19,7 @@ export interface GridActionsProps {
   /** The last save's outcome or refusal, said in the bar beside the controls that caused it. */
   message: Message | null;
   /** The approver's decisions this week allows, each a button for a form beside the grid; none for the owner. */
-  decisions: Decision[];
+  decisions: readonly Choice[];
   weekTotal: number;
   onSubmitWeek: () => void;
   onCopyLastWeek: () => void;
@@ -35,19 +38,13 @@ export function GridActions(props: GridActionsProps) {
           </Button>
           {own && (
             <>
-              <Button
-                type="submit"
-                variant="outline"
-                className={`${tall} border-control`}
-                formAction={`${path}?_action=submission.submit`}
+              <SubmitWeek
+                action={`${path}?_action=submission.submit`}
+                total={props.weekTotal}
                 disabled={busy || unsaved}
-                onClick={(event) => {
-                  event.preventDefault();
-                  props.onSubmitWeek();
-                }}
-              >
-                Submit week
-              </Button>
+                className={`${tall} border-control`}
+                onConfirm={props.onSubmitWeek}
+              />
               <Button
                 type="submit"
                 variant="outline"
@@ -69,16 +66,29 @@ export function GridActions(props: GridActionsProps) {
         </>
       )}
       <GridMessages message={props.message} />
-      {props.decisions.map((decision) => (
-        <Button
-          key={decision}
-          type="submit"
-          form={decisionFormId(decision)}
-          variant={decision === 'approve' ? 'default' : 'outline'}
-          className={decision === 'approve' ? tall : `${tall} border-control`}
-        >
-          {decision === 'approve' ? 'Approve' : 'Return to the person'}
-        </Button>
+      {props.decisions.map(({ decision, label }) => (
+        <Fragment key={decision}>
+          {decision === 'return' && (
+            <Input
+              type="text"
+              name="reason"
+              form={decisionFormId(decision)}
+              required
+              maxLength={500}
+              aria-label="Reason for returning"
+              placeholder="Why is it returned?"
+              className="h-11 basis-64 border-control md:h-9 md:max-w-sm"
+            />
+          )}
+          <Button
+            type="submit"
+            form={decisionFormId(decision)}
+            variant={decision === 'return' ? 'outline' : 'default'}
+            className={decision === 'return' ? `${tall} border-control` : tall}
+          >
+            {label}
+          </Button>
+        </Fragment>
       ))}
       <p className="ml-auto flex items-baseline gap-2 text-sm font-medium max-md:order-first max-md:w-full max-md:justify-between">
         Week total

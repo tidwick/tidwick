@@ -3,12 +3,17 @@ import { z } from 'astro/zod';
 import { decideWeek } from '../../db/submissions';
 import { currentEnv } from '../../lib/env';
 import { act, scopeOf } from '../context';
-import { csrfField, idField, weekStartField } from '../inputs';
+import { csrfField, fingerprintField, idField, weekStartField } from '../inputs';
 import { personWeek } from '../own-week';
 
 export default defineAction({
   accept: 'form',
-  input: z.object({ ...csrfField, personId: idField, weekStart: weekStartField }),
+  input: z.object({
+    ...csrfField,
+    personId: idField,
+    weekStart: weekStartField,
+    fingerprint: fingerprintField,
+  }),
   handler: (input, context) =>
     act(async () => {
       const { personId, weekStart } = input;
@@ -19,6 +24,7 @@ export default defineAction({
         weekStart,
         'approve',
         Date.now(),
+        { unchanged: input.fingerprint },
       );
       return personWeek(context, personId, weekStart);
     }),

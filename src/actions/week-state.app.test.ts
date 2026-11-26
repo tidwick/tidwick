@@ -16,11 +16,11 @@ describe('a week names its state beside the heading', () => {
   it('a draft week reads Draft and a submitted week reads Submitted, after the heading and before the lead', async () => {
     const w = await bookedWeek();
     const draft = await (await getPage(`/week/${WEEK}`, w.who)).text();
-    expect(badges(draft)).toEqual(['draft:Draft']);
+    expect(badges(draft)[0]).toBe('draft:Draft');
     expect(draft.indexOf('<h1')).toBeLessThan(draft.indexOf('data-week-state'));
     await submitWeek(w.member, env.DB, WEEK, T0);
     const locked = await (await getPage(`/week/${WEEK}`, w.who)).text();
-    expect(badges(locked)).toEqual(['submitted:Submitted']);
+    expect(badges(locked)[0]).toBe('submitted:Submitted');
     expect(locked).toContain('This week is submitted and locked.');
   });
 

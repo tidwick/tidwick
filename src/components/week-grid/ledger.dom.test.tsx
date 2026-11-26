@@ -31,6 +31,7 @@ const PROPS: WeekGridProps = {
   weekStart: '2026-01-05',
   days: DAYS,
   state: 'draft',
+  fingerprint: '0.0.0',
   rows: ROWS,
   options: [],
   addProjectId: '',
@@ -134,6 +135,7 @@ describe('hours with no note is a hint, never a stop', () => {
     const submit = screen.getByRole('button', { name: 'Submit week' });
     expect(submit.hasAttribute('disabled')).toBe(false);
     await user.click(submit);
+    await user.click(screen.getByRole('button', { name: 'Confirm submit' }));
     expect(api.submitWeek).toHaveBeenCalledTimes(1);
   });
 

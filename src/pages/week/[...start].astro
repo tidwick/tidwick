@@ -2,15 +2,25 @@
 import { actions } from 'astro:actions';
 import Shell from '../../components/admin/shell.astro';
 import WeekStateBadge from '../../components/admin/week-state-badge.astro';
+import MyWeeks from '../../components/admin/my-weeks.astro';
 import { LINK } from '../../components/auth/classes';
 import { WeekGrid } from '../../components/week-grid/week-grid';
 import { exportNoteLimit } from '../../db/csv-settings';
+import { recentWeeks } from '../../db/my-weeks';
 import { timeZone } from '../../db/settings';
+import { weekDecision } from '../../db/week-decision';
 import { emptyCause } from '../../db/week-empty';
 import { addRowOptions, loadWeek } from '../../db/week-view';
 import { writtenDate } from '../../lib/dates';
 import { noteKeks } from '../../lib/env';
-import { isWeekStart, neighbourWeek, todayIn, weekDates, weekStartOf } from '../../lib/week';
+import {
+  addDays,
+  isWeekStart,
+  neighbourWeek,
+  todayIn,
+  weekDates,
+  weekStartOf,
+} from '../../lib/week';
 import { errorPage } from '../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../_context';
 
@@ -23,7 +33,8 @@ const requested = Astro.params.start ?? '';
 const monday = requested === '' ? null : weekStartOf(requested);
 if (requested !== '' && monday === null) return errorPage(Astro, 'not_found');
 if (monday !== null && !isWeekStart(requested)) return Astro.redirect(`/week/${monday}`, 302);
-const weekStart = monday ?? weekStartOf(todayIn(await timeZone(ctx.db), Date.now())) ?? '';
+const thisWeek = weekStartOf(todayIn(await timeZone(ctx.db), Date.now())) ?? '';
+const weekStart = monday ?? thisWeek;
 
 const previous = neighbourWeek(weekStart, -1);
 const next = neighbourWeek(weekStart, 1);
@@ -37,10 +48,17 @@ const posted = [
 ];
 if (succeeded(posted)) return Astro.redirect(savedAt(Astro.url.pathname), 303);
 
-const [week, options, noteLimit] = await Promise.all([
+const [week, options, noteLimit, decision, recent] = await Promise.all([
   loadWeek(ctx.scope, ctx.db, noteKeks(), ctx.personId, weekStart),
   addRowOptions(ctx.scope, ctx.db, ctx.personId),
   exportNoteLimit(ctx.db),
+  weekDecision(ctx.scope, ctx.db, ctx.personId, weekStart),
+  recentWeeks(
+    ctx.scope,
+    ctx.db,
+    ctx.personId,
+    Array.from({ length: 8 }, (_, i) => addDays(thisWeek, -7 * i)),
+  ),
 ]);
 const empty = options.length === 0 ? await emptyCause(ctx.scope, ctx.db, ctx.personId) : null;
 const days = weekDates(weekStart);
@@ -69,6 +87,7 @@ const addProjectId = options.some((o) => o.projectId === Astro.url.searchParams.
       </a>
     )}
   </nav>
+  <MyWeeks weeks={recent} shown={weekStart} />
   <WeekGrid
     client:load
     mode="own"
@@ -79,6 +98,8 @@ const addProjectId = options.some((o) => o.projectId === Astro.url.searchParams.
     weekStart={weekStart}
     days={days}
     state={week.state}
+    fingerprint={week.fingerprint}
+    returnReason={decision.reason}
     rows={week.rows}
     options={options}
     empty={empty}

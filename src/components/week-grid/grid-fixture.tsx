@@ -88,6 +88,7 @@ export function renderGrid(overrides: Partial<WeekGridProps> = {}) {
       weekStart="2026-01-05"
       days={DAYS}
       state="draft"
+      fingerprint="0.0.0"
       rows={ROWS}
       options={[]}
       addProjectId=""

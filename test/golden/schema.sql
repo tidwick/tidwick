@@ -279,7 +279,7 @@ CREATE TABLE week_submission (
   state TEXT NOT NULL CHECK (state IN ('submitted', 'approved', 'returned')),
   submitted_at INTEGER NOT NULL,
   decided_by TEXT REFERENCES person (id),
-  decided_at INTEGER,
+  decided_at INTEGER, return_reason TEXT,
   PRIMARY KEY (person_id, week_start)
 ) STRICT;
 

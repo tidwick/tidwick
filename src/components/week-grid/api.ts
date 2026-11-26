@@ -1,12 +1,12 @@
 // The island's calls to the week Actions. Each posts the same form fields the no-script form posts and
 // returns the canonical week, or the message to show; a catalog error already carries its plain-words message.
 import { actions, isInputError } from 'astro:actions';
-import type { WeekView } from '../../lib/week';
+import type { LoadedWeek } from '../../lib/week';
 
-export type Outcome = { ok: true; week: WeekView } | { ok: false; message: string };
+export type Outcome = { ok: true; week: LoadedWeek } | { ok: false; message: string };
 
 interface Result {
-  data?: WeekView | undefined;
+  data?: LoadedWeek | undefined;
   error?: { message: string; status?: number | undefined } | undefined;
 }
 
@@ -62,7 +62,9 @@ export const saveCells = (b: Base, cells: Record<string, string>) =>
 export const saveCellsFor = (b: Base, personId: string, cells: Record<string, string>) =>
   call(actions.entriesFor.save, { ...base(b), personId, ...cells });
 
-export const submitWeek = (b: Base) => call(actions.submission.submit, base(b));
+/** Submits the week the owner confirmed: refused if its entries changed since `fingerprint` was read. */
+export const submitWeek = (b: Base, fingerprint: string) =>
+  call(actions.submission.submit, { ...base(b), fingerprint });
 
 export const addRow = (b: Base, projectId: string, taskCodeId: string) =>
   call(actions.entries.addRow, { ...base(b), projectId, taskCodeId });

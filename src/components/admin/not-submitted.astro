@@ -1,0 +1,62 @@
+---
+import type { MissingList } from '../../db/not-submitted';
+import { writtenDate } from '../../lib/dates';
+import Empty from './empty.astro';
+// The people with a recent completed week nobody has submitted, or that came back and was not sent again, grouped by
+// person, each week a link to that person's week page.
+interface Props {
+  list: MissingList;
+  open: boolean;
+  /** How many weeks back the list looks. */
+  looksBack: number;
+}
+const { list, open, looksBack } = Astro.props;
+const people = new Map<string, { name: string; weeks: MissingList['weeks'] }>();
+for (const week of list.weeks) {
+  const held = people.get(week.person_id) ?? { name: week.name, weeks: [] };
+  people.set(week.person_id, { name: held.name, weeks: [...held.weeks, week] });
+}
+---
+
+<section aria-labelledby="missing-h" class="grid gap-3">
+  <h2 id="missing-h" class="text-lg font-semibold">
+    Not submitted
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    People on the books who have not handed in one of the last {looksBack} completed weeks, or whose
+    week was returned and not sent again.{open ? '' : ' Confirm with your passkey to open a week.'}
+  </p>
+  {people.size === 0 ? (
+    <Empty title="Every recent week is in" compact>
+      No one is missing any of the last {looksBack} completed weeks.
+    </Empty>
+  ) : (
+    <ul class="grid gap-3">
+      {[...people.entries()].map(([personId, held]) => (
+        <li class="grid gap-1 rounded-lg border border-border p-3">
+          <p class="font-medium">{held.name}</p>
+          <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {held.weeks.map((week) => (
+              <li>
+                {open ? (
+                  <a
+                    class="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    href={`/approvals/${personId}/${week.week_start}`}
+                  >
+                    Week of {writtenDate(week.week_start)}
+                  </a>
+                ) : (
+                  <span>Week of {writtenDate(week.week_start)}</span>
+                )}{' '}
+                <span class="text-muted-foreground">
+                  ({week.state === 'returned' ? 'returned' : 'not submitted'})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  )}
+  {list.cut && <p class="text-sm text-muted-foreground">The list is cut at its first rows.</p>}
+</section>
