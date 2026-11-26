@@ -83,6 +83,6 @@ grep -q 'shallow' out.txt || fail 'the shallow failure does not say why'
 back
 
 fresh
-GITHUB_ACTIONS=true refuses 'CI with no release tag visible'
+GITHUB_ACTIONS=true passes 'CI before the first release tag'
 back
 echo 'PASS migrations-guard self-test'
