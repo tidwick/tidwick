@@ -29,7 +29,7 @@ describe('SEC-44 the provider buttons are links beside the passkey ones', () => 
       ['google', 'Google'],
     ];
     for (const [id, label] of buttons) {
-      expect(page).toContain(`href="/auth/sso/login?provider=${id}"`);
+      expect(page).toContain(`href="/auth/sso/login?provider=${id}`);
       expect(page).toContain(`Sign in with ${label}`);
     }
     expect(page).not.toMatch(/<form[^>]*sso/);

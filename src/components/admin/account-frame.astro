@@ -6,13 +6,11 @@ import Shell from './shell.astro';
 interface Props {
   recovery: boolean;
   title: string;
-  admin: boolean;
-  accounting: boolean;
   problem: string | null;
   /** The sentence under the heading in the signed-in frame. */
   lead: string;
 }
-const { recovery, title, admin, accounting, problem, lead } = Astro.props;
+const { recovery, title, problem, lead } = Astro.props;
 ---
 
 {recovery ? (
@@ -20,7 +18,7 @@ const { recovery, title, admin, accounting, problem, lead } = Astro.props;
     <slot />
   </Auth>
 ) : (
-  <Shell title={title} admin={admin} accounting={accounting} problem={problem}>
+  <Shell title={title} problem={problem}>
     <Fragment slot="lead">{lead}</Fragment>
     <slot />
   </Shell>

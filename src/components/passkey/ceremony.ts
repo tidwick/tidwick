@@ -68,7 +68,11 @@ export function wireLogin(): void {
     if (start.error) return start.error.message;
     const credential = await asserted(start.data);
     if (!credential) return CANCELLED;
-    const done = await actions.auth.loginVerify({ _csrf, response: assertion(credential) });
+    const done = await actions.auth.loginVerify({
+      _csrf,
+      response: assertion(credential),
+      return: button.dataset.return,
+    });
     if (done.error) return done.error.message;
     window.location.assign(done.data.next);
     return null;

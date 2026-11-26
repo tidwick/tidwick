@@ -29,7 +29,7 @@ export const FLOW_MS = 10 * 60 * 1000;
 /** How far before the flow began a provider's `auth_time` may sit and still count as signing in for it. */
 const SKEW_S = 30;
 const DEFAULT_RETURN = '/week';
-const SAFE_PATH = /^\/(?![/\\])[\x21-\x7e]{0,199}$/;
+const SAFE_PATH = /^\/(?![/\\])(?!auth(?:[/?#]|$))[\x21-\x7e]{0,199}$/;
 
 export const ssoCookie = (rawId: string): string =>
   hostCookie(SSO_COOKIE, rawId, FLOW_MS / 1000, 'Lax');

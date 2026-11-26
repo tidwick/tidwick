@@ -2,12 +2,17 @@ import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { clearedChallengeCookie } from '../../auth/challenge';
 import { completeLogin } from '../../auth/login';
+import { safeReturn } from '../../auth/sso';
 import { endSession, sessionCookie } from '../../auth/session';
 import { act, challengeId, queueCookie, throttled } from '../context';
 import { authenticationJson, csrfField } from '../inputs';
 
 export default defineAction({
-  input: z.object({ ...csrfField, response: authenticationJson }),
+  input: z.object({
+    ...csrfField,
+    response: authenticationJson,
+    return: z.string().max(200).optional(),
+  }),
   handler: (input, context) =>
     act(async () => {
       const deps = await throttled(context, 'login');
@@ -17,6 +22,6 @@ export default defineAction({
       if (previous) await endSession(deps.db, deps.secret, previous.rawId, now);
       queueCookie(context, clearedChallengeCookie());
       queueCookie(context, sessionCookie(login.sessionId));
-      return { next: '/week' };
+      return { next: safeReturn(input.return ?? null, '/week') };
     }),
 });

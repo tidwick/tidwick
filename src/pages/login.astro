@@ -7,13 +7,15 @@ import { signInLinks } from '../components/auth/sso-links';
 import Status from '../components/auth/status.astro';
 import Auth from '../layouts/auth.astro';
 import { demoOpen } from '../auth/demo';
+import { safeReturn } from '../auth/sso';
 import { currentEnv } from '../lib/env';
 
 const signedOut = Astro.getActionResult(actions.auth.logout);
 const session = Astro.locals.session;
 if (session && !signedOut) return Astro.redirect(session.mustEnrol ? '/account' : '/week');
 const demo = await demoOpen(currentEnv());
-const sso = signInLinks();
+const back = safeReturn(Astro.url.searchParams.get('return'), '/week');
+const sso = signInLinks(back);
 ---
 
 <Auth title="Sign in">
@@ -25,6 +27,7 @@ const sso = signInLinks();
       type="button"
       data-passkey="login"
       data-csrf={Astro.locals.csrf}
+      data-return={back}
       class:list={[PRIMARY, 'mt-6']}
     >
       Sign in with a passkey

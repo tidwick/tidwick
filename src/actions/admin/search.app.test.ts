@@ -67,7 +67,7 @@ describe('searching the people page', () => {
     for (const [label, who, status] of [
       ['member', await caller([]), 403],
       ['accounting admin', await caller([ACCOUNTING]), 403],
-      ['signed out', null, 401],
+      ['signed out', null, 303],
     ] as const) {
       const page = await getPage(`/admin/people${q}`, who);
       expect(page.status, label).toBe(status);

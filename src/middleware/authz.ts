@@ -6,6 +6,7 @@ import { grantsOf, type Grant } from '../db/roles';
 import { scopeFor } from '../db/scope';
 import { currentEnv } from '../lib/env';
 import { fail, isAppError } from '../lib/errors';
+import { safeReturn } from '../auth/sso';
 import { errorPage, errorResponse } from './error-responses';
 import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
@@ -46,6 +47,13 @@ export function authorize(
   if (rule.stepUp) requireStepUp(session, now);
 }
 
+/** A signed-out page request goes to sign-in and comes back to the page; a path that is not a same-origin one is dropped. */
+export function signInRedirect(url: URL): Response {
+  const back = safeReturn(`${url.pathname}${url.search}`, '');
+  const target = back === '' ? '/login' : `/login?return=${encodeURIComponent(back)}`;
+  return new Response(null, { status: 303, headers: { location: target } });
+}
+
 export const authz: MiddlewareHandler = async (context, next) => {
   const { DB } = currentEnv();
   const rules = rulesFor(context.routePattern, context.request.method, context.url);
@@ -61,7 +69,16 @@ export const authz: MiddlewareHandler = async (context, next) => {
   } catch (error) {
     if (!isAppError(error)) throw error;
     if (context.routePattern === MCP_PATTERN) return rpcRefusal(error.code);
-    return context.routePattern === RPC_PATTERN ? errorResponse(error.code) : errorPage(error.code);
+    if (context.routePattern === RPC_PATTERN) return errorResponse(error.code);
+    if (error.code === 'unauthenticated' && ['GET', 'HEAD'].includes(context.request.method))
+      return signInRedirect(context.url);
+    const confirm = { href: '/account', label: 'Confirm on your account' };
+    return errorPage(
+      context,
+      error.code,
+      undefined,
+      error.code === 'step_up_required' ? confirm : undefined,
+    );
   }
   return next();
 };

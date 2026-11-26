@@ -42,7 +42,7 @@ describe('SEC-33 only an accounting admin or an admin reads or checks the audit 
     ] as const;
     for (const [label, who, status] of refused) {
       const page = await getPage('/audit', who);
-      expect(page.status, `${label} page`).toBe(status);
+      expect(page.status, `${label} page`).toBe(who ? status : 303);
       expect(await page.text(), `${label} page body`).not.toContain('test.secret_action');
       const script = await rpcForm('audit.verify', who);
       expect(script.status, `${label} script`).toBe(status);

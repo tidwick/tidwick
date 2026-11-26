@@ -30,7 +30,7 @@ const typed = await postedFields(Astro);
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 ---
 
-<Shell title="Clients" admin={ctx.admin} problem={problemOf([newClient, newProject])}>
+<Shell title="Clients" problem={problemOf([newClient, newProject])}>
   <Fragment slot="lead">
     You see the clients that hold a project you are assigned to, and any you created.
   </Fragment>

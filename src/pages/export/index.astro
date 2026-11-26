@@ -38,7 +38,7 @@ if (asked) {
 }
 ---
 
-<Shell title="Export" admin={ctx.admin} accounting={ctx.accounting} problem={problem}>
+<Shell title="Export" problem={problem}>
   <Fragment slot="lead">
     One file per client: the approved time in a date range, one row per entry, with notes. Each
     export is recorded in the audit log and asks for a recent passkey confirmation.

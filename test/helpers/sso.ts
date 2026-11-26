@@ -94,7 +94,7 @@ export async function through(
   who: Caller | null = null,
 ): Promise<Response> {
   const begun = await start(path, who);
-  if (begun.location === '') return begun.response;
+  if (begun.location === '' || begun.location.startsWith('/login')) return begun.response;
   return callback(idp.authorize(begun.location, login), begun.flow);
 }
 

@@ -1,5 +1,6 @@
 // What the four SSO routes share: the 404 when SSO is off, the per-IP limit in the login bucket, and the catalog's
 // page with a way back. Astro does not route files that start with an underscore.
+import type { APIContext } from 'astro';
 import { throttle } from '../../../auth/rate-limit';
 import { clearedSsoCookie, providerOf, safeReturn } from '../../../auth/sso';
 import { currentEnv, type Env } from '../../../lib/env';
@@ -21,12 +22,12 @@ export interface SsoRequest {
  * its page with a link back to the sign-in page and the flow cookie cleared, whatever the outcome.
  */
 export async function ssoRoute(
-  request: Request,
+  context: APIContext,
   body: (call: SsoRequest) => Promise<Response>,
 ): Promise<Response> {
   const env = currentEnv();
-  if (env.SSO.length === 0) return errorPage('not_found');
-  const url = new URL(request.url);
+  if (env.SSO.length === 0) return errorPage(context, 'not_found');
+  const { request, url } = context;
   try {
     await throttle(
       env.LOGIN_LIMIT,
@@ -42,7 +43,11 @@ export async function ssoRoute(
     });
   } catch (error) {
     if (!isAppError(error)) throw error;
-    const page = errorPage(error.code, undefined, { href: '/login', label: 'Back to sign in' });
+    const refused = await errorPage(context, error.code, undefined, {
+      href: '/login',
+      label: 'Back to sign in',
+    });
+    const page = new Response(refused.body, refused);
     page.headers.append('set-cookie', clearedSsoCookie());
     return page;
   }

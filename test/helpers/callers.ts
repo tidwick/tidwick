@@ -36,7 +36,9 @@ function headers(who: Caller | null, type?: string): Headers {
 }
 
 export function getPage(path: string, who: Caller | null): Promise<Response> {
-  return exports.default.fetch(new Request(`${ORIGIN}${path}`, { headers: headers(who) }));
+  return exports.default.fetch(
+    new Request(`${ORIGIN}${path}`, { headers: headers(who), redirect: 'manual' }),
+  );
 }
 
 /** The script caller: POST `/_actions/<name>` with a JSON body carrying the token. */

@@ -1,0 +1,43 @@
+---
+import Heading from '../components/auth/heading.astro';
+import { LINK } from '../components/auth/classes';
+import Shell from '../components/admin/shell.astro';
+import { grantsOf } from '../db/roles';
+import { currentEnv } from '../lib/env';
+import { CATALOG, errorMessage } from '../lib/errors';
+import Auth from '../layouts/auth.astro';
+import { homeFor } from '../middleware/error-responses';
+
+// Every error a browser sees lands here: `errorPage` rewrites the request to this page and leaves the refusal in
+// `locals`. A person who opens the address themselves is told the page is not found. A signed-in person gets the
+// signed-in frame with their own navigation; anyone else the quiet one. The status is the catalog's.
+const refusal = Astro.locals.refusal ?? { code: 'not_found', detail: undefined, back: undefined };
+Astro.response.status = CATALOG[refusal.code].status;
+const session = Astro.locals.session;
+const framed = session !== null && !session.mustEnrol;
+const grants = session ? await grantsOf(currentEnv().DB, session.personId) : [];
+Astro.locals.grants = grants;
+const next = refusal.back ?? homeFor(session !== null, session?.mustEnrol ?? false, grants);
+const message = errorMessage(refusal.code, refusal.detail);
+---
+
+{framed ? (
+  <Shell title={message}>
+    <p>
+      <a class={LINK} href={next.href}>
+        {next.label}
+      </a>
+    </p>
+  </Shell>
+) : (
+  <Auth title={message}>
+    <section>
+      <Heading text={message}>That did not work.</Heading>
+      <p class="mt-6">
+        <a class={LINK} href={next.href}>
+          {next.label}
+        </a>
+      </p>
+    </section>
+  </Auth>
+)}

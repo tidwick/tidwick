@@ -27,7 +27,7 @@ const typed = await postedFields(Astro);
 const renameId = renamed?.error ? typed.id : undefined;
 ---
 
-<Shell title="Task codes" admin={ctx.admin} problem={problemOf(posted)}>
+<Shell title="Task codes" problem={problemOf(posted)}>
   <Fragment slot="lead">
     Task codes are shared by every project. A project allows the ones listed on its page; an
     archived code cannot be added to a project, and stays on the weeks it was booked to.

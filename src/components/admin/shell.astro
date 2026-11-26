@@ -1,4 +1,5 @@
 ---
+import { isAccounting, isAdmin } from '../../db/roles';
 import Base from '../../layouts/base.astro';
 import { ThemeToggle } from '../theme-toggle';
 import { Alert } from '../ui/alert';
@@ -10,21 +11,15 @@ import SignOutForm from '../sign-out-form.astro';
 // line a failed form leaves and the one line a succeeded form leaves (`?saved=1` on the redirect after it).
 interface Props {
   title: string;
-  admin: boolean;
-  accounting?: boolean;
   problem?: string | null;
   wide?: boolean;
   /** The navigation link this page belongs under when its own path is not one, such as a project under Clients. */
   section?: string;
 }
-const {
-  title,
-  admin,
-  accounting = false,
-  problem = null,
-  wide = false,
-  section = '',
-} = Astro.props;
+const { title, problem = null, wide = false, section = '' } = Astro.props;
+const grants = Astro.locals.grants;
+const admin = isAdmin(grants);
+const accounting = isAccounting(grants);
 const column = wide ? 'max-w-6xl' : 'max-w-5xl';
 const path = Astro.url.pathname;
 const person = Astro.locals.session?.name ?? '';

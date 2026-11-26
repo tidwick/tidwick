@@ -13,9 +13,9 @@ const link = (path: string, params: Record<string, string>, text: string): SsoLi
   text,
 });
 
-export const signInLinks = (): SsoLink[] =>
+export const signInLinks = (returnTo = '/week'): SsoLink[] =>
   currentEnv().SSO.map((p) =>
-    link('/auth/sso/login', { provider: p.id }, `Sign in with ${p.label}`),
+    link('/auth/sso/login', { provider: p.id, return: returnTo }, `Sign in with ${p.label}`),
   );
 
 export const enrolLinks = (token: string): SsoLink[] =>

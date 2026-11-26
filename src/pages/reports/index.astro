@@ -17,7 +17,7 @@ const KINDS = [
 ] as const;
 ---
 
-<Shell title="Reports" admin={ctx.admin} accounting={ctx.accounting}>
+<Shell title="Reports">
   <Fragment slot="lead">
     Hours over a date range as CSV. Every week state is included and labelled, so a total never
     reads as approved when it is not. Each download is recorded in the audit log and asks for a

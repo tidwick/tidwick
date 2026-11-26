@@ -26,7 +26,7 @@ const unlinked = Astro.getActionResult(actions.people.unlinkSso);
 if (succeeded([offboarded])) return Astro.redirect(savedAt('/admin/people'), 303);
 if (succeeded([roles, all, unlinked])) return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const person = await personDetail(ctx.scope, ctx.db, id);
-if (!person) return errorPage('not_found');
+if (!person) return errorPage(Astro, 'not_found');
 const held = new Set(person.roles.split(','));
 const link = issued?.data?.link ?? reissued?.data?.link ?? null;
 const active = person.offboarded_at === null;
@@ -41,7 +41,6 @@ const identities = await liveIdentitiesOf(ctx.db, id);
 
 <Shell
   title={person.name}
-  admin={ctx.admin}
   problem={problemOf([issued, reissued, unlocked, roles, offboarded, all, unlinked])}
 >
   <Fragment slot="lead">

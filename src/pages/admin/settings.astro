@@ -45,7 +45,7 @@ const keks = noteKeks();
 const keys = await keyStatus(ctx.db, keks);
 ---
 
-<Shell title="Settings" admin={ctx.admin} accounting={ctx.accounting} problem={problemOf(posted)}>
+<Shell title="Settings" problem={problemOf(posted)}>
   <Fragment slot="lead">
     How this instance runs for your firm. Saving and re-wrapping keys need a passkey confirmation,
     and each change is recorded in the audit log with its value before and after.

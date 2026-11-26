@@ -29,14 +29,14 @@ if (newProject?.data) return Astro.redirect(savedAt(`/projects/${newProject.data
 if (succeeded([rename, archive, projectArchive]))
   return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const client = await clientById(ctx.scope, ctx.db, id);
-if (!client) return errorPage('not_found');
+if (!client) return errorPage(Astro, 'not_found');
 const projects = await listProjects(ctx.scope, ctx.db, id);
 const typed = await postedFields(Astro);
 const archived = client.archived_at !== null;
 const posted = [rename, archive, newProject, projectArchive];
 ---
 
-<Shell title={client.name} admin={ctx.admin} problem={problemOf(posted)}>
+<Shell title={client.name} problem={problemOf(posted)}>
   <Fragment slot="lead">
     <a class="underline underline-offset-2" href="/clients">
       All clients

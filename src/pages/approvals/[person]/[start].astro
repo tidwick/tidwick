@@ -13,13 +13,14 @@ import { writtenDate } from '../../../lib/dates';
 import { noteKeks } from '../../../lib/env';
 import { formatHours } from '../../../lib/hours';
 import { isWeekStart, weekDates, weekTotal } from '../../../lib/week';
+import { errorPage } from '../../../middleware/error-responses';
 import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
 
 const ctx = pageContext(Astro);
 const personId = Astro.params.person ?? '';
 const weekStart = Astro.params.start ?? '';
 const person = isWeekStart(weekStart) ? await personById(ctx.db, personId) : null;
-if (!person) return new Response('Not found', { status: 404 });
+if (!person) return errorPage(Astro, 'not_found');
 
 const path = Astro.url.pathname;
 const edited = Astro.getActionResult(actions.entriesFor.save);
@@ -44,7 +45,7 @@ const STATE = {
 const label = `${person.name}, week of ${writtenDate(weekStart)}`;
 ---
 
-<Shell title={label} admin={ctx.admin} accounting={ctx.accounting} problem={problemOf(posted)}>
+<Shell title={label} problem={problemOf(posted)}>
   <WeekStateBadge slot="badge" state={week.state} />
   <Fragment slot="lead">
     <a class="underline underline-offset-2" href="/approvals">

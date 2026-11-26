@@ -1,10 +1,11 @@
 // The 500 path: whatever a gate or page throws past the Actions' own boundary leaves as the catalog page or body,
 // and the log line names the error without its message, cause or stack.
-import type { APIContext, MiddlewareNext } from 'astro';
+import type { MiddlewareNext } from 'astro';
 import { ActionError } from 'astro:actions';
 import { describe, expect, it, vi } from 'vitest';
 import { ACCOUNTING } from '../../test/helpers/auth';
 import { caller, rpc } from '../../test/helpers/callers';
+import { refusalContext } from '../../test/helpers/refusal-context';
 import { secrets } from '../../test/helpers/probe-secrets';
 import { AppError, CATALOG } from '../lib/errors';
 import { RPC_PATTERN } from './authz';
@@ -12,7 +13,7 @@ import { errors } from './errors';
 import { MCP_PATTERN } from './mcp-responses';
 
 async function answer(pattern: string, thrown: unknown): Promise<Response> {
-  const context = { routePattern: pattern } as unknown as APIContext;
+  const context = refusalContext(pattern);
   const next: MiddlewareNext = () => {
     throw thrown;
   };

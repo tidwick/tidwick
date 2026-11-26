@@ -46,7 +46,7 @@ const roleNames = (roles: string) =>
     .map((r) => `${r.slice(0, 1).toUpperCase()}${r.slice(1)}`);
 ---
 
-<Shell title="People" admin={ctx.admin} problem={problemOf([created])}>
+<Shell title="People" problem={problemOf([created])}>
   <Fragment slot="lead">
     Everyone who can sign in, with their firm, extra roles and whether they have a passkey yet. Open
     a person to issue a link, change roles or see their assignments.

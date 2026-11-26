@@ -137,7 +137,7 @@ export const csrf: MiddlewareHandler = async (context, next) => {
   const code = verdict === 'too_large' ? 'invalid_input' : 'csrf';
   if (agent) return rpcRefusal(code);
   if (context.routePattern === RPC_PATTERN) return errorResponse(code);
-  return errorPage(code, undefined, {
+  return errorPage(context, code, undefined, {
     href: formPage(context.request, ORIGIN),
     label: 'Reload the page',
   });
