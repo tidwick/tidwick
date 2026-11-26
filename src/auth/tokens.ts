@@ -5,14 +5,7 @@ const encoder = new TextEncoder();
 
 /** What a hashed value is, mixed into the HMAC so a hash of one kind never matches another. */
 export type HashKind =
-  | 'enrol'
-  | 'session'
-  | 'challenge'
-  | 'recovery'
-  | 'email'
-  | 'ip'
-  | 'sso_flow'
-  | 'setup';
+  'enrol' | 'session' | 'challenge' | 'recovery' | 'email' | 'ip' | 'sso_flow' | 'setup';
 
 export function toBase64Url(bytes: Uint8Array): string {
   let binary = '';

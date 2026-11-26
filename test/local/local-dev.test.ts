@@ -25,11 +25,6 @@ async function person(id: string, email: string, offboardedAt: number | null): P
   );
 }
 
-/** The statements of a `--command` string, which wrangler splits itself, run one at a time. */
-async function run(sql: string): Promise<void> {
-  for (const statement of sql.split(/(?<=;)\s+/)) await env.DB.exec(statement);
-}
-
 async function sessionsOf(personId: string): Promise<number> {
   return (await storedRows(env.DB, 'session')).filter((row) => row.person_id === personId).length;
 }

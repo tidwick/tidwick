@@ -11,6 +11,8 @@ import { errorPage, errorResponse, type PageLink } from './error-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
 export const RPC_PATTERN = '/_actions/[...path]';
+/** The pattern Astro gives a path nobody built; it is answered as not found, with no route-table row to look up. */
+const UNBUILT_PATTERN = '/404';
 const ACTION_QUERY = '_action';
 
 /**
@@ -68,6 +70,7 @@ export const authz: MiddlewareHandler = async (context, next) => {
   context.locals.scope = null;
   context.locals.grants = [];
   try {
+    if (context.routePattern === UNBUILT_PATTERN) fail('not_found');
     const grants = gated ? await grantsOf(DB, session.personId) : [];
     for (const rule of rules) authorize(rule, session, grants, Date.now());
     context.locals.grants = grants;

@@ -30,8 +30,6 @@ export const PAGES: Readonly<Record<string, Partial<Record<Method, Rule>>>> = {
   '/': get(PUBLIC),
   '/login': get(PUBLIC),
   '/error': get(PUBLIC),
-  // Astro's route for a path nobody built, so a stranger gets a 404 and not a refusal that hints a page might exist.
-  '/404': get(PUBLIC),
   '/enrol/[token]': get(PUBLIC),
   '/recover': get(PUBLIC),
   '/auth/sso/login': get(PUBLIC),
