@@ -67,4 +67,16 @@ refuses 'an example.com ORIGIN on prod' "$prod"
 config '"BACKUP_COPY": "s3"' https://time.firm.test REPLACE_WITH_ID
 refuses 'a REPLACE_WITH placeholder on demo' "$demo" demo
 passes 'a REPLACE_WITH in the demo block does not stop prod' "$prod"
+
+# workers.dev left on with a custom-domain ORIGIN warns (it does not fail); off, or ORIGIN on workers.dev, stays quiet.
+config '"BACKUP_COPY": "s3"' https://time.firm.test
+sed -i.bak 's/^"vars": {/"workers_dev": true,\n"vars": {/' wrangler.jsonc
+passes 'workers_dev on with a custom domain' "$prod"
+grep -q '^WARN deploy-check: workers_dev' out.txt || fail 'workers_dev on with a custom domain printed no WARN'
+sed -i.bak 's#https://time.firm.test#https://tidwick.firm.workers.dev#' wrangler.jsonc
+passes 'workers_dev on with a workers.dev ORIGIN' "$prod"
+! grep -q '^WARN' out.txt || fail 'a workers.dev ORIGIN must not warn'
+config '"BACKUP_COPY": "s3"' https://time.firm.test
+passes 'workers_dev unset' "$prod"
+! grep -q '^WARN' out.txt || fail 'workers_dev unset must not warn'
 echo "PASS deploy-check self-test"

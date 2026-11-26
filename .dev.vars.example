@@ -21,6 +21,8 @@ BACKUP_S3_SECRET=
 DEMO_BANNER=
 # MCP: "on" opens /mcp for agent clients (Claude and others). Leave it empty (off) and every agent route is a 404.
 MCP=
+# LOCAL_DEV: "on" lets MCP=on run with an http ORIGIN, as a local machine does; a deployment leaves it empty and serves https.
+LOCAL_DEV=
 # MCP_NOTES: "read" lets an agent read note text, which then reaches its provider; empty (off) gives it has_note only.
 MCP_NOTES=
 # MCP_CLIENTS: https redirect-URI prefixes, comma separated and each ending in a slash, of hosted clients allowed to ask

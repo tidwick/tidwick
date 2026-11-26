@@ -22,6 +22,7 @@ export const BINDING_NAMES: ReadonlySet<string> = new Set([
   'DEMO_BANNER',
   'DEMO_LOGIN',
   'MCP',
+  'LOCAL_DEV',
   'MCP_NOTES',
   'MCP_CLIENTS',
   'SSO_PROVIDERS',

@@ -27,6 +27,7 @@ export async function dummyVars(): Promise<string> {
     `NOTE_KEK=${randomBytes(32).toString('base64')}`,
     `BACKUP_RECIPIENT=${recipient}`,
     'MCP=on',
+    'LOCAL_DEV=on',
     '',
   ].join('\n');
 }

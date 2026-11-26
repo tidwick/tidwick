@@ -8,6 +8,7 @@ import {
   demoPassword,
   hasMethods,
   mailOf,
+  mcpOrigin,
   optionalSecret,
   origin,
   providersText,
@@ -73,6 +74,9 @@ function parse(source: Source, gaps?: string[]): Env {
     }
   };
   const mail = field(() => mailOf(source));
+  field(() => {
+    mcpOrigin(source);
+  });
   return {
     DB: field(() => binding(source, 'DB', ['prepare', 'batch']) as D1Database),
     RATE_LIMIT: field(() => binding(source, 'RATE_LIMIT', ['limit']) as RateLimit),

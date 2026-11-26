@@ -5,10 +5,11 @@ import { sequence } from 'astro:middleware';
 import { authz } from './authz';
 import { csrf } from './csrf';
 import { errors } from './errors';
+import { host } from './host';
 import { session } from './session';
 import { setup } from './setup';
 
-const app = sequence(session, csrf, authz);
+const app = sequence(host, session, csrf, authz);
 const gate = setup(app);
 
 export const onRequest = sequence(errors, (context, next) =>
