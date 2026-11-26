@@ -23,6 +23,8 @@ const AT = Date.UTC(2026, 10, 2, 3, 0);
 const REFUSED =
   'copying off the account failed: the off-account bucket refused the write: HTTP 403 AccessDenied';
 
+const REFUSED_WRITE = 'the off-account bucket refused the write: HTTP 403 AccessDenied';
+
 const copyVars = (s: FakeSettings) => ({
   BACKUP_COPY: 's3',
   BACKUP_S3_ENDPOINT: s.endpoint,
@@ -189,5 +191,29 @@ describe('SEC-15 the off-account copy', () => {
     const at = AT + 30 * DAY;
     expect((await backupAt(bucket, at, { BACKUP_COPY: 'none' }))?.status).toBe('ok');
     expect(bucket.seen).toEqual([]);
+  });
+
+  it('SEC-15 a retry after a PUT that landed with its response lost counts as landed, and a refusal with nothing landed still fails', async () => {
+    const bucket = fakeBucket();
+    let lost = true;
+    const flaky: typeof bucket.fetch = async (request) => {
+      const response = await bucket.fetch(request);
+      if (!lost) return response;
+      lost = false;
+      throw new Error('connection reset');
+    };
+    const at = AT + 40 * DAY;
+    const deps = {
+      db: env.DB,
+      sink: env.BACKUPS,
+      recipient: readEnv(env).BACKUP_RECIPIENT,
+      retryPauseMs: 0,
+    };
+    const run = await runBackup({ ...deps, copy: s3Copy(bucket.settings, flaky) }, at);
+    expect(run).toMatchObject({ status: 'ok', error: null });
+    expect(bucket.seen).toEqual(Array(2).fill(`PUT /offsite-backups/${objectKey(at)}`));
+    // A first write is never conditional: an existing object still meets the lock's refusal.
+    const again = s3Copy(bucket.settings, (r) => bucket.fetch(r));
+    expect(await again.write(objectKey(at), new Uint8Array([1]))).toBe(REFUSED_WRITE);
   });
 });

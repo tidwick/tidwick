@@ -151,4 +151,28 @@ describe('SEC-15 nightly backup', () => {
     expect(entries.some((l) => l.r.id === 'late-entry')).toBe(false);
     expect(await countRows(env.DB, 'entry')).toBe(entries.length + 1);
   });
+
+  it('SEC-15 a dump the audit chain moved during is taken again once, and a second move fails the run with no file', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const bump = (at: number) => () => appendSyntheticEvents(env.DB, 1, at);
+    const once = AT + 3 * day;
+    const steady = racingRead(env.DB, 'FROM entry WHERE', bump(once), 1);
+    const run = await runBackup(
+      { db: steady, sink: env.BACKUPS, recipient: readEnv(env).BACKUP_RECIPIENT },
+      once,
+    );
+    expect(run).toMatchObject({ status: 'ok', error: null });
+    const parsed = parseBackup(await open((await stored(objectKey(once))) ?? new Uint8Array()));
+    if (!parsed.ok) return expect.unreachable(parsed.why);
+    expect(parsed.header.chain_seq).toBe((await chainHead(env.DB)).seq);
+    const twice = AT + 4 * day;
+    const moving = racingRead(env.DB, 'FROM entry WHERE', bump(twice), 2);
+    const failed = await runBackup(
+      { db: moving, sink: env.BACKUPS, recipient: readEnv(env).BACKUP_RECIPIENT },
+      twice,
+    );
+    expect(failed.status).toBe('failed');
+    expect(failed.error).toContain('the data changed while it was read');
+    expect(await stored(objectKey(twice))).toBeNull();
+  });
 });
