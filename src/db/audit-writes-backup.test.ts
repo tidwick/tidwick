@@ -16,7 +16,7 @@ describe('the backup writes are audited once', () => {
     const admin = await adminScope();
     const before = await headSeq();
     await sendTestAlert(admin, env.DB, recordingMailer(), AT);
-    await sendTestAlert(admin, env.DB, null, AT + 1);
+    await sendTestAlert(admin, env.DB, null, AT + 61_000);
     const events = await eventsAfter(before);
     expect(events.map((e) => [e.action, e.target, e.actor_id])).toEqual([
       ['alerts.test', 'alert:test', admin.actorId],

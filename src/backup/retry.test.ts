@@ -105,22 +105,32 @@ describe('Send test alert', () => {
     );
 
     const mailer = recordingMailer();
-    expect(await sendTestAlert(admin, env.DB, mailer, AT + 1)).toEqual({ sent: true, error: null });
+    expect(await sendTestAlert(admin, env.DB, mailer, AT + 61_000)).toEqual({
+      sent: true,
+      error: null,
+    });
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]?.to).toBe('ops@example.net');
-    expect(await lastTestAlert(env.DB)).toMatchObject({ at: AT + 1, sent: true });
+    expect(await lastTestAlert(env.DB)).toMatchObject({ at: AT + 61_000, sent: true });
 
-    const off = await sendTestAlert(admin, env.DB, null, AT + 2);
+    const off = await sendTestAlert(admin, env.DB, null, AT + 130_000);
     expect(off.error).toContain('Email is off');
     const refusing = { send: () => Promise.reject(new Error('destination address not verified')) };
     const before = await headSeq();
-    const refused = await sendTestAlert(admin, env.DB, refusing, AT + 3);
+    const refused = await sendTestAlert(admin, env.DB, refusing, AT + 200_000);
     expect(refused).toEqual({
       sent: false,
       error: 'The mail binding refused it: Error',
     });
     expect(await eventsAfter(before)).toHaveLength(1);
-    expect(await lastTestAlert(env.DB)).toMatchObject({ at: AT + 3, sent: false });
+    expect(await lastTestAlert(env.DB)).toMatchObject({ at: AT + 200_000, sent: false });
+
+    // A second send inside the cooldown is refused: no mail, no event.
+    const quick = recordingMailer();
+    const head = await headSeq();
+    await expect(sendTestAlert(admin, env.DB, quick, AT + 200_001)).rejects.toThrow();
+    expect(quick.sent).toHaveLength(0);
+    expect(await eventsAfter(head)).toHaveLength(0);
 
     await expect(sendTestAlert((await memberScope()).scope, env.DB, mailer, AT)).rejects.toThrow();
   });

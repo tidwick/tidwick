@@ -50,10 +50,12 @@ describe('backup status and the actions beside it', () => {
     expect(page).toContain('data-run="failed"');
     expect(page).toContain('data-state="broken"');
     expect(page).toContain('BACKUP_S3_ENDPOINT');
-    expect(page).toContain('SETUP_TOKEN is');
+    expect(page).toContain('SETUP_TOKEN is set.');
     expect(page).toContain('?_action=backup.run');
     expect(page).toContain('?_action=alerts.test');
-    expect(page).not.toContain((env as unknown as { SESSION_SECRET: string }).SESSION_SECRET);
+    const secrets = env as unknown as { SESSION_SECRET: string; SETUP_TOKEN: string };
+    expect(page).not.toContain(secrets.SESSION_SECRET);
+    expect(page).not.toContain(secrets.SETUP_TOKEN);
 
     await env.DB.exec(
       `INSERT INTO backup_run (id, started_at, finished_at, object_key, bytes, chain_seq, chain_head, status, error, chars) VALUES ('r-fail', 1, 9999999999999, 'backups/2099/01/01-000000.ndjson.gz.age', 0, 0, '${'0'.repeat(64)}', 'failed', 'writing to the sink failed: r2 down', 0);`,

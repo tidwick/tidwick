@@ -13,6 +13,9 @@ export const TEST_SUBJECT = 'tidwick: test alert';
 /** The audit target of every test, and what the status block looks the latest one up by. */
 export const TEST_TARGET = 'alert:test';
 
+/** Least gap between two sends; the action is admin-only without step-up, so it must not become a mail flood. */
+export const TEST_COOLDOWN_MS = 60_000;
+
 export interface TestAlert {
   sent: boolean;
   /** Why it did not go, in words an admin can act on; null when it did. */
@@ -48,6 +51,8 @@ export async function sendTestAlert(
   now: number,
 ): Promise<TestAlert> {
   if (scope.kind !== 'all') fail('forbidden');
+  const last = await lastTestEvent(db, TEST_TARGET);
+  if (last !== null && now - last.at < TEST_COOLDOWN_MS) fail('rate_limited');
   const result = await deliver(db, mailer, now);
   await appendEvent(scope, db, {
     at: now,

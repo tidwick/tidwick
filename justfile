@@ -156,14 +156,16 @@ restore file identity persist=".wrangler/restore":
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
     echo "PASS restore: loaded into the local D1 at $persist"
 
-# Fetches one sealed backup from the Worker account's R2 bucket. Pass the run's UTC time as YYYY-MM-DD-HHMMSS,
-# which the status block on /admin/settings shows as the object key (backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age).
+# Fetches one sealed backup from the Worker account's R2 bucket. Pass YYYY-MM-DD for a nightly run (its key ends
+# -030000, the cron instant), or YYYY-MM-DD-HHMMSS (UTC) for an on-demand one (backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age).
 backup-fetch night out=".wrangler/restore-remote/backup.age":
     #!/usr/bin/env bash
     set -euo pipefail
-    [[ {{ quote(night) }} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || { echo "FAIL backup-fetch: pass the backup as YYYY-MM-DD-HHMMSS (UTC), as the object key on /admin/settings shows it, not {{ quote(night) }}"; exit 1; }
+    night={{ quote(night) }}
+    [[ "$night" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && night="$night-030000"
+    [[ "$night" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || { echo "FAIL backup-fetch: pass YYYY-MM-DD (nightly) or YYYY-MM-DD-HHMMSS (UTC, on-demand), not {{ quote(night) }}"; exit 1; }
     mkdir -p -m 700 "$(dirname {{ quote(out) }})"
-    npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo {{ quote(night) }} | sed 's#-#/#; s#-#/#').ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; compare the key on /admin/settings, or list the bucket; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
+    npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo "$night" | sed 's#-#/#; s#-#/#').ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; nightly keys end -030000, an on-demand time needs the full HHMMSS; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
     echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit>"
 
 # Loads a backup into the deployed database of the same name: migrate, then the rows. For a lost database: create
