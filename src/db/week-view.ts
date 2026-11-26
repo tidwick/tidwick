@@ -25,6 +25,8 @@ export interface RowRecord {
   project: string;
   task_code: string;
   task: string;
+  /** 1 while the person is still assigned to the row's project. */
+  assigned: number;
 }
 
 export interface CellRecord {
@@ -41,7 +43,9 @@ export interface CellRecord {
 const IN_SCOPE = 'AND (?3 IS NULL OR r.project_id IN (SELECT value FROM json_each(?3)))';
 
 const ROWS = `SELECT r.id AS row_id, r.client_id, r.project_id, r.task_code_id, c.name AS client, p.name AS project,
-  t.code AS task_code, t.name AS task
+  t.code AS task_code, t.name AS task,
+  EXISTS (SELECT 1 FROM assignment a WHERE a.person_id = r.person_id AND a.client_id = r.client_id
+    AND a.project_id = r.project_id) AS assigned
 FROM week_row r
 JOIN client c ON c.id = r.client_id
 JOIN project p ON p.client_id = r.client_id AND p.id = r.project_id
@@ -98,9 +102,12 @@ export async function loadWeek(
   weekStart: string,
 ): Promise<LoadedWeek> {
   requirePersonVisible(scope, personId);
+  // A member reads every row of their own week, so hours on a project they no longer have are shown, read-only,
+  // and not only counted toward the cap, the submit and the export.
+  const every = scope.kind === 'member';
   const [rows, cells, state, print] = await Promise.all([
-    readRows(scope, db, personId, weekStart),
-    readCells(scope, db, personId, weekStart),
+    readRows(scope, db, personId, weekStart, every),
+    readCells(scope, db, personId, weekStart, every),
     weekState(scope, db, personId, weekStart),
     weekFingerprint(scope, db, personId, weekStart),
   ]);
@@ -121,6 +128,7 @@ export async function loadWeek(
     projectId: r.project_id,
     taskCode: r.task_code,
     task: r.task,
+    assigned: r.assigned === 1,
     removable: !present.has(r.row_id),
     cells: stored.get(r.row_id) ?? blankCells(),
   }));
@@ -136,11 +144,12 @@ export async function readRows(
   db: D1Database,
   personId: string,
   weekStart: string,
+  everyProject = false,
 ): Promise<RowRecord[]> {
   requirePersonVisible(scope, personId);
   const result = await db
     .prepare(ROWS)
-    .bind(personId, weekStart, projectsParam(scope))
+    .bind(personId, weekStart, everyProject ? null : projectsParam(scope))
     .all<RowRecord>();
   return result.results;
 }
@@ -151,11 +160,12 @@ export async function readCells(
   db: D1Database,
   personId: string,
   weekStart: string,
+  everyProject = false,
 ): Promise<CellRecord[]> {
   requirePersonVisible(scope, personId);
   const result = await db
     .prepare(CELLS)
-    .bind(personId, weekStart, projectsParam(scope))
+    .bind(personId, weekStart, everyProject ? null : projectsParam(scope))
     .all<CellRecord>();
   return result.results;
 }

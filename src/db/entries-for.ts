@@ -25,10 +25,15 @@ WHERE id = ?1 AND row_id = ?7 AND hundredths = ?8 AND note_ct IS ?9 AND ${ROW_AS
 const DELETE = `DELETE FROM entry
 WHERE id = ?1 AND row_id = ?2 AND hundredths = ?3 AND note_ct IS ?4 AND ${ROW_ASSIGNED('entry.row_id')}`;
 
-/** What the audit event records of a cell: its hours and its note's ciphertext as hex, never the note. */
+/**
+ * What the audit event records of a cell: its hours and its note's ciphertext as hex, never the note, and the
+ * row and day it sits in, so a cleared cell (whose entry is gone) still names its week.
+ */
 interface Stored {
   hundredths: number;
   note_ct: string | null;
+  row: string;
+  dow: number;
 }
 
 interface Planned {
@@ -40,8 +45,8 @@ interface Planned {
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-function stored(hundredths: number, ct: Uint8Array | null): Stored {
-  return { hundredths, note_ct: ct === null ? null : hex(ct) };
+function stored(edit: CellEdit, hundredths: number, ct: Uint8Array | null): Stored {
+  return { hundredths, note_ct: ct === null ? null : hex(ct), row: edit.rowId, dow: edit.dow };
 }
 
 async function planCell(
@@ -72,13 +77,13 @@ async function planCell(
     return {
       statement,
       delta: next.hundredths,
-      event: event(id, null, stored(next.hundredths, sealed[0])),
+      event: event(id, null, stored(edit, next.hundredths, sealed[0])),
     };
   }
   const current = await openCell(before, ring);
   if (current.hundredths === next.hundredths && current.note === next.note) return null;
   const ct = before.note_ct === null ? null : blobBytes(before.note_ct);
-  const was = stored(before.hundredths, ct);
+  const was = stored(edit, before.hundredths, ct);
   const delta = next.hundredths - before.hundredths;
   if (isBlank(next)) {
     const statement = db.prepare(DELETE).bind(before.id, edit.rowId, before.hundredths, ct);
@@ -88,7 +93,11 @@ async function planCell(
   const statement = db
     .prepare(UPDATE)
     .bind(before.id, next.hundredths, ...sealed, now, edit.rowId, before.hundredths, ct);
-  return { statement, delta, event: event(before.id, was, stored(next.hundredths, sealed[0])) };
+  return {
+    statement,
+    delta,
+    event: event(before.id, was, stored(edit, next.hundredths, sealed[0])),
+  };
 }
 
 /**

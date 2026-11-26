@@ -18,6 +18,17 @@ export const cellField = (rowId: string, dow: number, part: CellPart): string =>
 
 const CELL_FIELD = /^cell\.([A-Za-z0-9-]{1,64})\.([0-6])\.(hours|note)$/;
 
+/** The cell a posted field name belongs to, or null when it is not a cell field. */
+export function cellOfField(name: string): { rowId: string; dow: number; part: CellPart } | null {
+  const match = CELL_FIELD.exec(name);
+  if (!match) return null;
+  return {
+    rowId: match[1] ?? '',
+    dow: Number(match[2]),
+    part: match[3] === 'note' ? 'note' : 'hours',
+  };
+}
+
 export interface ParsedCells {
   edits: CellEdit[];
   /** One message per bad cell, each naming the day. */

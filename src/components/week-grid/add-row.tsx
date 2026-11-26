@@ -13,7 +13,6 @@ export interface AddRowProps {
   csrf: string;
   weekStart: string;
   initialProjectId: string;
-  busy: boolean;
   onAdd: (projectId: string, taskCodeId: string) => void;
 }
 
@@ -68,7 +67,6 @@ export function AddRow({
   csrf,
   weekStart,
   initialProjectId,
-  busy,
   onAdd,
 }: AddRowProps) {
   const [projectId, setProjectId] = useState(initialProjectId);
@@ -128,7 +126,7 @@ export function AddRow({
           ))}
         </NativeSelect>
       </label>
-      <Button type="submit" disabled={busy} className={tall}>
+      <Button type="submit" className={tall}>
         Add row
       </Button>
       <Button

@@ -39,6 +39,7 @@ export function row(
     projectId: `p-${id}`,
     taskCode: task.slice(0, 3).toUpperCase(),
     task,
+    assigned: true,
     removable: Object.keys(hundredths).length === 0 && note === '',
     cells: Array.from({ length: 7 }, (_, dow) => ({
       hundredths: hundredths[dow] ?? 0,

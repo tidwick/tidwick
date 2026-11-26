@@ -32,6 +32,8 @@ const sql = [
 const ADMINS = PROJECTS.map((project) => `admin-${project}`);
 // And one member per project for the week grid spec, assigned to a project that has two tasks and last week's row.
 const GRIDS = PROJECTS.map((project) => `grid-${project}`);
+// For the no-script grid spec: a member per project with two blank rows in the week of 2031-03-24.
+const PLAINS = PROJECTS.map((project) => `plain-${project}`);
 // For the approve spec: a member per project who submits a week with hours, and an accounting admin who approves it.
 const SUBMITTERS = PROJECTS.map((project) => `submit-${project}`);
 const ACCOUNTANTS = PROJECTS.map((project) => `acct-${project}`);
@@ -42,6 +44,7 @@ for (const [i, project] of [
   ...PROJECTS,
   ...ADMINS,
   ...GRIDS,
+  ...PLAINS,
   ...SUBMITTERS,
   ...ACCOUNTANTS,
   ...CSV_ACCOUNTANTS,
@@ -91,6 +94,15 @@ for (const [n, name] of SUBMITTERS.entries()) {
     `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${person}', 1);`,
     `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ('e2e-submit-row-${String(n)}', 'e2e-grid-client', '${person}', '2031-03-10', 'e2e-grid-project', 'e2e-grid-des', 0);`,
     `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, updated_at) VALUES ('e2e-submit-entry-${String(n)}', 'e2e-grid-client', 'e2e-submit-row-${String(n)}', 0, 600, 1);`,
+  );
+}
+
+// The no-script spec's week: 2031-03-24 holds a Design row and a Review row, both blank.
+for (const [n, name] of PLAINS.entries()) {
+  const person = ids[name] ?? '';
+  sql.push(
+    `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${person}', 1);`,
+    `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ('e2e-plain-des-${String(n)}', 'e2e-grid-client', '${person}', '2031-03-24', 'e2e-grid-project', 'e2e-grid-des', 0), ('e2e-plain-rev-${String(n)}', 'e2e-grid-client', '${person}', '2031-03-24', 'e2e-grid-project', 'e2e-grid-rev', 1);`,
   );
 }
 

@@ -13,6 +13,7 @@ function rowWith(note: string): GridRow {
     projectId: 'p-1',
     taskCode: 'DES',
     task: 'Design',
+    assigned: true,
     removable: false,
     cells: Array.from({ length: 7 }, (_, dow) => ({
       hundredths: dow === 0 ? 150 : 0,

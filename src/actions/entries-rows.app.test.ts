@@ -65,12 +65,12 @@ describe('SEC-20 a member reads only their own week and assigned projects', () =
     ).toHaveLength(2);
   });
 
-  it('SEC-20 a row on a project that is no longer assigned is left out of the member’s week', async () => {
+  it('SEC-20 a row on a project that is no longer assigned is shown to its owner as read-only, and to no one else', async () => {
     const b = await booking();
     await twoRows(b);
-    expect((await weekOf(b.who, WEEK)).rows).toHaveLength(2);
+    expect((await weekOf(b.who, WEEK)).rows.map((r) => r.assigned)).toEqual([true, true]);
     await removeAssignment(b.admin, env.DB, b.projectId, b.who.personId, 1);
-    expect((await weekOf(b.who, WEEK)).rows).toEqual([]);
+    expect((await weekOf(b.who, WEEK)).rows.map((r) => r.assigned)).toEqual([false, false]);
     const stranger = await caller();
     expect((await weekOf(stranger, WEEK)).rows).toEqual([]);
   });

@@ -75,11 +75,14 @@ describe('SEC-13 races on a locked week', () => {
     await saveCellsFor(scope, db, noteKeks(), b.who.personId, WEEK, edits, T0);
     const events = await eventsAfter(seq);
     expect(events).toHaveLength(1);
-    expect(JSON.parse(events[0]?.before_json ?? 'null')).toEqual({
+    expect(JSON.parse(events[0]?.before_json ?? 'null')).toMatchObject({
       hundredths: 500,
       note_ct: null,
     });
-    expect(JSON.parse(events[0]?.after_json ?? 'null')).toEqual({ hundredths: 800, note_ct: null });
+    expect(JSON.parse(events[0]?.after_json ?? 'null')).toMatchObject({
+      hundredths: 800,
+      note_ct: null,
+    });
   });
 
   it('SEC-13 an edit through the lock that loses every race is a conflict and writes no event', async () => {

@@ -39,8 +39,8 @@ describe('every week write outside the owner’s own edits is audited once', () 
         actor: w.admin,
         run: () => saveCellsFor(w.admin, env.DB, keks, person, WEEK, [edit], T0),
         target: /^entry:/,
-        before: { hundredths: 400, note_ct: null },
-        after: { hundredths: 550, note_ct: null },
+        before: { hundredths: 400, note_ct: null, row: w.rowId, dow: 0 },
+        after: { hundredths: 550, note_ct: null, row: w.rowId, dow: 0 },
       },
       {
         action: 'submission.approve',

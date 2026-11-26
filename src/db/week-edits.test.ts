@@ -35,6 +35,29 @@ describe('the edits made to a week through the lock', () => {
     expect(edit?.editor).not.toBeNull();
   });
 
+  it('a cell cleared through the lock is listed with no hours after, and its event names the row and day', async () => {
+    const w = await bookedWeek();
+    const person = w.who.personId;
+    await saveCellsFor(
+      w.admin,
+      env.DB,
+      keks(),
+      person,
+      WEEK,
+      [{ rowId: w.rowId, dow: 0, hundredths: 0, note: '' }],
+      T0 + 5,
+    );
+    const edits = await editsOfWeek(w.admin, env.DB, person, WEEK);
+    expect(edits.map((e) => [e.dow, e.before, e.after])).toEqual([[0, 400, null]]);
+    const event = await env.DB.prepare(
+      "SELECT before_json, after_json FROM audit_event WHERE action = 'entriesFor.save' AND json_extract(coalesce(after_json, before_json), '$.row') = ?1",
+    )
+      .bind(w.rowId)
+      .first<{ before_json: string; after_json: string | null }>();
+    expect(event?.after_json).toBeNull();
+    expect(JSON.parse(event?.before_json ?? '{}')).toMatchObject({ row: w.rowId, dow: 0 });
+  });
+
   it('a note-only change shows the hours unchanged and says the note changed, never what it said', async () => {
     const w = await bookedWeek();
     const person = w.who.personId;
