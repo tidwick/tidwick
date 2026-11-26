@@ -1,4 +1,4 @@
-// What a report reads: hours in a range summed by person, project or week and by the state of the person's week
+// What a report reads: hours in a range summed by person, client, project, task or week and by the state of the person's week
 // (`draft` when no submission exists). All-clients scope only.
 import { fail } from '../lib/errors';
 import type { DateRange } from '../lib/date-range';
@@ -19,11 +19,17 @@ const QUERIES: Record<ReportKind, string> = {
   person: `SELECT p.name AS k1, p.email AS k2, ${STATE} AS state, sum(e.hundredths) AS hundredths
     ${from('JOIN person p ON p.id = r.person_id')}
     GROUP BY p.id, p.name, p.email, state ORDER BY p.name, p.id, state`,
+  client: `SELECT c.name AS k1, ${STATE} AS state, sum(e.hundredths) AS hundredths
+    ${from('JOIN client c ON c.id = r.client_id')}
+    GROUP BY c.id, c.name, state ORDER BY c.name, c.id, state`,
   project: `SELECT c.name AS k1, pr.name AS k2, coalesce(pr.number, '') AS k3, ${STATE} AS state,
       sum(e.hundredths) AS hundredths
     ${from(`JOIN project pr ON pr.client_id = r.client_id AND pr.id = r.project_id
     JOIN client c ON c.id = r.client_id`)}
     GROUP BY pr.client_id, pr.id, c.name, pr.name, pr.number, state ORDER BY c.name, pr.name, pr.id, state`,
+  task: `SELECT t.code AS k1, t.name AS k2, ${STATE} AS state, sum(e.hundredths) AS hundredths
+    ${from('JOIN task_code t ON t.id = r.task_code_id')}
+    GROUP BY t.id, t.code, t.name, state ORDER BY t.code, t.id, state`,
   week: `SELECT r.week_start AS k1, ${STATE} AS state, sum(e.hundredths) AS hundredths
     ${from('')}
     GROUP BY r.week_start, state ORDER BY r.week_start, state`,

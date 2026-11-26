@@ -1,0 +1,86 @@
+---
+import { STATE_FILL, STATE_SWATCH, reportChart } from '../../lib/report-chart';
+import { REPORT_STATES, type ReportLine } from '../../lib/report-table';
+// The report as stacked bars, drawn on the server from `reportChart` (ADR 0013): no script, and colour only from
+// the `fill-chart-N` classes. The table beside it holds the same figures and is the accessible equivalent.
+interface Props {
+  lines: ReportLine[];
+  /** What a bar is, in a phrase: "person", "client". */
+  by: string;
+}
+const { lines, by } = Astro.props;
+const chart = reportChart(lines);
+const description = `Hours by week state, one bar for each ${by}. The table below has the same figures.`;
+---
+
+{chart && (
+  <figure class="grid gap-field">
+    <div class="overflow-x-auto">
+      <svg
+        role="img"
+        aria-labelledby="report-chart-title report-chart-desc"
+        viewBox={`0 0 ${String(chart.width)} ${String(chart.height)}`}
+        width={chart.width}
+        height={chart.height}
+        class="max-w-none text-xs"
+      >
+        <title id="report-chart-title">{`Hours by ${by}`}</title>
+        <desc id="report-chart-desc">{description}</desc>
+        {chart.ticks.map((tick) => (
+          <>
+            <line x1={tick.x} x2={tick.x} y1="0" y2={chart.height - 20} class="stroke-border" />
+            <text
+              x={tick.x}
+              y={chart.height - 6}
+              text-anchor="middle"
+              class="fill-muted-foreground"
+            >
+              {tick.label}
+            </text>
+          </>
+        ))}
+        {chart.bars.map((bar) => (
+          <>
+            <text
+              x={chart.origin - 8}
+              y={bar.y + chart.bar / 2}
+              text-anchor="end"
+              dominant-baseline="central"
+              class="fill-foreground"
+            >
+              {bar.label}
+            </text>
+            {bar.segments.map((segment) => (
+              <rect
+                x={segment.x}
+                y={bar.y}
+                width={segment.width}
+                height={chart.bar}
+                class={STATE_FILL[segment.state]}
+              />
+            ))}
+            <text
+              x={bar.end + 6}
+              y={bar.y + chart.bar / 2}
+              dominant-baseline="central"
+              class="fill-foreground"
+            >
+              {bar.hours}
+            </text>
+          </>
+        ))}
+      </svg>
+    </div>
+    <figcaption class="flex flex-wrap gap-x-block gap-y-1 text-sm text-muted-foreground">
+      {REPORT_STATES.map((state) => (
+        <span class="inline-flex items-center gap-1.5">
+          <span class={`inline-block size-3 ${STATE_SWATCH[state]}`} aria-hidden="true" />
+          <span class="capitalize">{state}</span>
+        </span>
+      ))}
+      {chart.omitted > 0 && (
+        <span>{`The chart shows the first ${String(chart.bars.length)}; the table lists all.`}</span>
+      )}
+    </figcaption>
+  </figure>
+)}

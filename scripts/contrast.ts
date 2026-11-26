@@ -46,6 +46,11 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ['primary', 'background', CONTROL],
   ['destructive', 'background', CONTROL],
   ['destructive', 'danger-surface', CONTROL],
+  // The four report-chart fills, one per week state, against the page they are drawn on (1.4.11).
+  ['chart-1', 'background', CONTROL],
+  ['chart-2', 'background', CONTROL],
+  ['chart-3', 'background', CONTROL],
+  ['chart-4', 'background', CONTROL],
 ];
 
 const encode = (linear: number): number =>

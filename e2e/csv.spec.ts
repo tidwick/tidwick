@@ -48,8 +48,16 @@ test('an accounting admin previews an import, saves a mapping and downloads a re
   await page.goto('/reports');
   await page.getByLabel('From').fill('2031-03-10');
   await page.getByLabel('To').fill('2031-03-16');
+  await page.getByLabel('Report', { exact: true }).selectOption('week');
+  // Enter in a date field shows the report; it must not start an audited download.
+  let downloaded = false;
+  page.on('download', () => (downloaded = true));
+  await page.getByLabel('To').press('Enter');
+  await expect(page).toHaveURL(/kind=week/);
+  await expect(page.getByText('No hours in that range')).toBeVisible();
+  expect(downloaded).toBe(false);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Hours by week' }).click();
+  await page.getByRole('button', { name: 'Download CSV' }).click();
   const saved = await download;
   expect(saved.suggestedFilename()).toMatch(/^report-week-2031-03-10-2031-03-16\.csv$/);
   const path = await saved.path();

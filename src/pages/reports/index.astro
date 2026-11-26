@@ -1,64 +1,85 @@
 ---
+import Empty from '../../components/admin/empty.astro';
+import ReportChart from '../../components/admin/report-chart.astro';
+import ReportTable from '../../components/admin/report-table.astro';
+import SelectField from '../../components/admin/select-field.astro';
 import Shell from '../../components/admin/shell.astro';
+import StepUp from '../../components/admin/step-up.astro';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { reportRows } from '../../db/report-rows';
 import { timeZone } from '../../db/settings';
-import { lastFullMonth } from '../../lib/date-range';
+import { lastFullMonth, parseRange } from '../../lib/date-range';
+import { isAppError } from '../../lib/errors';
+import { KIND_LABELS, REPORT_KINDS, isReportKind } from '../../lib/report';
+import { reportTable, type ReportTable as Table } from '../../lib/report-table';
 import { todayIn } from '../../lib/week';
 import { pageContext } from '../_context';
 
+// Viewing a report writes nothing and needs no passkey confirmation; only the CSV download is audited. No
+// notes are read. The range and kind ride in the address, so a view can be shared with another accountant.
 const ctx = pageContext(Astro);
-// The form opens on the last full calendar month.
 const opening = lastFullMonth(todayIn(await timeZone(ctx.db), Date.now()));
-const KINDS = [
-  ['person', 'Hours by person'],
-  ['project', 'Hours by project'],
-  ['week', 'Hours by week'],
-] as const;
+const query = Astro.url.searchParams;
+const from = query.get('from') || opening.from;
+const to = query.get('to') || opening.to;
+const asked = query.get('kind') ?? '';
+const kind = isReportKind(asked) ? asked : 'person';
+let table: Table | null = null;
+let problem: string | null = null;
+try {
+  table = reportTable(kind, await reportRows(ctx.scope, ctx.db, kind, parseRange(from, to)));
+} catch (error) {
+  if (!isAppError(error)) throw error;
+  problem = error.message;
+  Astro.response.status = error.status;
+}
 ---
 
-<Shell title="Reports">
+<Shell title="Reports" problem={problem} wide>
   <Fragment slot="lead">
-    Hours over a date range as CSV. Every week state is included and labelled, so a total never
-    reads as approved when it is not. Each download is recorded in the audit log and asks for a
-    recent passkey confirmation.
+    Hours over a date range, by week state, so a total never reads as approved when it is not. The
+    CSV download is recorded in the audit log and asks for a recent passkey confirmation.
   </Fragment>
-  <form method="POST" class="grid gap-gutter">
-    <input type="hidden" name="_csrf" value={ctx.csrf} />
-    <div class="flex flex-wrap items-end gap-gutter">
-      <label class="grid gap-1.5 text-sm font-medium">
-        From
-        <Input
-          type="date"
-          name="from"
-          value={opening.from}
-          required
-          className="min-h-11 w-auto md:min-h-8"
-        />
-      </label>
-      <label class="grid gap-1.5 text-sm font-medium">
-        To
-        <Input
-          type="date"
-          name="to"
-          value={opening.to}
-          required
-          className="min-h-11 w-auto md:min-h-8"
-        />
-      </label>
-    </div>
-    <div class="flex flex-wrap gap-field">
-      {KINDS.map(([kind, label]) => (
-        <Button
-          type="submit"
-          variant="outline"
-          size="lg"
-          formAction={`/reports/${kind}.csv`}
-          className="border-control max-md:h-11"
-        >
-          {label}
-        </Button>
-      ))}
-    </div>
+  <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="downloading a report" />
+  <form method="GET" class="flex flex-wrap items-end gap-gutter">
+    <label class="grid gap-1.5 text-sm font-medium">
+      From
+      <Input type="date" name="from" value={from} required className="min-h-11 w-auto md:min-h-8" />
+    </label>
+    <label class="grid gap-1.5 text-sm font-medium">
+      To
+      <Input type="date" name="to" value={to} required className="min-h-11 w-auto md:min-h-8" />
+    </label>
+    <SelectField
+      label="Report"
+      field="kind"
+      value={kind}
+      options={REPORT_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
+    />
+    <Button type="submit" variant="outline" size="lg" className="border-control max-md:h-11">
+      Show report
+    </Button>
   </form>
+  {table && table.lines.length === 0 && (
+    <Empty title="No hours in that range">
+      Pick a wider range. Weeks with no hours booked are not listed.
+    </Empty>
+  )}
+  {table && table.lines.length > 0 && (
+    <>
+      <ReportChart lines={table.lines} by={kind} />
+      <ReportTable table={table} label={`${KIND_LABELS[kind]}, ${from} to ${to}`} />
+    </>
+  )}
+  {table && (
+    <form method="POST" action={`/reports/${kind}.csv`}>
+      <input type="hidden" name="_csrf" value={ctx.csrf} />
+      <input type="hidden" name="from" value={from} />
+      <input type="hidden" name="to" value={to} />
+      <Button type="submit" variant="outline" size="lg" className="border-control max-md:h-11">
+        Download CSV
+      </Button>
+    </form>
+  )}
 </Shell>

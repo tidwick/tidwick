@@ -1,0 +1,76 @@
+---
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHead,
+} from '../ui/table';
+import { formatHoursFixed } from '../../lib/hours';
+import { REPORT_STATES, type ReportLine, type ReportTable } from '../../lib/report-table';
+// A report as a table: one row per group, a column for each week state, a total column and a total row. It is
+// also the accessible equivalent of the chart above it.
+interface Props {
+  table: ReportTable;
+  label: string;
+}
+const { table, label } = Astro.props;
+const [first = '', ...rest] = table.heads;
+const STATE_HEADS = REPORT_STATES.map(
+  (state) => [state, state.charAt(0).toUpperCase() + state.slice(1)] as const,
+);
+const hours = (line: ReportLine, state: (typeof REPORT_STATES)[number]) =>
+  formatHoursFixed(line.hundredths[state]);
+---
+
+<Table aria-label={label}>
+  <TableHeader>
+    <TableRow>
+      <TableHead>{first}</TableHead>
+      {rest.map((head) => (
+        <TableHead>{head}</TableHead>
+      ))}
+      {STATE_HEADS.map(([, head]) => (
+        <TableHead className="text-right">{head}</TableHead>
+      ))}
+      <TableHead className="text-right">Total</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {table.lines.map((line) => (
+      <TableRow>
+        <TableRowHead>{line.keys[0]}</TableRowHead>
+        {rest.map((head, i) => (
+          <TableCell data-label={head}>{line.keys[i + 1]}</TableCell>
+        ))}
+        {STATE_HEADS.map(([state, head]) => (
+          <TableCell data-label={head} className="text-right tabular-nums">
+            {hours(line, state)}
+          </TableCell>
+        ))}
+        <TableCell data-label="Total" className="text-right font-medium tabular-nums">
+          {formatHoursFixed(line.total)}
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+  <TableFooter>
+    <TableRow>
+      <TableRowHead>Total</TableRowHead>
+      {rest.map(() => (
+        <TableCell />
+      ))}
+      {STATE_HEADS.map(([state, head]) => (
+        <TableCell data-label={head} className="text-right tabular-nums">
+          {hours(table.totals, state)}
+        </TableCell>
+      ))}
+      <TableCell data-label="Total" className="text-right tabular-nums">
+        {formatHoursFixed(table.totals.total)}
+      </TableCell>
+    </TableRow>
+  </TableFooter>
+</Table>

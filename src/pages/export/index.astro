@@ -1,6 +1,7 @@
 ---
 import Empty from '../../components/admin/empty.astro';
 import Shell from '../../components/admin/shell.astro';
+import StepUp from '../../components/admin/step-up.astro';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -43,6 +44,7 @@ if (asked) {
     One file per client: the approved time in a date range, one row per entry, with notes. Each
     export is recorded in the audit log and asks for a recent passkey confirmation.
   </Fragment>
+  <StepUp csrf={ctx.csrf} until={ctx.stepUpUntil} unlocks="downloading an export" />
   <form method="GET" class="flex flex-wrap items-end gap-gutter">
     <label class="grid gap-1.5 text-sm font-medium">
       From

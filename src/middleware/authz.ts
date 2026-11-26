@@ -7,7 +7,7 @@ import { scopeFor } from '../db/scope';
 import { currentEnv } from '../lib/env';
 import { fail, isAppError } from '../lib/errors';
 import { safeReturn } from '../auth/sso';
-import { errorPage, errorResponse } from './error-responses';
+import { errorPage, errorResponse, type PageLink } from './error-responses';
 import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
@@ -55,6 +55,12 @@ export function signInRedirect(url: URL): Response {
   return new Response(null, { status: 303, headers: { location: target } });
 }
 
+/** The page that confirms and retries a download, for a stale confirmation on its POST; any other goes to the account. */
+const CONFIRM_ON: Readonly<Record<string, PageLink>> = {
+  '/export/[client].csv': { href: '/export', label: 'Back to export to confirm' },
+  '/reports/[kind].csv': { href: '/reports', label: 'Back to reports to confirm' },
+};
+
 export const authz: MiddlewareHandler = async (context, next) => {
   const { DB } = currentEnv();
   const rules = rulesFor(context.routePattern, context.request.method, context.url);
@@ -73,7 +79,10 @@ export const authz: MiddlewareHandler = async (context, next) => {
     if (context.routePattern === RPC_PATTERN) return errorResponse(error.code);
     if (error.code === 'unauthenticated' && ['GET', 'HEAD'].includes(context.request.method))
       return signInRedirect(context.url);
-    const confirm = { href: '/account', label: 'Confirm on your account' };
+    const confirm = CONFIRM_ON[context.routePattern] ?? {
+      href: '/account',
+      label: 'Confirm on your account',
+    };
     return errorPage(
       context,
       error.code,
