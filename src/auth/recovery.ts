@@ -16,8 +16,8 @@ const NOBODY = '00000000-0000-0000-0000-000000000000';
 /**
  * Consumes one code, ends every live session of the person's (whoever holds one), and opens a session that may
  * only enrol a passkey, for 30 minutes. An unknown email, an offboarded
- * person, a wrong or used code and a locked email all count a failure (a locked one does not) and are
- * `recovery_failed`.
+ * person, and a wrong or used code count a failure and are `recovery_failed`; so is a wrong code on a locked
+ * email (not counted again). A right code succeeds even on a locked email.
  */
 export async function recover(
   deps: AuthEnv,
@@ -33,7 +33,9 @@ export async function recover(
   const personId = person !== null && person.offboarded_at === null ? person.id : null;
   const locked = await isLocked(db, hash, now);
   const known = await isUnusedCode(db, personId ?? NOBODY, codeKey);
-  if (locked) fail('recovery_failed');
+  // A lock throttles guessing, it never shuts out a real code: a code that matches passes through a lock, so
+  // wrong guesses against a known email cannot keep its owner out of recovery.
+  if (locked && !known) fail('recovery_failed');
   if (personId === null || normalized === null || !known) {
     await recordFailure(db, hash, now, personId !== null).catch(() => undefined);
     fail('recovery_failed');

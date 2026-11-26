@@ -187,11 +187,13 @@ describe('typed env', () => {
     expect(on.SSO.map((p) => p.id)).toEqual(['google']);
   });
 
-  it('SETUP_TOKEN reads null when unset or under 43 characters, and never throws', () => {
-    const long = 'x'.repeat(43);
+  it('SEC-48 SETUP_TOKEN reads null unless it is base64url of 32 or more random bytes, and never throws', () => {
+    const long = 'Ab3-_xYz0123456789QRSTUVWXYZabcdefghijklmn'.padEnd(43, 'q');
     expect(readEnv({ ...complete(), SETUP_TOKEN: long }).SETUP_TOKEN).toBe(long);
     expect(readEnv({ ...complete(), SETUP_TOKEN: ` ${long}\n` }).SETUP_TOKEN).toBe(long);
-    for (const value of [undefined, '', 'short', 'x'.repeat(42), 7]) {
+    const phrase = 'correct-horse-battery-staple-'.repeat(2);
+    const plus = `${long.slice(0, 42)}+`;
+    for (const value of [undefined, '', 'short', long.slice(1), 'x'.repeat(43), phrase, plus, 7]) {
       expect(readEnv({ ...complete(), SETUP_TOKEN: value }).SETUP_TOKEN).toBeNull();
     }
   });

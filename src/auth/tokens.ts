@@ -47,6 +47,15 @@ export async function keyedHash(secret: string, kind: HashKind, value: string): 
   return Array.from(mac, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** 32 bytes derived from SESSION_SECRET and one value (a raw session id): a key that exists only while the caller holds the value. */
+export async function derivedKey(
+  secret: string,
+  label: string,
+  value: string,
+): Promise<Uint8Array> {
+  return hmac(secret, `key|${label}|${value}`);
+}
+
 /** The synchronizer token for a session: base64url HMAC of `csrf|<raw session id>`, derived, never stored. */
 export async function csrfToken(secret: string, rawSessionId: string): Promise<string> {
   return toBase64Url(await hmac(secret, `csrf|${rawSessionId}`));

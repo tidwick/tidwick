@@ -14,3 +14,9 @@ export function isSessionSecret(value: string): boolean {
 export function isAgeRecipient(value: string): boolean {
   return /^age1[02-9ac-hj-np-z]{58}$/.test(value);
 }
+
+/** A setup token: base64url of at least 32 bytes (43 characters) with no repeated phrase, as `/setup` generates it. */
+export function isSetupToken(value: string): boolean {
+  const text = value.trim();
+  return /^[A-Za-z0-9_-]{43,}$/.test(text) && new Set(text).size >= 16;
+}

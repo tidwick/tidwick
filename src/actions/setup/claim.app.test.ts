@@ -58,14 +58,14 @@ describe('the first-admin claim page', () => {
     expect(await rowCounts(env.DB)).toEqual(before);
   });
 
-  it('SEC-48 a wrong token is refused and the 301st POST from one address is 429', async () => {
+  it('SEC-48 a wrong token is refused and the 31st POST from one address is 429', async () => {
     await withinOneWindow(async (attempt) => {
       const ip = `203.0.113.${String(51 + attempt * 100)}`;
       const before = await rowCounts(env.DB);
       const shown = await claim({ token: 'x'.repeat(43), ...WHO }, ip);
       expect(await shown.text()).toContain('does not match SETUP_TOKEN');
       const statuses: number[] = [];
-      for (let i = 0; i < 299; i++)
+      for (let i = 0; i < 29; i++)
         statuses.push((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status);
       expect(statuses.every((s) => s === 403)).toBe(true);
       expect((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status).toBe(429);

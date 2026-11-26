@@ -59,7 +59,14 @@ export async function regenerateCodes(
   lifeMs = DEFAULT_POLICY.pendingCodesMs,
 ): Promise<string[]> {
   const { codes, hashes } = await freshCodes(secret);
-  const owner = await keyedHash(secret, 'pending', sessionId);
+  const pending = await putPendingCodes(
+    db,
+    secret,
+    { personId, rawId: sessionId },
+    codes,
+    now,
+    lifeMs,
+  );
   await retryOnce(async () => {
     const unused = await unusedCodeCount(db, personId);
     const batch = await auditedBatch(scope, db);
@@ -75,7 +82,7 @@ export async function regenerateCodes(
       unused,
     );
     for (const insert of insertCodes(db, personId, hashes, now)) batch.also(insert);
-    for (const put of putPendingCodes(db, personId, owner, codes, now, lifeMs)) batch.also(put);
+    for (const put of pending) batch.also(put);
     await batch.run();
   });
   return codes;

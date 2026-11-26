@@ -1,7 +1,7 @@
 // The parsers for one binding, variable or secret each, each failing `missing_binding` by name on a gap. Only
 // `env.ts` calls them, as `sso-config.ts` does for its own; no value is ever put in the error.
 import { fail } from './errors';
-import { isAgeRecipient, isSessionSecret } from './secrets';
+import { isAgeRecipient, isSetupToken } from './secrets';
 
 export const DEMO_PASSWORD_MIN = 16;
 
@@ -96,10 +96,10 @@ export function mailOf(source: Source): { EMAIL: SendEmail; MAIL_FROM: string } 
   };
 }
 
-/** The one-time first-admin token, trimmed like the one the form submits, when it is at least 43 characters; anything else is null, which turns the claim off. */
+/** The one-time first-admin token, trimmed like the one the form submits, when it is base64url of at least 32 random bytes; anything else is null, which turns the claim off. */
 export function setupToken(source: Source): string | null {
   const value = source['SETUP_TOKEN'];
-  return typeof value === 'string' && isSessionSecret(value) ? value.trim() : null;
+  return typeof value === 'string' && isSetupToken(value) ? value.trim() : null;
 }
 
 /** The demo password when it is a string of at least 16 characters; anything else is null, never an error. */
