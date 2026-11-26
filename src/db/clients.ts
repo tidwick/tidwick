@@ -1,6 +1,5 @@
 // Clients: reads through the caller's scope, and the audited writes. A member sees the clients that hold a
-// project they are assigned to, and the ones they created themselves (found in the audit log), so a client
-// they just made does not vanish before their first project. Names are unique ignoring case.
+// project they are assigned to. Only a steward creates one. Names are unique ignoring case.
 import { newId } from '../lib/ids';
 import { fail } from '../lib/errors';
 import { newClientKey, type WrappedKey } from '../lib/note-crypto';
@@ -19,15 +18,11 @@ export interface ClientRow {
 const LIST = `SELECT c.id, c.name, c.created_at, c.archived_at, c.erased_at FROM client c
 WHERE ?1 IS NULL
   OR c.id IN (SELECT p.client_id FROM project p WHERE p.id IN (SELECT value FROM json_each(?1)))
-  OR c.id IN (SELECT e.client_id FROM audit_event e
-              WHERE e.action = 'clients.create' AND e.actor_id = ?2 AND e.client_id IS NOT NULL)
 ORDER BY c.name`;
 
 const ONE = `SELECT c.id, c.name, c.created_at, c.archived_at, c.erased_at FROM client c
-WHERE c.id = ?3 AND (?1 IS NULL
-  OR c.id IN (SELECT p.client_id FROM project p WHERE p.id IN (SELECT value FROM json_each(?1)))
-  OR c.id IN (SELECT e.client_id FROM audit_event e
-              WHERE e.action = 'clients.create' AND e.actor_id = ?2 AND e.client_id IS NOT NULL))`;
+WHERE c.id = ?2 AND (?1 IS NULL
+  OR c.id IN (SELECT p.client_id FROM project p WHERE p.id IN (SELECT value FROM json_each(?1))))`;
 
 const INSERT = 'INSERT INTO client (id, name, created_at) VALUES (?1, ?2, ?3)';
 const INSERT_KEY = `INSERT INTO client_key (client_id, version, wrapped, iv, kek_id, created_at)
@@ -37,7 +32,7 @@ const ARCHIVE = 'UPDATE client SET archived_at = ?2 WHERE id = ?1 AND archived_a
 
 /** Every client the scope may see, by name. */
 export async function listClients(scope: Scope, db: D1Database): Promise<ClientRow[]> {
-  const result = await db.prepare(LIST).bind(projectsParam(scope), scope.actorId).all<ClientRow>();
+  const result = await db.prepare(LIST).bind(projectsParam(scope)).all<ClientRow>();
   return result.results;
 }
 
@@ -47,7 +42,7 @@ export async function clientById(
   db: D1Database,
   id: string,
 ): Promise<ClientRow | null> {
-  return db.prepare(ONE).bind(projectsParam(scope), scope.actorId, id).first<ClientRow>();
+  return db.prepare(ONE).bind(projectsParam(scope), id).first<ClientRow>();
 }
 
 export function insertClient(db: D1Database, id: string, name: string, now: number) {
@@ -59,8 +54,8 @@ export function insertClientKey(db: D1Database, id: string, key: WrappedKey, now
 }
 
 /**
- * Creates a client and its first data key in one batch with one `clients.create` event. A taken name is
- * `name_taken` whether or not the existing client is visible to the caller.
+ * Creates a client and its first data key in one batch with one `clients.create` event. Stewards only: a member
+ * scope is forbidden, so a refused name tells no member which clients exist.
  */
 export async function createClient(
   scope: Scope,
@@ -69,6 +64,7 @@ export async function createClient(
   name: string,
   now: number,
 ): Promise<ClientRow> {
+  requireAll(scope);
   const id = newId();
   const key = await newClientKey(kek, id, 1);
   await retryOnce(async () => {

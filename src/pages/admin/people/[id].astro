@@ -2,17 +2,28 @@
 import { actions } from 'astro:actions';
 import AccessBadge from '../../../components/admin/access-badge.astro';
 import Assignments from '../../../components/admin/person-assignments.astro';
+import PersonConfirm from '../../../components/admin/person-confirm.astro';
+import PersonEdit from '../../../components/admin/person-edit.astro';
 import PostForm from '../../../components/admin/post-form.astro';
 import SignInMethods from '../../../components/admin/sign-in-methods.astro';
 import Shell from '../../../components/admin/shell.astro';
 import StepUp from '../../../components/admin/step-up.astro';
 import { Badge } from '../../../components/ui/badge';
+import { buttonVariants } from '../../../components/ui/button';
+import { listFirms } from '../../../db/firms';
 import { liveIdentitiesOf } from '../../../db/identities';
 import { accessByPerson, assignmentsOf } from '../../../db/people-access';
 import { GRANTS } from '../../../db/roles';
 import { personDetail } from '../../../db/people';
 import { errorPage } from '../../../middleware/error-responses';
-import { pageContext, problemOf, savedAt, succeeded } from '../../_context';
+import {
+  fieldErrors,
+  pageContext,
+  postedFields,
+  problemOf,
+  savedAt,
+  succeeded,
+} from '../../_context';
 
 const ctx = pageContext(Astro);
 const id = Astro.params.id ?? '';
@@ -22,9 +33,12 @@ const unlocked = Astro.getActionResult(actions.people.unlock);
 const roles = Astro.getActionResult(actions.people.setRoles);
 const all = Astro.getActionResult(actions.assignments.addAll);
 const offboarded = Astro.getActionResult(actions.people.offboard);
+const updated = Astro.getActionResult(actions.people.update);
+const reinstated = Astro.getActionResult(actions.people.reinstate);
 const unlinked = Astro.getActionResult(actions.people.unlinkSso);
 if (succeeded([offboarded])) return Astro.redirect(savedAt('/admin/people'), 303);
-if (succeeded([roles, all, unlinked])) return Astro.redirect(savedAt(Astro.url.pathname), 303);
+if (succeeded([roles, all, unlinked, updated, reinstated]))
+  return Astro.redirect(savedAt(Astro.url.pathname), 303);
 const person = await personDetail(ctx.scope, ctx.db, id);
 if (!person) return errorPage(Astro, 'not_found');
 const held = new Set(person.roles.split(','));
@@ -37,11 +51,27 @@ const access = (await accessByPerson(ctx.db, Date.now())).get(id) ?? {
 };
 const assigned = await assignmentsOf(ctx.scope, ctx.db, id);
 const identities = await liveIdentitiesOf(ctx.db, id);
+const firms = await listFirms(ctx.db);
+const typed = updated?.error ? await postedFields(Astro) : null;
+const asked = Astro.url.searchParams.get('confirm');
+const confirm = active && (asked === 'offboard' || asked === 'reenrol') ? asked : null;
+const confirmLink = (danger = false) =>
+  `${buttonVariants({ variant: 'outline', size: 'lg' })} justify-self-start max-md:h-11 max-md:px-4 max-md:text-sm ${danger ? 'border-danger text-danger hover:bg-danger-surface hover:text-danger' : 'border-control'}`;
 ---
 
 <Shell
   title={person.name}
-  problem={problemOf([issued, reissued, unlocked, roles, offboarded, all, unlinked])}
+  problem={problemOf([
+    issued,
+    reissued,
+    unlocked,
+    roles,
+    offboarded,
+    all,
+    unlinked,
+    updated,
+    reinstated,
+  ])}
 >
   <Fragment slot="lead">
     <a class="underline underline-offset-2" href="/admin/people">
@@ -97,12 +127,41 @@ const identities = await liveIdentitiesOf(ctx.db, id);
 
   <Assignments csrf={ctx.csrf} person={person} assigned={assigned} active={active} />
 
+  <StepUp
+    csrf={ctx.csrf}
+    until={ctx.stepUpUntil}
+    unlocks={active ? 'access changes, roles, email changes and offboarding' : 'reinstating'}
+  />
+
+  {confirm && <PersonConfirm csrf={ctx.csrf} person={person} kind={confirm} />}
+
+  {!active && (
+    <section aria-labelledby="back-h" class="grid max-w-md gap-3">
+      <h2 id="back-h" class="text-lg font-semibold">
+        Reinstate
+      </h2>
+      <p class="text-sm text-muted-foreground">
+        Lifts the offboarding. They have no access until you issue an enrolment link and they enrol
+        a new passkey.
+      </p>
+      <PostForm
+        action={actions.people.reinstate}
+        csrf={ctx.csrf}
+        label="Reinstate"
+        tone="plain"
+        fields={{ id: person.id }}
+      />
+    </section>
+  )}
+
   {active && (
     <>
-      <StepUp
+      <PersonEdit
         csrf={ctx.csrf}
-        until={ctx.stepUpUntil}
-        unlocks="access changes, roles and offboarding"
+        person={person}
+        firms={firms}
+        typed={typed}
+        errors={fieldErrors([updated])}
       />
 
       <section aria-labelledby="access-h" class="grid gap-3">
@@ -121,13 +180,9 @@ const identities = await liveIdentitiesOf(ctx.db, id);
             tone="plain"
             fields={{ id: person.id }}
           />
-          <PostForm
-            action={actions.people.reenrol}
-            csrf={ctx.csrf}
-            label="Re-enrol (revokes everything)"
-            tone="plain"
-            fields={{ id: person.id }}
-          />
+          <a class={confirmLink()} href="?confirm=reenrol#confirm">
+            Re-enrol (revokes everything)
+          </a>
           <PostForm
             action={actions.people.unlock}
             csrf={ctx.csrf}
@@ -181,13 +236,9 @@ const identities = await liveIdentitiesOf(ctx.db, id);
         <p class="text-sm text-muted-foreground">
           Ends every session and passkey and closes every open link. Their time stays.
         </p>
-        <PostForm
-          action={actions.people.offboard}
-          csrf={ctx.csrf}
-          label="Offboard"
-          tone="danger"
-          fields={{ id: person.id }}
-        />
+        <a class={confirmLink(true)} href="?confirm=offboard#confirm">
+          Offboard
+        </a>
       </section>
     </>
   )}

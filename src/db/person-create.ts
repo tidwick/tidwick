@@ -20,7 +20,6 @@ VALUES (?1, ?2, ?3, ?4, ?5, ?6)`;
 const TAKEN = {
   'person.email': 'email_taken',
   'client.name': 'name_taken',
-  'firm.name': 'name_taken',
 } as const;
 
 /**

@@ -42,7 +42,7 @@ beforeAll(async () => {
   await env.DB.batch(
     [
       "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Example Client', 1)",
-      "INSERT INTO firm (id, name, client_id) VALUES ('f1', 'Example Firm', 'c1')",
+      "INSERT INTO firm (id, client_id) VALUES ('f1', 'c1')",
       "INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'p1@example.test', 'P One', 1)",
       "INSERT INTO task_code (id, code, name, created_at) VALUES ('t1', 'T1', 'Task one', 1), ('t2', 'T2', 'Task two', 1)",
       "INSERT INTO project (id, client_id, name, created_at) VALUES ('pr1', 'c1', 'Project one', 1)",

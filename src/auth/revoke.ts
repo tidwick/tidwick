@@ -1,5 +1,6 @@
 // Revoking a person's access: every credential, identity, session, unused recovery code, open link and agent grant, each audited.
 import { liveGrantIdsOf, revokeGrantsOf } from '../db/agent-grants';
+import { isLastAdmin } from '../db/admins';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
 import { activeCredentialsOf, revokeCredentialsOf } from '../db/credentials';
 import { closeEnrolmentsOf, openEnrolmentCount } from '../db/enrolments';
@@ -111,7 +112,10 @@ export async function revokeAccess(
   });
 }
 
-/** Re-enrolment: revokes all of a person's access and issues one new link in the same batch; returns its token. */
+/**
+ * Re-enrolment: revokes all of a person's access and issues one new link in the same batch; returns its token.
+ * The last admin who can sign in is refused as `last_admin`, as offboarding does: it would leave no one to sign in.
+ */
 export async function reenrol(
   scope: Scope,
   db: D1Database,
@@ -120,9 +124,10 @@ export async function reenrol(
   now: number,
 ): Promise<string> {
   requireAll(scope);
-  const person = await personById(db, personId);
-  if (!person || person.offboarded_at !== null) fail('not_found');
   return retryOnce(async () => {
+    const person = await personById(db, personId);
+    if (!person || person.offboarded_at !== null) fail('not_found');
+    if (await isLastAdmin(db, personId)) fail('last_admin');
     const batch = await auditedBatch(scope, db);
     await recordRevocations(batch, db, personId, now);
     const token = await recordEnrolment(batch, db, secret, personId, 'people.reenrol', now);

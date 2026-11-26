@@ -114,7 +114,7 @@ const posted = [rename, archive, newProject, projectArchive];
     )}
   </section>
 
-  {!archived && (
+  {!archived && ctx.steward && (
     <section aria-labelledby="new-project" class="max-w-md rounded-lg border border-border p-4">
       <h2 id="new-project" class="mb-3 text-lg font-semibold">
         New project

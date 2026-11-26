@@ -1,6 +1,5 @@
 // SEC-11: the role-by-action matrix for the admin data Actions, written from the requirements (an admin owns
-// reference data and people; accounting admins and admins manage assignments; any member creates clients and
-// projects; any member submits their own week; an accounting admin approves, returns and edits a week through the
+// reference data and people; accounting admins and admins create clients and projects and manage assignments; any member submits their own week; an accounting admin approves, returns and edits a week through the
 // lock; granting and removing power, handing out access, the settings, re-wrapping the note keys and those week
 // decisions need a fresh passkey confirmation), not read from src/routes.ts, so a drift in either shows as a diff.
 // Runs through the built Worker, by both callers.
@@ -29,8 +28,8 @@ const ACTORS = [
 
 const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
   //                         out  member acct  admin both  recov stale
-  'clients.create': [OUT, OK, OK, OK, OK, NO, OK],
-  'projects.create': [OUT, OK, OK, OK, OK, NO, OK],
+  'clients.create': [OUT, NO, OK, OK, OK, NO, OK],
+  'projects.create': [OUT, NO, OK, OK, OK, NO, OK],
   'clients.update': [OUT, NO, NO, OK, OK, NO, OK],
   'clients.archive': [OUT, NO, NO, OK, OK, NO, OK],
   'projects.update': [OUT, NO, NO, OK, OK, NO, OK],
@@ -40,6 +39,9 @@ const MATRIX: Readonly<Record<string, readonly Cell[]>> = {
   'taskCodes.update': [OUT, NO, NO, OK, OK, NO, OK],
   'taskCodes.archive': [OUT, NO, NO, OK, OK, NO, OK],
   'people.create': [OUT, NO, NO, OK, OK, NO, OK],
+  // An email change checks the step-up inside the Action, so a stale confirmation passes the route here.
+  'people.update': [OUT, NO, NO, OK, OK, NO, OK],
+  'people.reinstate': [OUT, NO, NO, OK, OK, NO, NO],
   'assignments.add': [OUT, NO, OK, OK, OK, NO, OK],
   'assignments.remove': [OUT, NO, OK, OK, OK, NO, OK],
   'assignments.addAll': [OUT, NO, OK, OK, OK, NO, OK],

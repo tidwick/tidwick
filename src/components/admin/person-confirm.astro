@@ -1,0 +1,41 @@
+---
+import { actions } from 'astro:actions';
+import { buttonVariants } from '../ui/button';
+import PostForm from './post-form.astro';
+// The no-script second step for the two destructive access changes: a page that says what will happen and posts
+// only on its own button. Cancel is a plain link back to the person.
+interface Props {
+  csrf: string;
+  person: { id: string; name: string };
+  kind: 'offboard' | 'reenrol';
+}
+const { csrf, person, kind } = Astro.props;
+const offboard = kind === 'offboard';
+---
+
+<section
+  id="confirm"
+  aria-labelledby="confirm-h"
+  class="grid max-w-md gap-3 rounded-lg border border-danger p-4"
+>
+  <h2 id="confirm-h" class="text-lg font-semibold">
+    {offboard ? `Offboard ${person.name}?` : `Re-enrol ${person.name}?`}
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    {offboard
+      ? 'This ends every session and passkey and closes every open link. Their time stays. You can reinstate them later.'
+      : 'This revokes every passkey, recovery code and session, and issues one new enrolment link.'}
+  </p>
+  <div class="flex flex-wrap gap-3">
+    <PostForm
+      action={offboard ? actions.people.offboard : actions.people.reenrol}
+      csrf={csrf}
+      label={offboard ? 'Confirm offboard' : 'Confirm re-enrol'}
+      tone="danger"
+      fields={{ id: person.id }}
+    />
+    <a class={buttonVariants({ variant: 'outline', size: 'lg' })} href={Astro.url.pathname}>
+      Cancel
+    </a>
+  </div>
+</section>

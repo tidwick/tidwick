@@ -32,13 +32,14 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 <Shell title="Clients" problem={problemOf([newClient, newProject])}>
   <Fragment slot="lead">
-    You see the clients that hold a project you are assigned to, and any you created.
+    {ctx.steward ? 'Every client.' : 'You see the clients that hold a project you are assigned to.'}
   </Fragment>
 
   {clients.length === 0 ? (
     <Empty title="No clients yet">
-      Add a client below, then add its first project. A client has to exist before time can be
-      booked to it.
+      {ctx.steward
+        ? 'Add a client below, then add its first project. A client has to exist before time can be booked to it.'
+        : 'An admin or accounting admin adds clients and projects, then assigns you to a project.'}
     </Empty>
   ) : (
     <Table aria-label="Clients">
@@ -73,54 +74,57 @@ const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
     </Table>
   )}
 
-  <div class="grid gap-6 md:grid-cols-2">
-    <section aria-labelledby="new-client" class="rounded-lg border border-border p-4">
-      <h2 id="new-client" class="text-lg font-semibold">
-        New client
-      </h2>
-      <p class="mb-3 mt-1 text-sm text-muted-foreground">You are assigned to what you add.</p>
-      <PostForm action={actions.clients.create} csrf={ctx.csrf} label="Add client">
-        <Field
-          label="Name"
-          field="name"
-          required
-          value={newClient?.error ? typed.name : ''}
-          errors={fieldErrors([newClient]).name ?? []}
-        />
-      </PostForm>
-    </section>
-
-    {live.length > 0 && (
-      <section aria-labelledby="new-project" class="rounded-lg border border-border p-4">
-        <h2 id="new-project" class="text-lg font-semibold">
-          New project
+  {ctx.steward && (
+    <div class="grid gap-6 md:grid-cols-2">
+      <section aria-labelledby="new-client" class="rounded-lg border border-border p-4">
+        <h2 id="new-client" class="text-lg font-semibold">
+          New client
         </h2>
-        <p class="mb-3 mt-1 text-sm text-muted-foreground">A project belongs to one client.</p>
-        <PostForm action={actions.projects.create} csrf={ctx.csrf} label="Add project">
-          <SelectField
-            label="Client"
-            field="clientId"
-            required
-            options={live.map((c) => ({ value: c.id, label: c.name }))}
-          />
+        <p class="mb-3 mt-1 text-sm text-muted-foreground">Add its first project next.</p>
+        <PostForm action={actions.clients.create} csrf={ctx.csrf} label="Add client">
           <Field
-            label="Project name"
+            label="Name"
             field="name"
             required
-            value={newProject?.error ? typed.name : ''}
-            errors={fieldErrors([newProject]).name ?? []}
-          />
-          <Field
-            label="Project number"
-            field="number"
-            hint="Optional. Two-digit year, a dash, four digits: 26-0001"
-            placeholder="26-0001"
-            maxlength={7}
-            value={newProject?.error ? typed.number : ''}
-            errors={fieldErrors([newProject]).number ?? []}
+            value={newClient?.error ? typed.name : ''}
+            errors={fieldErrors([newClient]).name ?? []}
           />
         </PostForm>
       </section>
-    )}
-  </div>
+
+      {live.length > 0 && (
+        <section aria-labelledby="new-project" class="rounded-lg border border-border p-4">
+          <h2 id="new-project" class="text-lg font-semibold">
+            New project
+          </h2>
+          <p class="mb-3 mt-1 text-sm text-muted-foreground">A project belongs to one client.</p>
+          <PostForm action={actions.projects.create} csrf={ctx.csrf} label="Add project">
+            <SelectField
+              label="Client"
+              field="clientId"
+              required
+              value={newProject?.error ? (typed.clientId ?? '') : ''}
+              options={live.map((c) => ({ value: c.id, label: c.name }))}
+            />
+            <Field
+              label="Project name"
+              field="name"
+              required
+              value={newProject?.error ? typed.name : ''}
+              errors={fieldErrors([newProject]).name ?? []}
+            />
+            <Field
+              label="Project number"
+              field="number"
+              hint="Optional. Two-digit year, a dash, four digits: 26-0001"
+              placeholder="26-0001"
+              maxlength={7}
+              value={newProject?.error ? typed.number : ''}
+              errors={fieldErrors([newProject]).number ?? []}
+            />
+          </PostForm>
+        </section>
+      )}
+    </div>
+  )}
 </Shell>

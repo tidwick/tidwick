@@ -62,7 +62,7 @@ export async function claimedAs(
 ): Promise<{ name: string; firm: string } | null> {
   return db
     .prepare(
-      'SELECT p.name AS name, f.name AS firm FROM person p JOIN firm f ON f.id = p.firm_id WHERE p.email = ?1',
+      'SELECT p.name AS name, c.name AS firm FROM person p JOIN firm f ON f.id = p.firm_id JOIN client c ON c.id = f.client_id WHERE p.email = ?1',
     )
     .bind(email)
     .first<{ name: string; firm: string }>();

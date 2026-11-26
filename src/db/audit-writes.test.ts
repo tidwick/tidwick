@@ -6,6 +6,7 @@ import { clientWithProject, eventsAfter, headSeq, unique } from '../../test/help
 import { emailHash, recordFailure, unlockRecovery } from '../auth/lockout';
 import { issueEnrolment } from '../auth/enrol';
 import { offboard } from '../auth/offboard';
+import { reinstate } from '../auth/reinstate';
 import { reenrol } from '../auth/revoke';
 import { currentEnv } from '../lib/env';
 import { AUDIT_OF } from './audit-actions';
@@ -13,6 +14,7 @@ import { addAssignment, removeAssignment } from './assignments';
 import { archiveClient, createClient, renameClient } from './clients';
 import { listFirms } from './firms';
 import { createPerson } from './person-create';
+import { updatePerson } from './person-update';
 import { setProjectTasks } from './project-tasks';
 import { archiveProject, createProject, updateProject } from './projects';
 import { setGrants } from './role-grants';
@@ -164,6 +166,21 @@ beforeAll(async () => {
       /^person:/,
     ),
     p(
+      'people.update',
+      () =>
+        updatePerson(
+          admin,
+          env.DB,
+          spare.id,
+          { name: 'Renamed', email: spare.email, externalCode: 'X1', firmId: firm },
+          T0,
+          () => undefined,
+        ),
+      { name: expect.any(String) as string, external_code: null },
+      { name: 'Renamed', external_code: 'X1' },
+      /^person:/,
+    ),
+    p(
       'people.setRoles',
       () => setGrants(admin, env.DB, spare.id, ['accounting_admin'], T0),
       { roles: [] },
@@ -203,12 +220,19 @@ beforeAll(async () => {
       /^person:/,
       REVOKES,
     ),
+    p(
+      'people.reinstate',
+      () => reinstate(admin, env.DB, leaver.id, T0),
+      { offboarded_at: T0 },
+      { offboarded_at: null },
+      /^person:/,
+    ),
   ];
 });
 
 describe('every admin write is audited once', () => {
   it('each Action write adds exactly one event of its own name with actor, target, before and after', async () => {
-    expect(cases).toHaveLength(18);
+    expect(cases).toHaveLength(20);
     for (const c of cases) {
       const seq = await headSeq();
       await c.run();

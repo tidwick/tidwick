@@ -19,15 +19,15 @@ export interface PersonListRow extends PersonRow {
 const BY_ID = 'SELECT id, email, name, offboarded_at FROM person WHERE id = ?1';
 const BY_EMAIL = 'SELECT id, email, name, offboarded_at FROM person WHERE email = ?1';
 
-const LIST = `SELECT p.id, p.email, p.name, p.offboarded_at, p.firm_id, f.name AS firm_name, p.external_code,
+const LIST = `SELECT p.id, p.email, p.name, p.offboarded_at, p.firm_id, c.name AS firm_name, p.external_code,
   COALESCE((SELECT group_concat(r.role, ',') FROM person_role r WHERE r.person_id = p.id), '') AS roles
-FROM person p JOIN firm f ON f.id = p.firm_id
-WHERE p.name LIKE ?1 ESCAPE '\\' OR p.email LIKE ?1 ESCAPE '\\' OR p.external_code LIKE ?1 ESCAPE '\\' OR f.name LIKE ?1 ESCAPE '\\'
+FROM person p JOIN firm f ON f.id = p.firm_id JOIN client c ON c.id = f.client_id
+WHERE p.name LIKE ?1 ESCAPE '\\' OR p.email LIKE ?1 ESCAPE '\\' OR p.external_code LIKE ?1 ESCAPE '\\' OR c.name LIKE ?1 ESCAPE '\\'
 ORDER BY p.offboarded_at IS NOT NULL, p.name`;
 
-const DETAIL = `SELECT p.id, p.email, p.name, p.offboarded_at, p.firm_id, f.name AS firm_name, p.external_code,
+const DETAIL = `SELECT p.id, p.email, p.name, p.offboarded_at, p.firm_id, c.name AS firm_name, p.external_code,
   COALESCE((SELECT group_concat(r.role, ',') FROM person_role r WHERE r.person_id = p.id), '') AS roles
-FROM person p JOIN firm f ON f.id = p.firm_id WHERE p.id = ?1`;
+FROM person p JOIN firm f ON f.id = p.firm_id JOIN client c ON c.id = f.client_id WHERE p.id = ?1`;
 
 export async function personById(db: D1Database, id: string): Promise<PersonRow | null> {
   return db.prepare(BY_ID).bind(id).first<PersonRow>();
@@ -58,4 +58,15 @@ export async function personDetail(
 ): Promise<PersonListRow | null> {
   requireAll(scope);
   return db.prepare(DETAIL).bind(id).first<PersonListRow>();
+}
+
+/** Clears the offboarded stamp it read, so a concurrent change makes it match nothing. */
+export function reinstateStatement(
+  db: D1Database,
+  id: string,
+  offboardedAt: number,
+): D1PreparedStatement {
+  return db
+    .prepare('UPDATE person SET offboarded_at = NULL WHERE id = ?1 AND offboarded_at = ?2')
+    .bind(id, offboardedAt);
 }

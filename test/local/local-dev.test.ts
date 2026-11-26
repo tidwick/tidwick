@@ -22,7 +22,7 @@ async function person(id: string, email: string, offboardedAt: number | null): P
   await env.DB.exec(
     [
       "INSERT OR IGNORE INTO client (id, name, created_at) VALUES ('lc', 'Local', 1);",
-      "INSERT OR IGNORE INTO firm (id, name, client_id) VALUES ('lf', 'Local', 'lc');",
+      "INSERT OR IGNORE INTO firm (id, client_id) VALUES ('lf', 'lc');",
       `INSERT INTO person (id, firm_id, email, name, created_at, offboarded_at) VALUES ('${id}', 'lf', '${email}', 'Local person', 1, ${String(offboardedAt ?? 'NULL')});`,
     ].join('\n'),
   );
