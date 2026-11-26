@@ -86,6 +86,7 @@ describe('SEC-32 keys.rewrap runs only for an admin with step-up', () => {
       .slice(0, 10);
     expect(done).toContain(`Keep NOTE_KEK_PREVIOUS until ${until}`);
     expect(done).not.toContain('Delete NOTE_KEK_PREVIOUS now');
+    expect(done).toContain('in the Cloudflare dashboard');
     expect(done).not.toContain('?_action=keys.rewrap');
     const again = await rpcForm('keys.rewrap', admin);
     expect(again.status).toBe(200);

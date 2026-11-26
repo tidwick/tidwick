@@ -139,8 +139,12 @@ Lab checklist, run by hand each release, on a fresh Cloudflare account that has 
 - Use it for a week: add a client, a project and a person, enter hours, submit, approve, lock.
 - Export the CSV and open it.
 - `/admin/settings` shows the backup status; press "Send test alert" and "Back up now" and read the result.
+- Set the off-account copy values from step 5 (or `BACKUP_COPY` `none`) and add the 35-day expiry rule to `tidwick-backups` in the dashboard (R2, the bucket, Settings, Object lifecycle rules); `/healthz` answers 503 until the copy is configured.
 - `/healthz` is 200 the next day, after the 03:00 backup.
+- Rotate `NOTE_KEK` in the dashboard (the old value into `NOTE_KEK_PREVIOUS`), re-wrap on `/admin/settings`, and delete `NOTE_KEK_PREVIOUS` in the dashboard once the date the screen shows has passed.
 - The restore walk below is a separate lab; it needs a terminal by design.
+
+Status: lab: pending. No release has been through this checklist on a real account yet; record the date and the result here when one has.
 
 ## 10. Operate
 

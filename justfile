@@ -275,8 +275,11 @@ release version:
     branch="$(git branch --show-current)"
     case "$branch" in main|next|"") echo "FAIL release: switch to a branch for the bump PR, not '$branch'"; exit 1;; esac
     [ -z "$(git status --porcelain)" ] || { echo "FAIL release: the tree is not clean"; exit 1; }
+    grep -q '^## \[{{ version }}\]' CHANGELOG.md || { echo "FAIL release: CHANGELOG.md has no '## [{{ version }}]' section; add it in the bump PR"; exit 1; }
     npm version "{{ version }}" --no-git-tag-version >/dev/null
     echo "PASS release: package.json and the lockfile say {{ version }}; commit them and open a PR to next; after the merge: fast-forward main, run the lab checklist in docs/ARCHITECTURE.md, Deploy, then tag"
+    echo "CHANGELOG.md says:"
+    sed -n '/^## \[{{ version }}\]/,/^## \[/p' CHANGELOG.md | sed '$ {/^## \[/d;}'
     echo "NEXT, by hand once the PR is merged (the lab runs between the two steps):"
     echo "  git fetch origin && git push origin origin/next:main"
     echo "  (run the lab checklist against main)"
@@ -286,7 +289,7 @@ release version:
 guard:
     #!/usr/bin/env bash
     set -euo pipefail
-    extra="$(git ls-files '*.md' | grep -Ev '^(README|CONTRIBUTING|AGENTS|CLAUDE|LICENSE)\.md$|^docs/ARCHITECTURE\.md$|^docs/adr/|^\.github/pull_request_template\.md$' || true)"
+    extra="$(git ls-files '*.md' | grep -Ev '^(README|CONTRIBUTING|AGENTS|CLAUDE|LICENSE|SECURITY|CHANGELOG)\.md$|^docs/ARCHITECTURE\.md$|^docs/adr/|^\.github/pull_request_template\.md$' || true)"
     [ -z "$extra" ] || { echo "FAIL docs-bar: $extra; fold it into docs/ARCHITECTURE.md or an ADR and delete it"; exit 1; }
     echo "PASS docs-bar"
     ./scripts/migrations-guard.test.sh

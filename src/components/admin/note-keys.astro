@@ -50,7 +50,8 @@ const { csrf, status, rotating, keepUntil, keepDays, perRun } = Astro.props;
     <p class="text-sm">
       Every client key is under NOTE_KEK. Keep NOTE_KEK_PREVIOUS
       {keepUntil === null ? ` for ${String(keepDays)} days` : ` until ${keepUntil}`}, so a backup
-      made before the rotation can still be restored, then delete it with
+      made before the rotation can still be restored, then delete it under Settings, Variables and
+      Secrets in the Cloudflare dashboard, or with
       <code>npx wrangler secret delete NOTE_KEK_PREVIOUS</code>.
     </p>
   )}
