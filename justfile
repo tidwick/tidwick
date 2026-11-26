@@ -201,12 +201,6 @@ deploy env="":
     eval "$(just _wr {{ quote(env) }})"
     env ${flags:+CLOUDFLARE_ENV=demo} just build
     npx --no-install wrangler deploy ${flags:+--env demo} --dry-run
-    # One-time: delete after the first green demo deploy. The demo applied the eleven pre-release migrations, which v0.1.0
-    # squashed into 0001_init.sql with the same schema; mark it applied so wrangler finds nothing pending. A database
-    # that never held the eleven (no 0011_sso.sql row) is left alone and migrates normally. Never runs for the real deployment.
-    if [ -n "$flags" ]; then
-      npx --no-install wrangler d1 execute "$mig" --remote $flags --command "CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL); INSERT INTO d1_migrations (name) SELECT '0001_init.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name = '0001_init.sql') AND EXISTS (SELECT 1 FROM d1_migrations WHERE name = '0011_sso.sql');"
-    fi
     npx --no-install wrangler d1 migrations apply "$mig" --remote $flags
     npx --no-install wrangler deploy ${flags:+--env demo}
 
@@ -262,11 +256,6 @@ guard:
       base=FETCH_HEAD
     fi
     changed="$(git diff --name-status --diff-filter=a "$base" -- migrations/)" || { echo "FAIL migrations: no $base to compare with; run git fetch origin next"; exit 1; }
-    # One-time: the eleven pre-release migrations became one file, renamed 0001_init.sql. Delete in the next PR.
-    if [ -n "$changed" ] && [ "$(git rev-parse "$base:migrations")" = c6dda7c0f91f7af8745c8605775540a161c48f92 ] \
-      && [ "$(git rev-parse HEAD:migrations)" = 189ebddf4642f12de5764f2ae2c23181aa732a4d ] && git diff --quiet HEAD -- migrations/; then
-      echo "PASS migrations (the rename to 0001_init.sql)"; changed=
-    fi
     [ -z "$changed" ] || { echo "FAIL migrations: a shipped migration changed; restore it and add a new migration instead:"; echo "$changed"; exit 1; }
     echo "PASS migrations"
     ./scripts/restore-target.test.sh
