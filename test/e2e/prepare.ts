@@ -37,6 +37,9 @@ const PLAINS = PROJECTS.map((project) => `plain-${project}`);
 // For the approve spec: a member per project who submits a week with hours, and an accounting admin who approves it.
 const SUBMITTERS = PROJECTS.map((project) => `submit-${project}`);
 const ACCOUNTANTS = PROJECTS.map((project) => `acct-${project}`);
+// For the return spec: a member per project with six hours in the week of 2031-03-17, and an accounting admin who returns it.
+const RETURNEES = PROJECTS.map((project) => `ret-${project}`);
+const RETURNERS = PROJECTS.map((project) => `retacct-${project}`);
 // For the CSV spec: an accounting admin per project who previews an import, edits the mappings and downloads a report.
 const CSV_ACCOUNTANTS = PROJECTS.map((project) => `csv-${project}`);
 // For the recovery spec, a member who recovers with a code; for the settings spec, an admin who also gets the accessibility scan.
@@ -53,6 +56,8 @@ for (const [i, project] of [
   ...CSV_ACCOUNTANTS,
   ...RECOVERERS,
   ...SETTERS,
+  ...RETURNEES,
+  ...RETURNERS,
 ].entries()) {
   const id = `00000000-0000-4000-a000-${String(i).padStart(12, '0')}`;
   ids[project] = id;
@@ -67,7 +72,7 @@ for (const [i, project] of [
     sql.push(
       `INSERT OR IGNORE INTO person_role (person_id, role, granted_at) VALUES ('${id}', 'admin', 1);`,
     );
-  if (project.startsWith('acct-') || project.startsWith('csv-'))
+  if (project.startsWith('acct-') || project.startsWith('csv-') || project.startsWith('retacct-'))
     sql.push(
       `INSERT OR IGNORE INTO person_role (person_id, role, granted_at) VALUES ('${id}', 'accounting_admin', 1);`,
     );
@@ -99,6 +104,16 @@ for (const [n, name] of SUBMITTERS.entries()) {
     `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${person}', 1);`,
     `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ('e2e-submit-row-${String(n)}', 'e2e-grid-client', '${person}', '2031-03-10', 'e2e-grid-project', 'e2e-grid-des', 0);`,
     `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, updated_at) VALUES ('e2e-submit-entry-${String(n)}', 'e2e-grid-client', 'e2e-submit-row-${String(n)}', 0, 600, 1);`,
+  );
+}
+
+// The return spec's week: 2031-03-17 holds one row with six hours on Monday, ready to submit.
+for (const [n, name] of RETURNEES.entries()) {
+  const person = ids[name] ?? '';
+  sql.push(
+    `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${person}', 1);`,
+    `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ('e2e-return-row-${String(n)}', 'e2e-grid-client', '${person}', '2031-03-17', 'e2e-grid-project', 'e2e-grid-des', 0);`,
+    `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, updated_at) VALUES ('e2e-return-entry-${String(n)}', 'e2e-grid-client', 'e2e-return-row-${String(n)}', 0, 600, 1);`,
   );
 }
 

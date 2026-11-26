@@ -1,6 +1,7 @@
 // Recovery codes: ten per person, 16 Crockford base32 characters (80 bits), stored only as hashes.
 import { auditedBatch, retryOnce } from '../db/audit';
 import { closeCodesOf, insertCodes, unusedCodeCount } from '../db/recovery-codes';
+import { putPendingCodes } from '../db/pending-codes';
 import type { Scope } from '../db/scope';
 import { keyedHash } from './tokens';
 
@@ -69,6 +70,7 @@ export async function regenerateCodes(
       unused,
     );
     for (const insert of insertCodes(db, personId, hashes, now)) batch.also(insert);
+    batch.also(putPendingCodes(db, personId, codes, now));
     await batch.run();
   });
   return codes;

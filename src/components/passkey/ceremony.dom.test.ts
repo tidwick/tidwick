@@ -57,16 +57,17 @@ describe('a ceremony button comes back after a rejected call', () => {
   });
 });
 
-describe('regenerated recovery codes go through the codes step', () => {
-  it('shows the ten codes in the step and hides the page behind it', async () => {
+describe('regenerated recovery codes are shown by the account page, not held in the browser', () => {
+  it('loads the account page after the codes are made and keeps no codes in this page', async () => {
     const codes = Array.from({ length: 10 }, (_, i) => `AAAA-BBBB-CCCC-000${String(i)}`);
     actions.regenerateCodes.mockResolvedValue({ data: { codes } });
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign });
     wireRegenerate();
     button('regen')?.click();
     await settle();
-    expect(document.querySelectorAll('[data-codes] > li')).toHaveLength(10);
-    expect(document.querySelector('[data-enrol-done]')?.hasAttribute('hidden')).toBe(false);
-    expect(document.querySelector('[data-enrol-start]')?.hasAttribute('hidden')).toBe(true);
+    expect(assign).toHaveBeenCalledWith('/account');
+    expect(document.querySelectorAll('[data-codes] > li')).toHaveLength(0);
   });
 
   it('stops the form submitting, and works in a browser without WebAuthn JSON helpers', async () => {

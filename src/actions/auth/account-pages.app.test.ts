@@ -51,7 +51,7 @@ describe('the auth pages are labelled and structured', () => {
     const who = await caller();
     const first = await withPasskey(who.personId);
     const alone = await (await getPage('/account', who)).text();
-    expect(h1s(alone)).toBe(2);
+    expect(h1s(alone)).toBe(1);
     expect(alone).toContain('Your only passkey');
     expect(alone).not.toContain('revokePasskey');
     const second = await withPasskey(who.personId);

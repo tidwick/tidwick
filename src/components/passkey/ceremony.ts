@@ -162,7 +162,7 @@ export function wireStepUp(): void {
   });
 }
 
-/** Makes new recovery codes and shows them through the same step enrolment uses, so they are copied or printed first. */
+/** Makes new recovery codes, then loads the account page, which shows them from their short-lived record so a reload keeps them. */
 export function wireRegenerate(): void {
   wire(
     '[data-passkey="regen"]',
@@ -171,7 +171,7 @@ export function wireRegenerate(): void {
       body.set('_csrf', button.dataset.csrf ?? '');
       const done = await actions.auth.regenerateCodes(body);
       if (done.error) return done.error.message;
-      showCodes(done.data.codes);
+      window.location.assign('/account');
       return null;
     },
     false,
