@@ -44,7 +44,13 @@ export async function completeLogin(
     storedCredential(row),
   );
   if (!verified) fail('login_failed');
-  const session = await newSession(deps.db, deps.secret, row.person_id, now);
+  const session = await newSession(
+    deps.db,
+    deps.secret,
+    row.person_id,
+    now,
+    deps.policy.sessionMaxMs,
+  );
   const counter = { from: row.counter, to: verified.newCounter };
   const [used] = await deps.db.batch([
     useCredential(deps.db, row.id, counter, now),

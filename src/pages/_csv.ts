@@ -19,7 +19,10 @@ export async function csvEndpoint(
   try {
     const scope = context.locals.scope ?? fail('unauthenticated');
     const form = await context.request.formData();
-    const file = await build(scope, parseRange(form.get('from'), form.get('to')));
+    const file = await build(
+      scope,
+      parseRange(form.get('from'), form.get('to'), currentEnv().POLICY.reportMaxDays),
+    );
     return csvDownload(file.text, file.filename);
   } catch (error) {
     if (isAppError(error)) return errorPage(context, error.code, error.detail, back);

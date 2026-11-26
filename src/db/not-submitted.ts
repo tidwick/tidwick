@@ -18,9 +18,6 @@ export interface EndedWeek {
   endsAt: number;
 }
 
-/** At most this many person-weeks are listed. */
-export const NOT_SUBMITTED_PAGE = 500;
-
 // ?3 is a search pattern over name, email and accounting code. A person counts for a week when they are not offboarded, were created before it ended, and held an assignment
 // made before it ended (an assignment that was removed no longer holds, so it does not count).
 const MISSING = `SELECT p.id AS person_id, p.name, json_extract(w.value, '$.weekStart') AS week_start,
@@ -44,13 +41,14 @@ export async function notSubmittedWeeks(
   scope: Scope,
   db: D1Database,
   ended: readonly EndedWeek[],
+  pageRows: number,
   term = '',
 ): Promise<MissingList> {
   if (scope.kind !== 'all') fail('not_found');
   const found = await db
     .prepare(MISSING)
-    .bind(JSON.stringify(ended), NOT_SUBMITTED_PAGE + 1, containsPattern(term))
+    .bind(JSON.stringify(ended), pageRows + 1, containsPattern(term))
     .all<MissingWeek>();
   const weeks = found.results;
-  return { weeks: weeks.slice(0, NOT_SUBMITTED_PAGE), cut: weeks.length > NOT_SUBMITTED_PAGE };
+  return { weeks: weeks.slice(0, pageRows), cut: weeks.length > pageRows };
 }

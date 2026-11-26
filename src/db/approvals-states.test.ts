@@ -3,15 +3,21 @@ import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { offboard, T0 } from '../../test/helpers/auth';
 import { bookedWeek, WEEK } from '../../test/helpers/booking';
-import { approvalWeeks, APPROVALS_PAGE, nextWaiting, type ListedState } from './approvals';
+import { approvalWeeks, nextWaiting, type ListedState } from './approvals';
 import { decideWeek, submitWeek } from './submissions';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 async function listed(
   b: Awaited<ReturnType<typeof bookedWeek>>,
   state: ListedState,
   range: { from?: string; to?: string } = {},
 ) {
-  const { weeks } = await approvalWeeks(b.admin, env.DB, { state, ...range });
+  const { weeks } = await approvalWeeks(
+    b.admin,
+    env.DB,
+    { state, ...range },
+    DEFAULT_POLICY.approvalsPage,
+  );
   return weeks.filter((w) => w.person_id === b.who.personId);
 }
 
@@ -55,7 +61,9 @@ describe('the approvals list by state', () => {
   it('a member scope cannot read any state', async () => {
     const w = await bookedWeek();
     for (const state of ['submitted', 'approved', 'returned', 'draft'] as const) {
-      await expect(approvalWeeks(w.member, env.DB, { state })).rejects.toMatchObject({
+      await expect(
+        approvalWeeks(w.member, env.DB, { state }, DEFAULT_POLICY.approvalsPage),
+      ).rejects.toMatchObject({
         code: 'not_found',
       });
     }
@@ -65,18 +73,28 @@ describe('the approvals list by state', () => {
 describe('a list past its page says how many there are', () => {
   it('holds a page and reports the full count; a list under a page reports its own length', async () => {
     const w = await bookedWeek();
-    const extra = APPROVALS_PAGE + 1;
+    const extra = DEFAULT_POLICY.approvalsPage + 1;
     const rows = `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${String(extra)}) INSERT INTO week_submission (person_id, week_start, state, submitted_at) SELECT '${w.who.personId}', date('2000-01-03', '+' || (i * 7) || ' days'), 'approved', 1 FROM n;`;
     await env.DB.exec(rows);
     const from = '2000-01-03';
-    const cut = await approvalWeeks(w.admin, env.DB, { state: 'approved', from });
-    expect(cut.weeks).toHaveLength(APPROVALS_PAGE);
+    const cut = await approvalWeeks(
+      w.admin,
+      env.DB,
+      { state: 'approved', from },
+      DEFAULT_POLICY.approvalsPage,
+    );
+    expect(cut.weeks).toHaveLength(DEFAULT_POLICY.approvalsPage);
     expect(cut.found).toBeGreaterThanOrEqual(extra);
-    const small = await approvalWeeks(w.admin, env.DB, {
-      state: 'approved',
-      from,
-      to: '2000-03-27',
-    });
+    const small = await approvalWeeks(
+      w.admin,
+      env.DB,
+      {
+        state: 'approved',
+        from,
+        to: '2000-03-27',
+      },
+      DEFAULT_POLICY.approvalsPage,
+    );
     expect(small.weeks.filter((x) => x.person_id === w.who.personId)).toHaveLength(12);
     expect(small.found).toBe(small.weeks.length);
   });

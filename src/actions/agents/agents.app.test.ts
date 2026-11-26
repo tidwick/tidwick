@@ -6,7 +6,7 @@ import { CLIENT_ID, connect, document, stubDocuments } from '../../../test/helpe
 import { call2025, mcp } from '../../../test/helpers/agent';
 import { addPerson } from '../../../test/helpers/auth';
 import { caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
-import { MAX_LIVE_GRANTS } from '../../auth/agent-personal';
+import { currentEnv } from '../../lib/env';
 import { endGrantsOf, rowsOf } from '../../db/test-support-agents';
 
 let stub: ReturnType<typeof stubDocuments>;
@@ -102,7 +102,7 @@ describe('SEC-60 making an agent token', () => {
 
   it('SEC-60 holds at most five live tokens, and a revoked one makes room (negative case: the sixth is refused)', async () => {
     const who = await caller();
-    for (let n = 0; n < MAX_LIVE_GRANTS; n += 1) {
+    for (let n = 0; n < currentEnv().POLICY.agentTokenMax; n += 1) {
       expect(
         (await rpcForm('agents.mint', who, { ...fields, label: `T${String(n)}` })).status,
       ).toBe(200);

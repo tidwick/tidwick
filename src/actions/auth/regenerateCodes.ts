@@ -13,7 +13,7 @@ export default defineAction({
     act(async () => {
       const session = signedIn(context);
       await guardPersona(currentEnv(), session.personId);
-      const { db, secret } = authEnv();
+      const { db, secret, policy } = authEnv();
       const codes = await regenerateCodes(
         scopeOf(context),
         db,
@@ -21,6 +21,7 @@ export default defineAction({
         session.personId,
         Date.now(),
         session.rawId,
+        policy.pendingCodesMs,
       );
       return { codes };
     }),

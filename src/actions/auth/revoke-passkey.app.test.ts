@@ -7,6 +7,7 @@ import { newSession } from '../../auth/session';
 import { csrfToken } from '../../auth/tokens';
 import { storedRows } from '../../db/stored-rows';
 import { currentEnv } from '../../lib/env';
+import { DEFAULT_POLICY } from '../../lib/policy';
 
 async function signedInWith(passkeys: number) {
   const who = await caller();
@@ -85,7 +86,14 @@ describe('auth.revokePasskey removes one of the caller own passkeys', () => {
     const person = await addPerson();
     const first = await withPasskey(person.id);
     await withPasskey(person.id);
-    const session = await newSession(env.DB, SESSION_SECRET, person.id, Date.now(), true);
+    const session = await newSession(
+      env.DB,
+      SESSION_SECRET,
+      person.id,
+      Date.now(),
+      DEFAULT_POLICY.sessionMaxMs,
+      true,
+    );
     await session.statement.run();
     const token = await csrfToken(SESSION_SECRET, session.rawId);
     const who = { personId: person.id, raw: session.rawId, token };

@@ -18,6 +18,7 @@ import {
   type Source,
 } from './env-fields';
 import { isAppError } from './errors';
+import { readPolicy, type Policy } from './policy';
 import { isNoteKek, isSessionSecret } from './secrets';
 import { ssoProviders, type SsoProvider } from './sso-config';
 
@@ -56,6 +57,8 @@ export interface Env {
   NOTE_KEK_PREVIOUS: string | null;
   /** The one-time secret that lets `/setup` create the first admin on an empty database; null when unset or under 43 characters, which turns the claim off. */
   SETUP_TOKEN: string | null;
+  /** The operator-policy numbers (lifetimes, caps, page sizes), each its default when its variable is unset. */
+  POLICY: Policy;
 }
 
 /** With `gaps`, a refused field is recorded by name and read as undefined, so one pass names every gap; without, the first throws. */
@@ -92,6 +95,7 @@ function parse(source: Source, gaps?: string[]): Env {
     NOTE_KEK: field(() => secret(source, 'NOTE_KEK', isNoteKek)),
     NOTE_KEK_PREVIOUS: field(() => optionalSecret(source, 'NOTE_KEK_PREVIOUS', isNoteKek)),
     SETUP_TOKEN: setupToken(source),
+    POLICY: readPolicy(source, gaps),
   };
 }
 
@@ -137,6 +141,7 @@ export function backupEnv(source: object): {
   BACKUPS: R2Bucket;
   BACKUP_RECIPIENT: string;
   copy: CopySettings;
+  policy: Policy;
 } {
   const s = source as Source;
   return {
@@ -144,6 +149,7 @@ export function backupEnv(source: object): {
     BACKUPS: binding(s, 'BACKUPS', ['put', 'get', 'list']) as R2Bucket,
     BACKUP_RECIPIENT: configured(s, 'BACKUP_RECIPIENT'),
     copy: copyOf(s),
+    policy: readPolicy(s),
   };
 }
 
@@ -219,6 +225,7 @@ export function noteKeks(env: Env = currentEnv()): NoteKeks {
 export interface AuthEnv {
   readonly db: D1Database;
   readonly secret: string;
+  readonly policy: Policy;
   readonly rp: { readonly id: string; readonly name: string; readonly origin: string };
 }
 
@@ -226,6 +233,7 @@ export function authEnv(env: Env = currentEnv()): AuthEnv {
   return {
     db: env.DB,
     secret: env.SESSION_SECRET,
+    policy: env.POLICY,
     rp: { id: env.RP_ID, name: 'tidwick', origin: env.ORIGIN },
   };
 }

@@ -11,6 +11,13 @@ export default defineAction({
   handler: (input, context) =>
     act(async () => {
       const bytes = new Uint8Array(await input.file.arrayBuffer());
-      return applyImport(scopeOf(context), currentEnv().DB, noteKeks(), bytes, Date.now());
+      return applyImport(
+        scopeOf(context),
+        currentEnv().DB,
+        noteKeks(),
+        bytes,
+        Date.now(),
+        currentEnv().POLICY,
+      );
     }),
 });

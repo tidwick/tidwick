@@ -9,6 +9,7 @@ import { currentEnv } from '../lib/env';
 import { approvalWeeks } from './approvals';
 import { listPeople } from './people';
 import { scopeFor, systemScope } from './scope';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 describe('searching the people list over the 100-person seed', () => {
   beforeAll(async () => {
@@ -61,10 +62,19 @@ describe('searching the approvals list over the 100-person seed', () => {
 
   it('a name keeps that person’s weeks and drops everyone else’s', async () => {
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
-    const all = (await approvalWeeks(admin, env.DB, { state: 'submitted' })).weeks;
+    const all = (
+      await approvalWeeks(admin, env.DB, { state: 'submitted' }, DEFAULT_POLICY.approvalsPage)
+    ).weeks;
     expect(all).toHaveLength(40);
     // The submitters are the 4th to the 33rd person; Dev is every tenth from the 4th, and the first ten submit twice.
-    const dev = (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'dev ' })).weeks;
+    const dev = (
+      await approvalWeeks(
+        admin,
+        env.DB,
+        { state: 'submitted', term: 'dev ' },
+        DEFAULT_POLICY.approvalsPage,
+      )
+    ).weeks;
     expect(dev).toHaveLength(4);
     expect(new Set(dev.map((w) => w.person_id))).toEqual(
       new Set([SEED_IDS.person(4), SEED_IDS.person(14), SEED_IDS.person(24)]),
@@ -74,24 +84,56 @@ describe('searching the approvals list over the 100-person seed', () => {
   it('an email or accounting code finds a person, and a term nobody holds finds nothing', async () => {
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
     expect(
-      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'elin.abernath@larkspur' }))
-        .weeks,
+      (
+        await approvalWeeks(
+          admin,
+          env.DB,
+          { state: 'submitted', term: 'elin.abernath@larkspur' },
+          DEFAULT_POLICY.approvalsPage,
+        )
+      ).weeks,
     ).toHaveLength(2);
     expect(
-      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'R1003' })).weeks,
+      (
+        await approvalWeeks(
+          admin,
+          env.DB,
+          { state: 'submitted', term: 'R1003' },
+          DEFAULT_POLICY.approvalsPage,
+        )
+      ).weeks,
     ).toHaveLength(2);
     expect(
-      (await approvalWeeks(admin, env.DB, { state: 'submitted', term: 'zzzz' })).weeks,
+      (
+        await approvalWeeks(
+          admin,
+          env.DB,
+          { state: 'submitted', term: 'zzzz' },
+          DEFAULT_POLICY.approvalsPage,
+        )
+      ).weeks,
     ).toEqual([]);
-    expect((await approvalWeeks(admin, env.DB, { state: 'submitted', term: '%' })).weeks).toEqual(
-      [],
-    );
+    expect(
+      (
+        await approvalWeeks(
+          admin,
+          env.DB,
+          { state: 'submitted', term: '%' },
+          DEFAULT_POLICY.approvalsPage,
+        )
+      ).weeks,
+    ).toEqual([]);
   });
 
   it('a member scope is refused a search as it is refused the list', async () => {
     const member = await scopeFor(env.DB, SEED_IDS.person(3));
     await expect(
-      approvalWeeks(member, env.DB, { state: 'submitted', term: 'dev' }),
+      approvalWeeks(
+        member,
+        env.DB,
+        { state: 'submitted', term: 'dev' },
+        DEFAULT_POLICY.approvalsPage,
+      ),
     ).rejects.toMatchObject({
       code: 'not_found',
     });

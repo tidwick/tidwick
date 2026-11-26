@@ -73,14 +73,18 @@ function decodeUtf8(bytes: Uint8Array<ArrayBuffer>): string {
   }
 }
 
-export async function planFile(db: D1Database, bytes: Uint8Array<ArrayBuffer>): Promise<Run> {
+export async function planFile(
+  db: D1Database,
+  bytes: Uint8Array<ArrayBuffer>,
+  maxRows: number,
+): Promise<Run> {
   if (bytes.byteLength > MAX_IMPORT_BYTES)
     fail('invalid_input', 'the file is over 2 MB; split it by date range');
   const hash = await sha256Hex(bytes);
   const mapping = await loadImportMapping(db);
   const mappingHash = await sha256Hex(new TextEncoder().encode(canonicalJson(mapping)));
   const prior = await priorBatch(db, hash);
-  const read = readImport(decodeUtf8(bytes), mapping);
+  const read = readImport(decodeUtf8(bytes), mapping, maxRows);
   const ref = await loadReference(db);
   const existing = await loadExisting(db, read.rows, ref);
   const plan = planImport(read.rows, ref, existing, hash);

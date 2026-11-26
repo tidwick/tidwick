@@ -1,15 +1,14 @@
-// Sessions: an opaque 256-bit id in a __Host- cookie, stored only as its hash, 8 hours idle, 14 days absolute.
+// Sessions: an opaque 256-bit id in a __Host- cookie, stored only as its hash, ended by the idle and absolute
+// limits (`SESSION_IDLE_HOURS`, `SESSION_MAX_DAYS`), which callers pass in from the parsed policy.
 import { insertSession, liveSession, revokeSession, touchSession } from '../db/sessions';
 import { keyedHash, randomToken } from './tokens';
 
 export const SESSION_COOKIE = '__Host-tidwick-session';
-export const IDLE_MS = 8 * 60 * 60 * 1000;
-export const ABSOLUTE_MS = 14 * 24 * 60 * 60 * 1000;
-/** A recovery session may only enrol a passkey, so it lives as long as that ceremony needs and no longer. */
+/** Fixed: a recovery session may only enrol a passkey, so it lives as long as that ceremony needs and no longer. */
 export const ENROL_MS = 30 * 60 * 1000;
-/** A demo sign-in's whole life; its step-up stamp is set to the expiry, so it never meets a passkey prompt. */
+/** Fixed: a demo sign-in's whole life; its step-up stamp is set to the expiry, so it never meets a passkey prompt. */
 export const DEMO_SESSION_MS = 2 * 60 * 60 * 1000;
-/** `seen_at` is written at most this often, so a busy session costs one write a minute, not one per request. */
+/** Fixed, a cost bound and no policy: `seen_at` is written at most this often, so a busy session costs one write a minute, not one per request. */
 export const TOUCH_MS = 60 * 1000;
 
 export interface Session {
@@ -30,7 +29,7 @@ export function hostCookie(
   return `${name}=${value}; Path=/; Max-Age=${String(maxAgeSeconds)}; HttpOnly; Secure; SameSite=${sameSite}`;
 }
 
-export function sessionCookie(rawId: string, lifeMs = ABSOLUTE_MS): string {
+export function sessionCookie(rawId: string, lifeMs: number): string {
   return hostCookie(SESSION_COOKIE, rawId, lifeMs / 1000);
 }
 
@@ -57,13 +56,14 @@ export async function newSession(
   secret: string,
   personId: string,
   now: number,
+  maxMs: number,
   mustEnrol = false,
   demo = false,
   steppedUp = true,
 ): Promise<{ rawId: string; statement: D1PreparedStatement }> {
   const rawId = randomToken();
   const idHash = await keyedHash(secret, 'session', rawId);
-  const expiresAt = now + (demo ? DEMO_SESSION_MS : mustEnrol ? ENROL_MS : ABSOLUTE_MS);
+  const expiresAt = now + (demo ? DEMO_SESSION_MS : mustEnrol ? ENROL_MS : maxMs);
   const row = {
     idHash,
     personId,
@@ -75,19 +75,20 @@ export async function newSession(
 }
 
 /**
- * The live session behind a cookie value, or null when it is unknown, revoked, idle for 8 hours, past its
- * 14-day cap, or its person is offboarded. Refreshes `seen_at` at most once a minute.
+ * The live session behind a cookie value, or null when it is unknown, revoked, idle for `idleMs`, past its
+ * absolute end, or its person is offboarded. Refreshes `seen_at` at most once a minute.
  */
 export async function readSession(
   db: D1Database,
   secret: string,
   rawId: string,
   now: number,
+  idleMs: number,
 ): Promise<Session | null> {
   const idHash = await keyedHash(secret, 'session', rawId);
   const row = await liveSession(db, idHash);
   if (!row || row.offboarded_at !== null) return null;
-  if (now - row.seen_at >= IDLE_MS || now >= row.expires_at) return null;
+  if (now - row.seen_at >= idleMs || now >= row.expires_at) return null;
   if (now - row.seen_at >= TOUCH_MS) await touchSession(db, idHash, now);
   return {
     rawId,

@@ -38,7 +38,7 @@ export async function recover(
     await recordFailure(db, hash, now, personId !== null).catch(() => undefined);
     fail('recovery_failed');
   }
-  const session = await newSession(db, secret, personId, now, true);
+  const session = await newSession(db, secret, personId, now, deps.policy.sessionMaxMs, true);
   await retryWhileOpen(
     async () => {
       const batch = await auditedBatch(ceremonyScope(personId), db);

@@ -8,6 +8,7 @@ import Shell from '../../components/admin/shell.astro';
 import StepUp from '../../components/admin/step-up.astro';
 import { approvalWeeks, LISTED_STATES, type ListedState } from '../../db/approvals';
 import { notSubmittedWeeks } from '../../db/not-submitted';
+import { currentEnv } from '../../lib/env';
 import { timeZone } from '../../db/settings';
 import { searchTerm } from '../../lib/search';
 import { todayIn, weekStartOf } from '../../lib/week';
@@ -22,12 +23,13 @@ const asked = query.get('state') ?? '';
 const state = LISTED_STATES.find((s): s is ListedState => s === asked) ?? 'submitted';
 const monday = (name: string) => weekStartOf(query.get(name) ?? '') ?? '';
 const [from, to] = [monday('from'), monday('to')];
-const { weeks, found } = await approvalWeeks(ctx.scope, ctx.db, {
-  state,
-  term,
-  from: from === '' ? null : from,
-  to: to === '' ? null : to,
-});
+const pageRows = currentEnv().POLICY.approvalsPage;
+const { weeks, found } = await approvalWeeks(
+  ctx.scope,
+  ctx.db,
+  { state, term, from: from === '' ? null : from, to: to === '' ? null : to },
+  pageRows,
+);
 const zone = await timeZone(ctx.db);
 const missing =
   state === 'submitted'
@@ -38,6 +40,7 @@ const missing =
           weekStart,
           endsAt: weekEndsAt(weekStart, zone),
         })),
+        pageRows,
         term,
       )
     : null;

@@ -70,7 +70,7 @@ export async function completeAddPasskey(
       return { sessionId: null };
     }
     await recordRecoverySupersession(batch, db, personId, credential.id, now);
-    const full = await newSession(db, deps.secret, personId, now);
+    const full = await newSession(db, deps.secret, personId, now, deps.policy.sessionMaxMs);
     batch.also(full.statement);
     await batch.run();
     return { sessionId: full.rawId };

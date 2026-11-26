@@ -16,6 +16,7 @@ import {
 import { exportSummary, type ClientExportSummary } from '../../db/export-rows';
 import { timeZone } from '../../db/settings';
 import { lastFullMonth, parseRange } from '../../lib/date-range';
+import { currentEnv } from '../../lib/env';
 import { isAppError } from '../../lib/errors';
 import { formatHoursFixed } from '../../lib/hours';
 import { todayIn } from '../../lib/week';
@@ -31,7 +32,11 @@ let clients: ClientExportSummary[] | null = null;
 let problem: string | null = null;
 if (asked) {
   try {
-    clients = await exportSummary(ctx.scope, ctx.db, parseRange(from, to));
+    clients = await exportSummary(
+      ctx.scope,
+      ctx.db,
+      parseRange(from, to, currentEnv().POLICY.reportMaxDays),
+    );
   } catch (error) {
     if (!isAppError(error)) throw error;
     problem = error.message;

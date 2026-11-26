@@ -40,7 +40,7 @@ export const CATALOG = {
   },
   agent_limit: {
     status: 409,
-    message: 'You already hold five live agent tokens; revoke one first',
+    message: 'You already hold the most live agent tokens this deploy allows; revoke one first',
   },
   chain_broken: { status: 500, message: 'The audit chain does not verify' },
   unauthenticated: { status: 401, message: 'Sign in first' },

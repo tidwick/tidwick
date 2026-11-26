@@ -45,9 +45,6 @@ interface KeyRow {
   iv: ArrayBuffer | number[];
 }
 
-/** Days a retired NOTE_KEK is kept after the last re-wrap: the longest a backup that needs it stays off-account (ADR 0008). */
-export const KEEP_PREVIOUS_DAYS = 40;
-
 /** When the last key was re-wrapped, or null when none ever was. */
 export async function lastRewrapAt(db: D1Database): Promise<number | null> {
   const row = await db

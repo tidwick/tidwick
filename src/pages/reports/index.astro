@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/input';
 import { reportRows } from '../../db/report-rows';
 import { timeZone } from '../../db/settings';
 import { lastFullMonth, parseRange } from '../../lib/date-range';
+import { currentEnv } from '../../lib/env';
 import { isAppError } from '../../lib/errors';
 import { KIND_LABELS, REPORT_KINDS, isReportKind } from '../../lib/report';
 import { reportTable, type ReportTable as Table } from '../../lib/report-table';
@@ -28,7 +29,15 @@ const kind = isReportKind(asked) ? asked : 'person';
 let table: Table | null = null;
 let problem: string | null = null;
 try {
-  table = reportTable(kind, await reportRows(ctx.scope, ctx.db, kind, parseRange(from, to)));
+  table = reportTable(
+    kind,
+    await reportRows(
+      ctx.scope,
+      ctx.db,
+      kind,
+      parseRange(from, to, currentEnv().POLICY.reportMaxDays),
+    ),
+  );
 } catch (error) {
   if (!isAppError(error)) throw error;
   problem = error.message;
@@ -68,7 +77,7 @@ try {
   )}
   {table && table.lines.length > 0 && (
     <>
-      <ReportChart lines={table.lines} by={kind} />
+      <ReportChart lines={table.lines} by={kind} maxBars={currentEnv().POLICY.reportMaxBars} />
       <ReportTable table={table} label={`${KIND_LABELS[kind]}, ${from} to ${to}`} />
     </>
   )}

@@ -7,6 +7,7 @@ import { noteKeks } from '../lib/env';
 import { approvalWeeks } from './approvals';
 import { saveCells } from './entry-writes';
 import { decideWeek, submitWeek } from './submissions';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 describe('the approvals list', () => {
   it('lists each submitted week by person with its total hours, and no draft or approved week', async () => {
@@ -22,7 +23,14 @@ describe('the approvals list', () => {
     await submitWeek(approved.member, env.DB, WEEK, T0);
     await decideWeek(approved.admin, env.DB, approved.who.personId, WEEK, 'approve', T0);
 
-    const listed = (await approvalWeeks(submitted.admin, env.DB, { state: 'submitted' })).weeks;
+    const listed = (
+      await approvalWeeks(
+        submitted.admin,
+        env.DB,
+        { state: 'submitted' },
+        DEFAULT_POLICY.approvalsPage,
+      )
+    ).weeks;
     const ids = listed.map((w) => w.person_id);
     expect(ids).toContain(submitted.who.personId);
     expect(ids).not.toContain(draft.who.personId);
@@ -34,7 +42,9 @@ describe('the approvals list', () => {
 
   it('a member scope cannot read the list', async () => {
     const w = await bookedWeek();
-    await expect(approvalWeeks(w.member, env.DB, { state: 'submitted' })).rejects.toMatchObject({
+    await expect(
+      approvalWeeks(w.member, env.DB, { state: 'submitted' }, DEFAULT_POLICY.approvalsPage),
+    ).rejects.toMatchObject({
       code: 'not_found',
     });
   });

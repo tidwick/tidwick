@@ -6,11 +6,12 @@ import { addPerson, adminScope, DAY, T0 } from '../../test/helpers/auth';
 import { memberScope } from '../../test/helpers/reference';
 import type { AuditFilter } from '../lib/audit-filter';
 import { appendEvent, readHead } from './audit';
-import { AUDIT_PAGE, auditChoices, readAuditPage } from './audit-read';
+import { auditChoices, readAuditPage } from './audit-read';
 import { scopeFor, systemScope } from './scope';
 import { createClient } from './clients';
 import { currentEnv } from '../lib/env';
 import { synthetic } from '../../test/helpers/audit-event';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const NONE: AuditFilter = {
   from: null,
@@ -38,14 +39,14 @@ describe('reading the audit log', () => {
   it('lists events newest first, a page at a time, each event exactly once', async () => {
     const admin = await adminScope();
     const first = (await readHead(env.DB)).seq + 1;
-    const total = AUDIT_PAGE * 2 + 7;
+    const total = DEFAULT_POLICY.auditPage * 2 + 7;
     for (let n = 0; n < total; n++) await write(admin, T0 + n, 'test.page', `thing:${String(n)}`);
     const seen: number[] = [];
     let before: number | null = null;
     const filter = { ...NONE, action: synthetic('test.page') };
     for (let pages = 0; pages < 10; pages++) {
-      const page = await readAuditPage(admin, env.DB, filter, before);
-      expect(page.events.length).toBeLessThanOrEqual(AUDIT_PAGE);
+      const page = await readAuditPage(admin, env.DB, filter, before, DEFAULT_POLICY.auditPage);
+      expect(page.events.length).toBeLessThanOrEqual(DEFAULT_POLICY.auditPage);
       seen.push(...page.events.map((e) => e.seq));
       if (page.next === null) break;
       expect(page.next).toBe(page.events.at(-1)?.seq);
@@ -70,9 +71,15 @@ describe('reading the audit log', () => {
       from: '2031-05-10',
       to: '2031-05-11',
     };
-    const page = await readAuditPage(admin, env.DB, filter, null);
+    const page = await readAuditPage(admin, env.DB, filter, null, DEFAULT_POLICY.auditPage);
     expect(page.events.map((e) => e.seq)).toEqual(inside.toReversed());
-    const open = await readAuditPage(admin, env.DB, { ...filter, to: null }, null);
+    const open = await readAuditPage(
+      admin,
+      env.DB,
+      { ...filter, to: null },
+      null,
+      DEFAULT_POLICY.auditPage,
+    );
     expect(open.events).toHaveLength(3);
   });
 
@@ -85,7 +92,9 @@ describe('reading the audit log', () => {
     const systemic = await write(systemScope(), T0, 'test.who', 'client:z');
     const base = { ...NONE, action: synthetic('test.who') };
     const seqs = async (filter: Partial<AuditFilter>) =>
-      (await readAuditPage(admin, env.DB, { ...base, ...filter }, null)).events.map((e) => e.seq);
+      (
+        await readAuditPage(admin, env.DB, { ...base, ...filter }, null, DEFAULT_POLICY.auditPage)
+      ).events.map((e) => e.seq);
     expect(await seqs({})).toEqual([systemic, theirs, mine]);
     expect(await seqs({ actor: admin.actorId })).toEqual([mine]);
     expect(await seqs({ actor: other.actorId })).toEqual([theirs]);
@@ -106,7 +115,13 @@ describe('reading the audit log', () => {
       note_ct: 'aabb',
     });
     const [event] = (
-      await readAuditPage(admin, env.DB, { ...NONE, action: synthetic('test.names') }, null)
+      await readAuditPage(
+        admin,
+        env.DB,
+        { ...NONE, action: synthetic('test.names') },
+        null,
+        DEFAULT_POLICY.auditPage,
+      )
     ).events;
     expect(event).toMatchObject({
       seq,
@@ -123,7 +138,9 @@ describe('reading the audit log', () => {
 
   it('refuses a member scope: only an all-clients scope reads the log', async () => {
     const { scope } = await memberScope();
-    await expect(readAuditPage(scope, env.DB, NONE, null)).rejects.toMatchObject({
+    await expect(
+      readAuditPage(scope, env.DB, NONE, null, DEFAULT_POLICY.auditPage),
+    ).rejects.toMatchObject({
       code: 'forbidden',
     });
     await expect(auditChoices(scope, env.DB)).rejects.toMatchObject({ code: 'forbidden' });

@@ -10,6 +10,7 @@ export const GET: APIRoute = (context) =>
   ssoRoute(context, async ({ env, now, url }) => {
     const cookie = cookieValue(context.request.headers.get('cookie'), SSO_COOKIE);
     const done = await finishFlow(env, cookie, url, now);
-    const session = done.sessionId === null ? [] : [sessionCookie(done.sessionId)];
+    const session =
+      done.sessionId === null ? [] : [sessionCookie(done.sessionId, env.POLICY.sessionMaxMs)];
     return handoffPage(done.returnTo, [clearedSsoCookie(), ...session]);
   });

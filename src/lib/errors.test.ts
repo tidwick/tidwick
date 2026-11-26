@@ -3,6 +3,7 @@
 // alerts are built from.
 import { describe, expect, it } from 'vitest';
 import { BINDING_NAMES, errorText } from './error-text';
+import { POLICY_NAMES } from './policy-table';
 import { secrets } from '../../test/helpers/probe-secrets';
 import { AppError, CATALOG, type ErrorCode } from './errors';
 import { refusalContext } from '../../test/helpers/refusal-context';
@@ -83,8 +84,8 @@ describe('the catalog carries no secret out', () => {
         /\((?:source|s), '([A-Z_]+)'/g,
       ),
     ].map((m) => m[1]);
-    expect(parsed.length).toBeGreaterThanOrEqual(BINDING_NAMES.size);
-    expect(new Set(parsed)).toEqual(BINDING_NAMES);
+    expect(parsed.length).toBeGreaterThanOrEqual(BINDING_NAMES.size - POLICY_NAMES.length);
+    expect(new Set([...parsed, ...POLICY_NAMES])).toEqual(BINDING_NAMES);
   });
 });
 
@@ -100,10 +101,14 @@ const sources = import.meta.glob<string>(['../**/*.ts', '../**/*.astro', '!../**
  */
 const REVIEWED = new Set([
   'DAY_NAMES[over]',
-  'String(MAX_NEW_REFERENCES)',
+  // The deploy's own knobs: a name from the policy table, or a number it set.
+  'String(maxNew)',
+  'String(maxDays)',
+  'String(maxRows)',
+  "policy.agentTokenDays.join(', ')",
+  'TOKEN_DAYS.name',
+  'knob.name',
   'String(MAX_WEEK_ROWS)',
-  'String(MAX_RANGE_DAYS)',
-  'String(MAX_IMPORT_ROWS)',
   'name',
   'key',
   'event',

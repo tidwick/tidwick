@@ -38,6 +38,7 @@ export default defineAction({
         session.personId,
         request,
         scopes,
+        env.POLICY.agentTokenMax,
         Date.now(),
       );
       return {

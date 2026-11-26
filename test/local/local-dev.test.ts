@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { verifyAccess } from '../../src/auth/agent-tokens';
-import { IDLE_MS, readSession, SESSION_COOKIE } from '../../src/auth/session';
+import { readSession, SESSION_COOKIE } from '../../src/auth/session';
 import { storedRows } from '../../src/db/stored-rows';
 import {
   DUMMY_MARKER,
@@ -14,6 +14,7 @@ import {
   localEmail,
   localSession,
 } from './local-dev';
+import { DEFAULT_POLICY } from '../../src/lib/policy';
 
 const NOW = Date.UTC(2031, 2, 3, 9);
 const SECRET = 'local-dev-test-secret';
@@ -40,7 +41,7 @@ async function sessionsOf(personId: string): Promise<number> {
 describe('local dev session', () => {
   it('the cookie is the one the session middleware reads, inside the idle window', () => {
     expect(LOCAL_SESSION_COOKIE).toBe(SESSION_COOKIE);
-    expect(LOCAL_SESSION_MS).toBeLessThanOrEqual(IDLE_MS);
+    expect(LOCAL_SESSION_MS).toBeLessThanOrEqual(DEFAULT_POLICY.sessionIdleMs);
   });
 
   it('a local session row reads back as a live session for that person', async () => {
@@ -49,8 +50,12 @@ describe('local dev session', () => {
     await env.DB.exec(sql);
     expect(await sessionsOf('lp1')).toBe(1);
     const rawId = cookie.slice(`${LOCAL_SESSION_COOKIE}=`.length);
-    expect((await readSession(env.DB, SECRET, rawId, NOW + 1))?.personId).toBe('lp1');
-    expect(await readSession(env.DB, 'another-secret', rawId, NOW + 1)).toBeNull();
+    expect(
+      (await readSession(env.DB, SECRET, rawId, NOW + 1, DEFAULT_POLICY.sessionIdleMs))?.personId,
+    ).toBe('lp1');
+    expect(
+      await readSession(env.DB, 'another-secret', rawId, NOW + 1, DEFAULT_POLICY.sessionIdleMs),
+    ).toBeNull();
   });
 
   it('an offboarded or unknown person gets no session row', async () => {

@@ -22,6 +22,7 @@ import { codeHash, newRecoveryCode, normalizeCode, regenerateCodes } from './rec
 import { reenrol } from './revoke';
 import { readSession } from './session';
 import { synthetic } from '../../test/helpers/audit-event';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const actions = async () => (await storedRows(deps().db, 'audit_event')).map((e) => e.action);
 
@@ -90,7 +91,7 @@ describe('recovery codes and re-enrolment', () => {
     const d = deps();
     const code = person.codes[3] ?? '';
     const { sessionId } = await recover(d, person.email.toUpperCase(), code.toLowerCase(), T0);
-    const session = await readSession(d.db, d.secret, sessionId, T0);
+    const session = await readSession(d.db, d.secret, sessionId, T0, DEFAULT_POLICY.sessionIdleMs);
     expect(session).toMatchObject({ personId: person.personId, mustEnrol: true });
     expect(await actions()).toContain('auth.recover');
     if (!session) return;
@@ -98,9 +99,17 @@ describe('recovery codes and re-enrolment', () => {
     const { options, challengeId } = await addPasskeyOptions(d, session, T0);
     const registration = await fresh.register(options, d.rp.origin);
     const added = await completeAddPasskey(d, session, challengeId, registration, T0);
-    expect(await readSession(d.db, d.secret, sessionId, T0)).toBeNull();
+    expect(
+      await readSession(d.db, d.secret, sessionId, T0, DEFAULT_POLICY.sessionIdleMs),
+    ).toBeNull();
     expect(added.sessionId).not.toBeNull();
-    const full = await readSession(d.db, d.secret, added.sessionId ?? '', T0);
+    const full = await readSession(
+      d.db,
+      d.secret,
+      added.sessionId ?? '',
+      T0,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(full).toMatchObject({ personId: person.personId, mustEnrol: false });
     expect(await actions()).toContain('auth.addPasskey');
   });
@@ -166,7 +175,7 @@ describe('recovery codes and re-enrolment', () => {
     const token = await reenrol(scope, d.db, d.secret, person.personId, T0 + 2 * MINUTE);
     const now = T0 + 3 * MINUTE;
     for (const id of [person.sessionId, second.sessionId]) {
-      expect(await readSession(d.db, d.secret, id, now)).toBeNull();
+      expect(await readSession(d.db, d.secret, id, now, DEFAULT_POLICY.sessionIdleMs)).toBeNull();
     }
     const login = await loginOptions(d, now);
     const replay = await person.authenticator.assert(login.options, d.rp.origin);
@@ -200,7 +209,7 @@ describe('recovery codes and re-enrolment', () => {
     const person = await enrolledPerson();
     const d = deps();
     const { sessionId } = await recover(d, person.email, person.codes[5] ?? '', T0);
-    const session = await readSession(d.db, d.secret, sessionId, T0);
+    const session = await readSession(d.db, d.secret, sessionId, T0, DEFAULT_POLICY.sessionIdleMs);
     expect(session).toMatchObject({ mustEnrol: true });
     if (!session) return;
     const fresh = await createSoftwareAuthenticator();

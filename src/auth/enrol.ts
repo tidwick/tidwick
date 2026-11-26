@@ -13,6 +13,7 @@ import { closeCodesOf, insertCodes } from '../db/recovery-codes';
 import { ceremonyScope, requireAll, type Scope } from '../db/scope';
 import type { AuthEnv } from '../lib/env';
 import { fail } from '../lib/errors';
+import { DEFAULT_POLICY } from '../lib/policy';
 import { storeChallenge, takeChallenge } from './challenge';
 import { storedCredential, userHandle } from './passkeys';
 import { freshCodes } from './recovery-codes';
@@ -25,7 +26,8 @@ import {
   type RegistrationResponseJSON,
 } from './webauthn';
 
-export const ENROLMENT_MS = 24 * 60 * 60 * 1000;
+/** The default life of an enrolment link; `ENROLMENT_HOURS` sets the deploy's, and every request path passes it. */
+const DEFAULT_LIFE_MS = DEFAULT_POLICY.enrolmentMs;
 
 /** Adds a new link for a person to `batch` under `action`, audited; returns the raw token, which is never stored. */
 export async function recordEnrolment(
@@ -35,9 +37,10 @@ export async function recordEnrolment(
   personId: string,
   action: 'people.issueEnrolment' | 'people.reenrol',
   now: number,
+  lifeMs: number,
 ): Promise<string> {
   const token = randomToken();
-  const expiresAt = now + ENROLMENT_MS;
+  const expiresAt = now + lifeMs;
   const tokenHash = await keyedHash(secret, 'enrol', token);
   await batch.record(
     insertEnrolment(db, { tokenHash, personId, expiresAt }),
@@ -88,6 +91,7 @@ export async function issueEnrolment(
   secret: string,
   personId: string,
   now: number,
+  lifeMs = DEFAULT_LIFE_MS,
 ): Promise<string> {
   requireAll(scope);
   const person = await personById(db, personId);
@@ -96,7 +100,15 @@ export async function issueEnrolment(
     const open = await openEnrolmentCount(db, personId, now);
     const batch = await auditedBatch(scope, db);
     await recordClosedLinks(batch, db, personId, now, open);
-    const token = await recordEnrolment(batch, db, secret, personId, 'people.issueEnrolment', now);
+    const token = await recordEnrolment(
+      batch,
+      db,
+      secret,
+      personId,
+      'people.issueEnrolment',
+      now,
+      lifeMs,
+    );
     await batch.run();
     return token;
   });
@@ -143,7 +155,7 @@ export async function completeEnrolment(
   const credential = await verifyRegistration(deps.rp, response, challenge.challenge);
   if (!credential) fail('passkey_failed');
   const { codes, hashes } = await freshCodes(deps.secret);
-  const session = await newSession(deps.db, deps.secret, personId, now);
+  const session = await newSession(deps.db, deps.secret, personId, now, deps.policy.sessionMaxMs);
   const { db } = deps;
   await retryWhileOpen(
     async () => {

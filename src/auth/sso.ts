@@ -19,7 +19,7 @@ import type { Env } from '../lib/env';
 import { fail } from '../lib/errors';
 import type { SsoProvider } from '../lib/sso-config';
 import { recordClosedLinks } from './enrol';
-import { IDLE_MS, hostCookie, newSession, type Session } from './session';
+import { hostCookie, newSession, type Session } from './session';
 import { authorizationUrl, discover, exchange, type Claims } from './sso-oidc';
 import { keyedHash, randomToken, sameText } from './tokens';
 import * as oauth from 'oauth4webapi';
@@ -129,6 +129,7 @@ async function enrol(env: Env, provider: SsoProvider, claims: Claims, flow: Flow
     env.SESSION_SECRET,
     personId,
     now,
+    env.POLICY.sessionMaxMs,
     false,
     false,
     fresh(claims, flow),
@@ -180,6 +181,7 @@ async function signIn(env: Env, provider: SsoProvider, claims: Claims, flow: Flo
     secret,
     found.person_id,
     now,
+    env.POLICY.sessionMaxMs,
     false,
     false,
     fresh(claims, flow),
@@ -206,7 +208,12 @@ async function stepUp(env: Env, provider: SsoProvider, claims: Claims, flow: Flo
   if (!fresh(claims, flow)) fail('sso_step_up_unsupported');
   const session = await liveSession(db, sessionHash);
   const alive = session?.person_id === personId && session.offboarded_at === null;
-  if (!session || !alive || now >= session.expires_at || now - session.seen_at >= IDLE_MS)
+  if (
+    !session ||
+    !alive ||
+    now >= session.expires_at ||
+    now - session.seen_at >= env.POLICY.sessionIdleMs
+  )
     fail('sso_failed');
   const [stamped] = await db.batch([
     stepUpSession(db, sessionHash, now),

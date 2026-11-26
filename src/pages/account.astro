@@ -11,7 +11,6 @@ import SavedLine from '../components/saved-line.astro';
 import SignOutForm from '../components/sign-out-form.astro';
 import { Alert } from '../components/ui/alert';
 import { listedGrantsOf } from '../db/agent-grants';
-import { STEP_UP_MS } from '../auth/step-up';
 import { listedCredentialsOf } from '../db/credentials';
 import { liveIdentitiesOf } from '../db/identities';
 import { pendingCodesOf } from '../db/pending-codes';
@@ -47,7 +46,8 @@ const sso = await confirmLinks(session.personId, '/account');
 const spare = passkeys.length > 1 || identities.length > 0;
 const providerLabel = (id: string) => currentEnv().SSO.find((p) => p.id === id)?.label ?? id;
 const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-const confirmed = session.stepUpAt + STEP_UP_MS > Date.now();
+const stepUpMs = currentEnv().POLICY.stepUpMs;
+const confirmed = session.stepUpAt + stepUpMs > Date.now();
 const recovery = session.mustEnrol;
 // One size of button on the page; only adding a passkey is primary.
 const ADD = cn(PRIMARY, 'w-fit');
@@ -161,8 +161,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         </h2>
         <p class="text-sm text-muted-foreground">
           {confirmed
-            ? `Confirmed until ${clockUtc(session.stepUpAt + STEP_UP_MS)} UTC.`
-            : 'Removing a passkey, making new recovery codes and similar changes need a confirmation from the last 15 minutes.'}
+            ? `Confirmed until ${clockUtc(session.stepUpAt + stepUpMs)} UTC.`
+            : `Removing a passkey, making new recovery codes and similar changes need a confirmation from the last ${String(stepUpMs / 60_000)} minutes.`}
         </p>
         {passkeys.length > 0 && (
           <button type="button" data-passkey="step-up" data-csrf={ctx.csrf} class={CONFIRM}>
@@ -230,6 +230,7 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
         confirmed={confirmed}
         minted={minted?.data ?? null}
         origin={currentEnv().ORIGIN}
+        policy={currentEnv().POLICY}
       />
     )}
 

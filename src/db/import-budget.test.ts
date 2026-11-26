@@ -5,10 +5,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { T0 } from '../../test/helpers/auth';
 import { PEOPLE, setupImport } from '../../test/helpers/import-setup';
 import { D1_QUERIES_PER_INVOCATION } from '../lib/limits';
-import { MAX_IMPORT_ROWS } from '../lib/import';
 import { applyImport } from './import-apply';
 import { countOf, onlyImportBatchId } from './test-support-csv';
 import { countingDb } from './test-support';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 let ctx: Awaited<ReturnType<typeof setupImport>>;
 beforeAll(async () => {
@@ -19,12 +19,12 @@ beforeAll(async () => {
 function maxFile(): { text: string; hundredths: number } {
   const lines = ['Work Date,Staff Email,Customer,Job,Job No,Activity,Hrs,Memo'];
   let hundredths = 0;
-  for (let day = 0; lines.length <= MAX_IMPORT_ROWS; day += 1) {
+  for (let day = 0; lines.length <= DEFAULT_POLICY.importMaxRows; day += 1) {
     const at = new Date(Date.UTC(2025, 0, 6 + day));
     const date = `${String(at.getUTCMonth() + 1).padStart(2, '0')}/${String(at.getUTCDate()).padStart(2, '0')}/${String(at.getUTCFullYear())}`;
     for (const person of PEOPLE) {
       for (const task of ['DES', 'DRF', 'MTG']) {
-        if (lines.length > MAX_IMPORT_ROWS) break;
+        if (lines.length > DEFAULT_POLICY.importMaxRows) break;
         const hours = (day % 4) + 1;
         hundredths += hours * 100;
         lines.push(
@@ -48,15 +48,15 @@ describe('import budget', () => {
       T0,
     );
     expect(report).toMatchObject({
-      rowsRead: MAX_IMPORT_ROWS,
-      entries: MAX_IMPORT_ROWS,
+      rowsRead: DEFAULT_POLICY.importMaxRows,
+      entries: DEFAULT_POLICY.importMaxRows,
       rejectedCount: 0,
     });
     expect(report.hundredths).toBe(file.hundredths);
     expect(counted.count()).toBeLessThan(80);
     expect(counted.count()).toBeLessThan(D1_QUERIES_PER_INVOCATION);
     const hash = await onlyImportBatchId(env.DB);
-    expect(await countOf(env.DB, 'entriesOfImport', hash)).toBe(MAX_IMPORT_ROWS);
+    expect(await countOf(env.DB, 'entriesOfImport', hash)).toBe(DEFAULT_POLICY.importMaxRows);
     expect(await countOf(env.DB, 'hundredthsOfImport', hash)).toBe(file.hundredths);
   });
 });

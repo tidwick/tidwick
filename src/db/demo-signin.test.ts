@@ -15,7 +15,8 @@ import {
   passwordMatches,
 } from '../auth/demo';
 import { DEMO_SESSION_MS, newSession, readSession } from '../auth/session';
-import { requireStepUp, STEP_UP_MS } from '../auth/step-up';
+import { requireStepUp } from '../auth/step-up';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const PASSWORD = 'a-long-demo-password';
 const OPEN: Env = { ...currentEnv(), DEMO_LOGIN: true, DEMO_BANNER: true, DEMO_PASSWORD: PASSWORD };
@@ -101,7 +102,13 @@ describe('auth.demoSignin', () => {
     const who = DEMO_PERSONAS[2];
     const raw = await demoSignIn(OPEN, PASSWORD, who.key, NOW);
     expect(raw).not.toBeNull();
-    const session = await readSession(env.DB, OPEN.SESSION_SECRET, raw ?? '', NOW);
+    const session = await readSession(
+      env.DB,
+      OPEN.SESSION_SECRET,
+      raw ?? '',
+      NOW,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(session?.personId).toBe(who.id);
     const row = await env.DB.prepare(
       'SELECT expires_at, step_up_at FROM session WHERE person_id = ?1',
@@ -116,24 +123,52 @@ describe('auth.demoSignin', () => {
     expect(JSON.parse(event?.after_json ?? '{}')).toEqual({ persona: 'approver' });
     expect((await checkChain(env.DB)).ok).toBe(true);
     expect(
-      await readSession(env.DB, OPEN.SESSION_SECRET, raw ?? '', NOW + DEMO_SESSION_MS),
+      await readSession(
+        env.DB,
+        OPEN.SESSION_SECRET,
+        raw ?? '',
+        NOW + DEMO_SESSION_MS,
+        DEFAULT_POLICY.sessionIdleMs,
+      ),
     ).toBeNull();
   });
 
   it('the session passes the step-up gate for its whole life, which a passkey session does not', async () => {
     const who = DEMO_PERSONAS[3];
     const raw = await demoSignIn(OPEN, PASSWORD, who.key, NOW);
-    const demo = await readSession(env.DB, OPEN.SESSION_SECRET, raw ?? '', NOW);
+    const demo = await readSession(
+      env.DB,
+      OPEN.SESSION_SECRET,
+      raw ?? '',
+      NOW,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     const late = NOW + DEMO_SESSION_MS - 1;
     expect(() => {
-      requireStepUp(demo ?? expect.unreachable('no session'), late);
+      requireStepUp(demo ?? expect.unreachable('no session'), late, DEFAULT_POLICY.stepUpMs);
     }).not.toThrow();
-    const passkey = await newSession(env.DB, OPEN.SESSION_SECRET, who.id, NOW);
+    const passkey = await newSession(
+      env.DB,
+      OPEN.SESSION_SECRET,
+      who.id,
+      NOW,
+      DEFAULT_POLICY.sessionMaxMs,
+    );
     await passkey.statement.run();
-    const plain = await readSession(env.DB, OPEN.SESSION_SECRET, passkey.rawId, NOW);
+    const plain = await readSession(
+      env.DB,
+      OPEN.SESSION_SECRET,
+      passkey.rawId,
+      NOW,
+      DEFAULT_POLICY.sessionIdleMs,
+    );
     expect(plain?.stepUpAt).toBe(NOW);
     expect(() => {
-      requireStepUp(plain ?? expect.unreachable('no session'), NOW + STEP_UP_MS);
+      requireStepUp(
+        plain ?? expect.unreachable('no session'),
+        NOW + DEFAULT_POLICY.stepUpMs,
+        DEFAULT_POLICY.stepUpMs,
+      );
     }).toThrow();
   });
 

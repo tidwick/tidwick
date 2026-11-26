@@ -8,6 +8,7 @@ import { newSession } from '../../auth/session';
 import { insertCodes } from '../../db/recovery-codes';
 import { storedRows } from '../../db/stored-rows';
 import { currentEnv } from '../../lib/env';
+import { DEFAULT_POLICY } from '../../lib/policy';
 
 async function withCodes(personId: string, count: number): Promise<void> {
   const { SESSION_SECRET } = currentEnv();
@@ -20,7 +21,13 @@ async function withCodes(personId: string, count: number): Promise<void> {
 }
 
 async function otherSession(personId: string): Promise<string> {
-  const session = await newSession(env.DB, currentEnv().SESSION_SECRET, personId, Date.now());
+  const session = await newSession(
+    env.DB,
+    currentEnv().SESSION_SECRET,
+    personId,
+    Date.now(),
+    DEFAULT_POLICY.sessionMaxMs,
+  );
   await session.statement.run();
   return session.rawId;
 }

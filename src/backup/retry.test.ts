@@ -9,7 +9,8 @@ import { backupRuns } from '../db/test-support-backup';
 import { backupEnv } from '../lib/env';
 import { objectKey, runBackup, type BackupCopy, type BackupSink } from './export';
 import { backUpNow } from './run-now';
-import { WRITE_TRIES, withRetry } from './retry';
+import { DEFAULT_POLICY } from '../lib/policy';
+import { withRetry } from './retry';
 import { lastTestAlert, sendTestAlert } from './test-alert';
 
 const AT = Date.UTC(2026, 10, 12, 3, 0, 7);
@@ -39,7 +40,7 @@ describe('backup retry and key', () => {
       'missing_binding: X',
     );
     expect(calls).toBe(1);
-    expect(WRITE_TRIES).toBe(3);
+    expect(DEFAULT_POLICY.backupTries).toBe(3);
   });
 
   it('a sink that fails twice then lands records an ok run, and one that never lands records failed', async () => {

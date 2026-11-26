@@ -10,6 +10,7 @@ import { currentEnv } from '../lib/env';
 import { AppError } from '../lib/errors';
 import { claimFirstAdmin, rpIdFits, type SetupDeps } from './setup-claim';
 import { keyedHash } from './tokens';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 const TOKEN = 'a-setup-token-of-more-than-forty-three-characters-x';
 const WHO = { email: 'ada@example.test', name: 'Ada Example', firm: 'Example Studio' };
@@ -20,6 +21,7 @@ function deps(setupToken: string | null = TOKEN): SetupDeps {
   return {
     db: env.DB,
     secret: SESSION_SECRET,
+    policy: DEFAULT_POLICY,
     rp: { id: 'localhost', name: 'tidwick', origin: 'http://localhost' },
     kek: NOTE_KEK,
     setupToken,

@@ -6,6 +6,7 @@
 import { fail } from '../lib/errors';
 import type { ImportPlan } from '../lib/import-types';
 import type { NoteKeks } from '../lib/note-crypto';
+import { DEFAULT_POLICY, type Policy } from '../lib/policy';
 import { auditedBatch, retryOnce } from './audit';
 import { keyRing } from './client-keys';
 import { createClient } from './clients';
@@ -28,16 +29,19 @@ import { setProjectTasks } from './project-tasks';
 import type { Scope } from './scope';
 
 export type { ImportReport };
-export const MAX_NEW_REFERENCES = 50;
+
+/** The two import caps a deploy sets: `IMPORT_MAX_ROWS` and `IMPORT_MAX_NEW`. */
+export type ImportLimits = Pick<Policy, 'importMaxRows' | 'importMaxNew'>;
 
 /** What applying this file would do, without writing anything. */
 export async function previewImport(
   scope: Scope,
   db: D1Database,
   bytes: Uint8Array<ArrayBuffer>,
+  limits: ImportLimits = DEFAULT_POLICY,
 ): Promise<ImportReport> {
   if (scope.kind !== 'all') fail('forbidden');
-  const run = await planFile(db, bytes);
+  const run = await planFile(db, bytes, limits.importMaxRows);
   const known = await markAssignments(db, run.plan.assignments);
   return reportOf(run, false, known.filter((a) => a.n === 1).length);
 }
@@ -53,11 +57,12 @@ async function createReferences(
   kek: string,
   plan: ImportPlan,
   now: number,
+  maxNew: number,
 ): Promise<Map<string, string>> {
-  if (plan.newClients.length + plan.newProjects.length > MAX_NEW_REFERENCES) {
+  if (plan.newClients.length + plan.newProjects.length > maxNew) {
     fail(
       'invalid_input',
-      `the file names more than ${String(MAX_NEW_REFERENCES)} new clients and projects; create them first`,
+      `the file names more than ${String(maxNew)} new clients and projects; create them first`,
     );
   }
   const real = new Map<string, string>();
@@ -100,11 +105,12 @@ export async function applyImport(
   keks: NoteKeks,
   bytes: Uint8Array<ArrayBuffer>,
   now: number,
+  limits: ImportLimits = DEFAULT_POLICY,
 ): Promise<ImportReport> {
   if (scope.kind !== 'all') fail('forbidden');
   const actor = scope.actorId ?? fail('forbidden');
   return retryOnce(async () => {
-    const run = await planFile(db, bytes);
+    const run = await planFile(db, bytes, limits.importMaxRows);
     if (run.mappingChanged !== null) {
       const { appliedOn, entries } = run.mappingChanged;
       fail(
@@ -114,7 +120,7 @@ export async function applyImport(
     }
     const plan = withRealIds(
       run.plan,
-      await createReferences(scope, db, keks.current, run.plan, now),
+      await createReferences(scope, db, keks.current, run.plan, now, limits.importMaxNew),
     );
     const assignments = await markAssignments(db, plan.assignments);
     const added = assignments.filter((a) => a.n === 1);

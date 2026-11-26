@@ -8,6 +8,7 @@ import { appendEvent } from './audit';
 import { readAuditPage } from './audit-read';
 import { verifyAudit } from './audit-verify';
 import { synthetic } from '../../test/helpers/audit-event';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 describe('the audit reads write nothing', () => {
   it("'audit.verify' and a page of the log add no event and change no row", async () => {
@@ -21,7 +22,9 @@ describe('the audit reads write nothing', () => {
     const before = await headSeq();
     expect((await verifyAudit(admin, env.DB)).state).toBe('intact');
     const none = { from: null, to: null, actor: null, client: null, action: null, target: null };
-    expect((await readAuditPage(admin, env.DB, none, null)).events.length).toBeGreaterThan(0);
+    expect(
+      (await readAuditPage(admin, env.DB, none, null, DEFAULT_POLICY.auditPage)).events.length,
+    ).toBeGreaterThan(0);
     expect(await headSeq()).toBe(before);
     expect(await eventsAfter(before)).toEqual([]);
   });

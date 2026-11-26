@@ -17,7 +17,7 @@ export default defineAction({
       const previous = context.locals.session;
       if (previous) await endSession(deps.db, deps.secret, previous.rawId, now);
       queueCookie(context, clearedChallengeCookie());
-      queueCookie(context, sessionCookie(done.sessionId));
+      queueCookie(context, sessionCookie(done.sessionId, deps.policy.sessionMaxMs));
       return { codes: done.codes, next: '/week' };
     }),
 });

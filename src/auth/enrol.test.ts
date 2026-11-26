@@ -5,10 +5,11 @@ import { appendEvent } from '../db/audit';
 import { insertEnrolment } from '../db/enrolments';
 import { storedRows } from '../db/stored-rows';
 import { racingDb } from '../db/test-support';
-import { completeEnrolment, ENROLMENT_MS, enrolOptions, issueEnrolment } from './enrol';
+import { completeEnrolment, enrolOptions, issueEnrolment } from './enrol';
 import { readSession } from './session';
 import { keyedHash, randomToken } from './tokens';
 import { synthetic } from '../../test/helpers/audit-event';
+import { DEFAULT_POLICY } from '../lib/policy';
 
 async function issued(now = T0) {
   const d = deps();
@@ -168,7 +169,7 @@ describe('enrolment links', () => {
   });
 
   it('SEC-03 an enrolment link expires 24 hours after it is issued', async () => {
-    expect(ENROLMENT_MS).toBe(DAY);
+    expect(DEFAULT_POLICY.enrolmentMs).toBe(DAY);
     const late = await issued();
     await expect(enrolOptions(deps(), late.token, T0 + DAY)).rejects.toMatchObject({
       code: 'enrolment_invalid',
@@ -203,7 +204,10 @@ describe('enrolment links', () => {
   it('enrolment registers the passkey, opens a session, stores ten hashed codes and is audited', async () => {
     const { d, person, token } = await issued();
     const done = await enrolWith(token, T0);
-    expect((await readSession(d.db, d.secret, done.sessionId, T0))?.personId).toBe(person.id);
+    expect(
+      (await readSession(d.db, d.secret, done.sessionId, T0, DEFAULT_POLICY.sessionIdleMs))
+        ?.personId,
+    ).toBe(person.id);
     const codes = await storedFor('recovery_code', person.id);
     expect(codes).toHaveLength(10);
     for (const code of done.codes) expect(JSON.stringify(codes)).not.toContain(code);

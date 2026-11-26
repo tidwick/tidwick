@@ -14,6 +14,7 @@ export default defineAction({
         scopeOf(context),
         currentEnv().DB,
         new Uint8Array(await input.file.arrayBuffer()),
+        currentEnv().POLICY,
       ),
     ),
 });
