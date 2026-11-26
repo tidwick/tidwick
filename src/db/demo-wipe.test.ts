@@ -86,23 +86,38 @@ describe('the nightly demo wipe', () => {
     expect(await instanceEmpty(env.DB)).toBe(false);
   });
 
-  it('runs as one batch inside the D1 query budget, so a larger seed fails here and not at 04:00', async () => {
-    const sizes: number[] = [];
+  it('a whole scheduled reset stays at or under 900 queries, so seed growth fails here and not at 04:00', async () => {
+    let prepared = 0;
+    const batches: number[] = [];
     const spy = new Proxy(env.DB, {
       get(target, key) {
-        if (key !== 'batch')
-          return (Reflect.get(target, key) as (...args: unknown[]) => unknown).bind(target);
-        return (statements: D1PreparedStatement[]) => {
-          sizes.push(statements.length);
-          return target.batch(statements);
-        };
+        const value = Reflect.get(target, key) as (...args: unknown[]) => unknown;
+        if (key === 'prepare')
+          return (sql: string) => {
+            prepared += 1;
+            return value.call(target, sql);
+          };
+        if (key === 'batch')
+          return (statements: D1PreparedStatement[]) => {
+            batches.push(statements.length);
+            return value.call(target, statements);
+          };
+        return value.bind(target);
       },
     });
-    await wipeDemo(spy, currentEnv().NOTE_KEK, NOW);
-    expect(sizes).toHaveLength(1);
+    const cron = { cron: DEMO_RESET_CRON, scheduledTime: NOW } as ScheduledController;
+    await scheduled(cron, {
+      ...env,
+      DB: spy,
+      DEMO_LOGIN: 'on',
+      DEMO_BANNER: 'on',
+      DEMO_PASSWORD: OPEN.DEMO_PASSWORD,
+    });
+    expect(batches, 'the reset must run as one batch').toHaveLength(1);
     expect(
-      sizes[0],
-      `the wipe batch holds ${String(sizes[0])} statements of ${String(D1_QUERIES_PER_INVOCATION)}; trim the demo seed`,
-    ).toBeLessThanOrEqual(D1_QUERIES_PER_INVOCATION);
+      prepared,
+      `the reset prepared ${String(prepared)} queries (D1 allows ${String(D1_QUERIES_PER_INVOCATION)} per invocation; keep it at 900 or under): merge seed INSERTs into multi-row statements (test/demo/weeks.ts multiRow); never split the batch, the audit triggers would stay dropped between batches`,
+    ).toBeLessThanOrEqual(900);
+    console.info(`demo reset: batch ${String(batches[0])}, invocation ${String(prepared)}`);
   });
 });

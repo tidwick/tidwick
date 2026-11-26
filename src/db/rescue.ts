@@ -20,6 +20,8 @@ export interface RescueInput {
   readonly headHash: string;
   readonly enrolmentHash: string;
   readonly now: number;
+  /** The setup claim's re-issue: also only while this person is the sole admin and has no linked identity. */
+  readonly reclaim?: boolean;
 }
 
 const NO_ADMIN_SIGNS_IN = `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
@@ -68,12 +70,17 @@ export async function rescueSql(
   };
   const hash = await eventHash(input.headHash, event);
   const person = q(personId);
+  const sole = input.reclaim
+    ? `
+AND (SELECT count(*) FROM person_role WHERE role = 'admin') = 1
+AND NOT EXISTS (SELECT 1 FROM person_identity i WHERE i.person_id = ${person} AND i.revoked_at IS NULL)`
+    : '';
   const eligible = `(SELECT max(seq) FROM audit_event) = ${q(input.headSeq)}
 AND EXISTS (SELECT 1 FROM audit_event WHERE seq = ${q(input.headSeq)} AND hash = ${q(input.headHash)})
 AND EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
   WHERE r.person_id = ${person} AND r.role = 'admin' AND p.offboarded_at IS NULL)
-AND ${NO_ADMIN_SIGNS_IN}`;
-  const ours = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${NO_ADMIN_SIGNS_IN}`;
+AND ${NO_ADMIN_SIGNS_IN}${sole}`;
+  const ours = `EXISTS (SELECT 1 FROM audit_event WHERE hash = ${q(hash)}) AND ${NO_ADMIN_SIGNS_IN}${sole}`;
   const values: Cell[] = [
     event.seq,
     event.at,
@@ -122,6 +129,7 @@ export async function reissueLink(
     headHash: head.hash,
     enrolmentHash,
     now,
+    reclaim: true,
   });
   const results = await db.batch(statements.map((sql) => db.prepare(sql)));
   return results.at(-1)?.meta.changes === 1;

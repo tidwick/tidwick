@@ -19,3 +19,9 @@ export async function ageKey(): Promise<{ recipient: string; file: string }> {
   const file = `# created: ${new Date().toISOString()}\n# public key: ${recipient}\n${identity}\n`;
   return { recipient, file };
 }
+
+/** The one kit file: a header, a NAME=value line per generated value, then the age identity file as `age-keygen` lays it out. */
+export function kitText(values: Readonly<Record<string, string>>, identityFile: string): string {
+  const lines = Object.entries(values).map(([name, value]) => `${name}=${value}\n`);
+  return `# tidwick kit: keep offline\n${lines.join('')}${identityFile}`;
+}

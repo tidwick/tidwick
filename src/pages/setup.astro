@@ -79,8 +79,8 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
           Create the first admin
         </button>
         <p class="text-sm text-muted-foreground">
-          After you enrol, delete SETUP_TOKEN in Workers &gt; Settings &gt; Variables and Secrets;
-          it opens nothing once an admin exists, but leave nothing behind.
+          After you enrol, delete SETUP_TOKEN in Workers &gt; Settings &gt; Variables and Secrets.
+          While it is set and that admin has no passkey, it can still issue a new link for them.
         </p>
       </form>
     )}
@@ -142,7 +142,7 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
 </Auth>
 
 <script>
-  import { ageKey, noteKek, sessionSecret } from '../components/setup/keys';
+  import { ageKey, kitText, noteKek, sessionSecret } from '../components/setup/keys';
 
   const field = (name: string) =>
     document.querySelector<HTMLInputElement>(`[data-field="${name}"]`);
@@ -158,22 +158,18 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
       values['BACKUP_RECIPIENT'] = recipient;
       identity = file;
     }
-    const shown: string[] = [];
+    const shown: Record<string, string> = {};
     for (const [name, value] of Object.entries(values)) {
       const input = field(name);
       if (input) {
         input.value = value;
-        shown.push(`${name}=${value}\n`);
+        shown[name] = value;
       }
     }
     const link = document.querySelector<HTMLAnchorElement>('[data-kit-download]');
     if (link) {
       if (link.href) URL.revokeObjectURL(link.href);
-      link.href = URL.createObjectURL(
-        new Blob([`# tidwick kit: keep offline\n${shown.join('')}${identity}`], {
-          type: 'text/plain',
-        }),
-      );
+      link.href = URL.createObjectURL(new Blob([kitText(shown, identity)], { type: 'text/plain' }));
       link.hidden = false;
     }
     const status = document.querySelector('[data-status]');

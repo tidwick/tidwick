@@ -9,10 +9,13 @@ case "${1:-}" in
     flags=()
     todo='example\.com|localhost'
     need='SESSION_SECRET NOTE_KEK BACKUP_RECIPIENT'
-    # The first BACKUP_COPY in the file is the top-level one; an instance that opts out sets it to none.
-    if ! grep -m1 '"BACKUP_COPY"' wrangler.jsonc | grep -q '"none"'; then
-      need="$need BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_KEY_ID BACKUP_S3_SECRET"
-    fi
+    # The top-level BACKUP_COPY only (the lines before "env", comments skipped): exactly s3 or none, else FAIL.
+    copy="$(sed '/"env"/q' wrangler.jsonc | grep -vE '^[[:space:]]*//' | sed -nE 's/.*"BACKUP_COPY"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p' | head -1)"
+    case "$copy" in
+      none) ;;
+      s3) need="$need BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET BACKUP_S3_KEY_ID BACKUP_S3_SECRET" ;;
+      *) echo "FAIL deploy-check: wrangler.jsonc's top-level BACKUP_COPY must be exactly \"s3\" or \"none\", not \"$copy\"; edit it as ARCHITECTURE, Deploy says"; exit 1 ;;
+    esac
     ;;
   demo)
     flags=(--config wrangler.jsonc --env demo)
@@ -25,7 +28,7 @@ if grep -nE "$todo" wrangler.jsonc; then
   echo "FAIL deploy-check: wrangler.jsonc still holds a placeholder (lines above); edit it as ARCHITECTURE, Deploy says"
   exit 1
 fi
-have="$($wrangler secret list "${flags[@]}" --format json | grep -oE '"name": *"[A-Z_0-9]+"' | grep -oE '[A-Z_0-9]+"$' | tr -d '"')"
+have="$($wrangler secret list ${flags[@]+"${flags[@]}"} --format json | grep -oE '"name": *"[A-Z_0-9]+"' | grep -oE '[A-Z_0-9]+"$' | tr -d '"' || true)"
 missing=''
 for name in $need; do
   grep -qx "$name" <<< "$have" || missing="$missing $name"
