@@ -5,7 +5,9 @@ import { ADMIN, T0 } from '../../test/helpers/auth';
 import { booking, project } from '../../test/helpers/booking';
 import { caller, formPost, getPage, rpcForm } from '../../test/helpers/callers';
 import { eventsAfter } from '../../test/helpers/reference';
-import { addAllAssignments, assignedTo as assignedPeople } from '../db/assignments';
+import { ASSIGN_ALL_MAX, addAllAssignments, assignedTo as assignedPeople } from '../db/assignments';
+import { D1_QUERIES_PER_INVOCATION } from '../lib/limits';
+import { countingDb, seedProjects } from '../db/test-support';
 import { assignableProjects } from '../db/people-access';
 import { archiveProject } from '../db/projects';
 
@@ -62,6 +64,15 @@ describe('assign to all live projects', () => {
     expect(await addAllAssignments(b.admin, env.DB, target.personId, T0, 2)).toBe(2);
     expect(await assignableProjects(b.admin, env.DB, target.personId)).toHaveLength(left - 2);
     expect(await addAllAssignments(b.admin, env.DB, target.personId, T0, 2)).toBe(2);
+  });
+
+  it('at the default cap one press stays inside the query budget even if the batch is retried', async () => {
+    const b = await booking();
+    const target = await caller();
+    await seedProjects(env.DB, b.clientId, ASSIGN_ALL_MAX + 1, T0);
+    const counted = countingDb(env.DB);
+    expect(await addAllAssignments(b.admin, counted.db, target.personId, T0)).toBe(ASSIGN_ALL_MAX);
+    expect(2 * counted.count()).toBeLessThan(D1_QUERIES_PER_INVOCATION);
   });
 });
 
