@@ -1,4 +1,4 @@
--- The v0.1.0 schema: migrations 0001-0011 squashed into one. Named for the last of them, so a database that applied all eleven has nothing pending.
+-- The v0.1.0 schema: the pre-release migrations 0001-0011 squashed into one file.
 
 -- table agent_grant
 CREATE TABLE agent_grant (
