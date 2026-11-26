@@ -100,7 +100,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'auth.stepUpOptions': 'none',
   'auth.stepUpVerify': 'none',
   'auth.logoutOthers': ['auth.logoutOthers', 'agents.revoke'],
-  'auth.revokePasskey': ['auth.revokePasskey', 'agents.revoke'],
+  'auth.revokePasskey': ['auth.revokePasskey', 'auth.logoutOthers', 'agents.revoke'],
   'auth.regenerateCodes': ['auth.regenerateCodes'],
   // Appended only for an agent's call (AUDIT_OF_AGENT); a person's own save is not audited.
   'entries.save': ['entries.save'],
@@ -132,7 +132,7 @@ export const AUDIT_OF: Readonly<Record<string, readonly AuditEvent[] | 'none'>> 
   'people.issueEnrolment': ['people.issueEnrolment', 'people.revokeEnrolments'],
   'people.reenrol': REENROL,
   'people.unlock': ['people.unlock'],
-  'people.unlinkSso': ['people.unlinkSso', 'agents.revoke'],
+  'people.unlinkSso': ['people.unlinkSso', 'people.revokeSessions', 'agents.revoke'],
   'people.setRoles': ['people.setRoles'],
   'people.offboard': OFFBOARD,
   'people.reinstate': ['people.reinstate'],

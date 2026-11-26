@@ -63,7 +63,7 @@ describe('the auth pages are labelled and structured', () => {
     expect(two).toContain('Sign out');
   });
 
-  it('beside Remove and new codes the page says neither signs out a browser, and points to Sign out other sessions', async () => {
+  it('beside Remove the page says other browsers are signed out; new codes do not, and point to Sign out other sessions', async () => {
     const who = await caller();
     await withPasskey(who.personId);
     const alone = await (await getPage('/account', who)).text();
@@ -71,7 +71,7 @@ describe('the auth pages are labelled and structured', () => {
     await withPasskey(who.personId);
     const two = await (await getPage('/account', who)).text();
     expect(two).toContain('data-remove-note');
-    expect(two).toMatch(/Removing a passkey does not sign out a browser already signed in with it/);
+    expect(two).toMatch(/Removing a passkey signs out your other browsers/);
     expect(two).toMatch(/retires every old one, and does not sign out a browser/);
     expect(two).toContain('auth.logoutOthers');
   });

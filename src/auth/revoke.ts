@@ -12,7 +12,12 @@ import { liveIdentitiesOf, revokeIdentitiesOf } from '../db/identities';
 import { personById } from '../db/people';
 import { closeCodesOf, unusedCodeCount } from '../db/recovery-codes';
 import { requireAll, type Scope } from '../db/scope';
-import { liveSessionCount, revokeSessionsOf } from '../db/sessions';
+import {
+  liveSessionCount,
+  otherSessionCount,
+  revokeOtherSessions,
+  revokeSessionsOf,
+} from '../db/sessions';
 import { fail } from '../lib/errors';
 import { recordEnrolment } from './enrol';
 
@@ -39,6 +44,40 @@ export async function recordGrantRevocation(
     },
     grants.length,
   );
+}
+
+/**
+ * Adds the end of a person's live sessions to `batch`, with an event only when there are sessions to end, and returns
+ * how many. With `keepIdHash` the holder's own session stays (`auth.logoutOthers`); without it every session ends
+ * (`people.revokeSessions`). `cause` names the action it belongs to, so the log reads as part of that action.
+ */
+export async function recordSessionRevocation(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  now: number,
+  cause: string,
+  keepIdHash?: string,
+): Promise<number> {
+  const sessions =
+    keepIdHash === undefined
+      ? await liveSessionCount(db, personId, now)
+      : await otherSessionCount(db, personId, keepIdHash, now);
+  if (sessions === 0) return 0;
+  await batch.record(
+    keepIdHash === undefined
+      ? revokeSessionsOf(db, personId, now)
+      : revokeOtherSessions(db, personId, keepIdHash, now),
+    {
+      at: now,
+      action: keepIdHash === undefined ? 'people.revokeSessions' : 'auth.logoutOthers',
+      clientId: null,
+      target: `person:${personId}`,
+      before: { sessions, cause },
+    },
+    sessions,
+  );
+  return sessions;
 }
 
 /**

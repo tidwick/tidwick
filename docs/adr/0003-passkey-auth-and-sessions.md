@@ -27,6 +27,7 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 - A `SETUP_TOKEN` left set opens nothing once any audit event or admin exists, except that while the sole admin has no passkey and no linked identity the claim re-issues that admin's enrolment link (audited as `people.rescue`).
 - A lost device is recovered by code or by an admin, never by email.
 - Sessions can be revoked server-side by deleting a row.
+- Removing a passkey ends the person's other sessions and keeps the one they used; unlinking an identity ends all of the person's sessions. Both are audited, and both end the person's agent grants.
 - Disabling a person at the identity provider stops new SSO sign-ins only. Offboarding in tidwick ends their sessions and unlinks their identities.
 - Each provider needs one redirect URI, `/auth/sso/callback`, and a client secret the operator renews before it expires.
 - Auth rules live in `src/auth/` and are proven by its tests, against an in-process identity provider.
