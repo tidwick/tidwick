@@ -29,7 +29,6 @@ None of this needs a Cloudflare account, a login or a secret. The database is a 
 
 - `just dev` runs the app locally.
 - `just dev-session <who>` signs in as one of the seeded people.
-- `just dev-agent-token <who>` prints a bearer for `/mcp` as one of them (needs `MCP=on`, which the generated `.dev.vars` sets).
 - `just demo-local` loads the demo data and serves it at `http://localhost:4321/demo`, with member, approver and admin personas.
 
 The deploy recipes (ARCHITECTURE, Deploy) act on a real Cloudflare account. Nothing in a contribution needs them.

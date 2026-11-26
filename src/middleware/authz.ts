@@ -8,7 +8,6 @@ import { currentEnv } from '../lib/env';
 import { fail, isAppError } from '../lib/errors';
 import { safeReturn } from '../auth/sso';
 import { errorPage, errorResponse, type PageLink } from './error-responses';
-import { MCP_PATTERN, rpcRefusal } from './mcp-responses';
 import { actionRule, pageRule, type Role, type Rule } from '../routes';
 
 export const RPC_PATTERN = '/_actions/[...path]';
@@ -75,7 +74,6 @@ export const authz: MiddlewareHandler = async (context, next) => {
     if (gated) context.locals.scope = await scopeFor(DB, session.personId);
   } catch (error) {
     if (!isAppError(error)) throw error;
-    if (context.routePattern === MCP_PATTERN) return rpcRefusal(error.code);
     if (context.routePattern === RPC_PATTERN) return errorResponse(error.code);
     if (error.code === 'unauthenticated' && ['GET', 'HEAD'].includes(context.request.method))
       return signInRedirect(context.url);

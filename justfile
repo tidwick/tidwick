@@ -18,9 +18,6 @@ dev-vars:
 dev-session who:
     @node test/local/dev-session.ts {{ quote(who) }}
 
-dev-agent-token who:
-    @node test/local/dev-agent-token.ts {{ quote(who) }}
-
 build:
     npx --no-install wrangler types
     npx --no-install astro build
@@ -63,7 +60,7 @@ migrate-check:
     trap 'rm -rf "$state" "$keep"' EXIT
     run() { npx --no-install wrangler d1 execute tidwick --local --persist-to "$keep" "$@"; }
     run --file migrations/0001_init.sql > "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: 0001 did not apply; see above"; exit 1; }
-    run --command "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Acme', 0); INSERT INTO firm (id, name, client_id) VALUES ('f1', 'Acme', 'c1'); INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'a@example.test', 'A', 0);" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: the 0001 seed rows did not insert; fix the INSERTs in the justfile"; exit 1; }
+    run --command "INSERT INTO client (id, name, created_at) VALUES ('c1', 'Acme', 0); INSERT INTO firm (id, client_id) VALUES ('f1', 'c1'); INSERT INTO person (id, firm_id, email, name, created_at) VALUES ('p1', 'f1', 'a@example.test', 'A', 0);" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: the 0001 seed rows did not insert; fix the INSERTs in the justfile"; exit 1; }
     for f in $(ls migrations/*.sql | sort | tail -n +2); do
       run --file "$f" >> "$keep/apply.log" 2>&1 || { cat "$keep/apply.log"; echo "FAIL migrate-populated: $f cannot apply over existing rows; rebuild tables so rows survive foreign keys"; exit 1; }
     done

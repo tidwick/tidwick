@@ -1,11 +1,10 @@
-// An admin unlinking one of a person's identities, audited, and with it every agent grant the person holds. The
-// person keeps whatever else they sign in with; unlinking never touches a passkey. Like revoking credentials, it
-// can leave a person with no way in, which an enrolment link then repairs.
+// An admin unlinking one of a person's identities, audited. The person keeps whatever else they sign in with;
+// unlinking never touches a passkey. Like revoking credentials, it can leave a person with no way in, which an
+// enrolment link then repairs.
 import { auditedBatch, retryOnce } from '../db/audit';
 import { liveIdentitiesOf, revokeIdentity } from '../db/identities';
 import { requireAll, type Scope } from '../db/scope';
 import { fail } from '../lib/errors';
-import { recordGrantRevocation } from './revoke';
 
 export async function unlinkSso(
   scope: Scope,
@@ -30,7 +29,6 @@ export async function unlinkSso(
       },
       1,
     );
-    await recordGrantRevocation(batch, db, personId, now);
     await batch.run();
   });
 }

@@ -41,14 +41,6 @@ function json(value: unknown): string | null {
   return value === undefined || value === null ? null : JSON.stringify(value);
 }
 
-/** An agent's write carries `via` inside the hashed `after`, so no event it causes can be told from a person's own. */
-function afterOf(scope: Scope, after: unknown): unknown {
-  if (scope.kind !== 'agent') return after;
-  const via = { kind: 'agent', grant: scope.grantId, client: scope.client };
-  const body = typeof after === 'object' && after !== null && !Array.isArray(after) ? after : {};
-  return { ...body, via };
-}
-
 /** The newest event's seq and hash, or seq 0 and the genesis hash for an empty log. */
 export async function readHead(db: D1Database): Promise<Head> {
   return (await db.prepare(HEAD).first<Head>()) ?? { seq: 0, hash: GENESIS };
@@ -74,7 +66,7 @@ export async function auditStatement(
     client_id: input.clientId,
     target: input.target,
     before_json: json(input.before),
-    after_json: json(afterOf(scope, input.after)),
+    after_json: json(input.after),
     prev_hash: head.hash,
     hash: '',
   };

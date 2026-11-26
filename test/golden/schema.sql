@@ -1,24 +1,3 @@
--- table agent_grant
-CREATE TABLE agent_grant (
-  id TEXT PRIMARY KEY,
-  person_id TEXT NOT NULL REFERENCES person (id),
-  client_id TEXT NOT NULL,
-  client_name TEXT NOT NULL,
-  redirect_uri TEXT NOT NULL,
-  scopes TEXT NOT NULL CHECK (json_valid(scopes)),
-  created_at INTEGER NOT NULL,
-  last_used_at INTEGER,
-  revoked_at INTEGER
-) STRICT;
-
--- table agent_token
-CREATE TABLE agent_token (
-  hash TEXT PRIMARY KEY,
-  grant_id TEXT NOT NULL REFERENCES agent_grant (id),
-  kind TEXT NOT NULL CHECK (kind IN ('code', 'access', 'refresh')),
-  expires_at INTEGER NOT NULL
-) STRICT;
-
 -- table assignment
 CREATE TABLE assignment (
   client_id TEXT NOT NULL,
@@ -30,7 +9,7 @@ CREATE TABLE assignment (
 ) STRICT;
 
 -- table audit_event
-CREATE TABLE "audit_event" (
+CREATE TABLE audit_event (
   seq INTEGER PRIMARY KEY CHECK (seq > 0),
   at INTEGER NOT NULL,
   actor_id TEXT REFERENCES person (id),
@@ -63,15 +42,17 @@ CREATE TABLE backup_run (
   chain_seq INTEGER NOT NULL CHECK (chain_seq >= 0),
   chain_head TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ok', 'failed')),
-  error TEXT
-, chars INTEGER NOT NULL DEFAULT 0) STRICT;
+  error TEXT,
+  chars INTEGER NOT NULL DEFAULT 0
+) STRICT;
 
 -- table client
 CREATE TABLE client (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL COLLATE NOCASE UNIQUE,
   created_at INTEGER NOT NULL,
-  archived_at INTEGER) STRICT;
+  archived_at INTEGER
+) STRICT;
 
 -- table client_key
 CREATE TABLE client_key (
@@ -137,8 +118,9 @@ CREATE TABLE import_batch (
   entries_written INTEGER NOT NULL CHECK (entries_written >= 0),
   rejected_json TEXT NOT NULL CHECK (json_valid(rejected_json)),
   started_at INTEGER NOT NULL,
-  finished_at INTEGER
-, mapping_hash TEXT NOT NULL DEFAULT '') STRICT;
+  finished_at INTEGER,
+  mapping_hash TEXT NOT NULL DEFAULT ''
+) STRICT;
 
 -- table oidc_flow
 CREATE TABLE oidc_flow (
@@ -214,8 +196,9 @@ CREATE TABLE project_task (
 CREATE TABLE recovery_attempt (
   email_hash TEXT PRIMARY KEY,
   failures INTEGER NOT NULL CHECK (failures >= 0),
-  locked_until INTEGER
-, failed_at INTEGER NOT NULL DEFAULT 0) STRICT;
+  locked_until INTEGER,
+  failed_at INTEGER NOT NULL DEFAULT 0
+) STRICT;
 
 -- table recovery_code
 CREATE TABLE recovery_code (
@@ -274,15 +257,10 @@ CREATE TABLE week_submission (
   state TEXT NOT NULL CHECK (state IN ('submitted', 'approved', 'returned')),
   submitted_at INTEGER NOT NULL,
   decided_by TEXT REFERENCES person (id),
-  decided_at INTEGER, return_reason TEXT,
+  decided_at INTEGER,
+  return_reason TEXT,
   PRIMARY KEY (person_id, week_start)
 ) STRICT;
-
--- index agent_grant_person
-CREATE INDEX agent_grant_person ON agent_grant (person_id);
-
--- index agent_token_grant
-CREATE INDEX agent_token_grant ON agent_token (grant_id);
 
 -- index assignment_person
 CREATE INDEX assignment_person ON assignment (person_id);

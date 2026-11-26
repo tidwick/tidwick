@@ -27,12 +27,6 @@
       "SSO_PROVIDERS": {
         "description": "Optional. Leave empty (off). Anything else must be a JSON array of providers, or the deploy fails; see ARCHITECTURE, Deploy."
       },
-      "MCP": {
-        "description": "Optional. Leave empty (off)."
-      },
-      "MCP_NOTES": {
-        "description": "Optional. Leave empty (off)."
-      },
       "DEMO_BANNER": {
         "description": "Optional. Leave empty (off)."
       },
