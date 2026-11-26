@@ -11,7 +11,7 @@ import {
 } from '../../test/seed/submitted';
 import { currentEnv, noteKeks } from '../lib/env';
 import { openNote } from '../lib/note-crypto';
-import { submittedWeeks } from './approvals';
+import { approvalWeeks } from './approvals';
 import { keyRing } from './client-keys';
 import { saveCells, seal } from './entry-writes';
 import { scopeFor } from './scope';
@@ -147,7 +147,7 @@ describe('the seed has weeks waiting for approval, dated sensibly', () => {
       [...submittedStatements(LAST, 30), ...submittedStatements(BEFORE, 10)].join('\n'),
     );
     const admin = await scopeFor(env.DB, SEED_IDS.person(1));
-    const listed = await submittedWeeks(admin, env.DB);
+    const listed = (await approvalWeeks(admin, env.DB, { state: 'submitted' })).weeks;
     expect(listed).toHaveLength(40);
     expect(new Set(listed.map((w) => w.person_id)).size).toBe(30);
     // Four eight-hour days and a four-hour Friday per row: 36 hours a row, written out rather than imported.
@@ -155,8 +155,8 @@ describe('the seed has weeks waiting for approval, dated sensibly', () => {
     for (const week of listed) {
       expect(week.total, week.name).toBe(ROWS_EACH * 3600);
       const start = Date.parse(`${week.week_start}T00:00:00Z`);
-      expect(week.submitted_at).toBeGreaterThanOrEqual(start);
-      expect(week.submitted_at).toBeLessThan(start + 7 * DAY + 3 * DAY);
+      expect(week.at).toBeGreaterThanOrEqual(start);
+      expect(week.at).toBeLessThan(start + 7 * DAY + 3 * DAY);
     }
     const ids = new Set(listed.map((w) => w.person_id));
     for (const fixture of [1, 2, 3]) expect(ids.has(SEED_IDS.person(fixture))).toBe(false);

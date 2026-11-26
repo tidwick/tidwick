@@ -59,6 +59,7 @@ describe('the page a succeeded form lands on says Saved once, and a refused form
     const posted = await formPost(page, 'submission.return', approver, {
       personId: b.who.personId,
       weekStart: WEEK,
+      reason: 'Check the hours',
     });
     const { where, html } = await landed(posted, approver);
     expect(where).toBe(`${page}?saved=1`);
@@ -68,6 +69,7 @@ describe('the page a succeeded form lands on says Saved once, and a refused form
     const again = await formPost(page, 'submission.return', approver, {
       personId: b.who.personId,
       weekStart: WEEK,
+      reason: 'Check the hours',
     });
     expect(again.status).not.toBe(303);
     expect(await again.text()).not.toContain('Saved.');

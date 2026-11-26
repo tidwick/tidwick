@@ -1,18 +1,20 @@
 // A person's week as the grid shows it: rows with labels, seven cells each with notes decrypted, the lock state,
 // and the projects and tasks they may add. Reads go through the scope; a member sees only assigned projects.
 import { fail } from '../lib/errors';
+import { fingerprintText } from '../lib/fingerprint';
 import { openNote, type NoteKeks } from '../lib/note-crypto';
 import {
   DAYS_IN_WEEK,
   type Cell,
   type GridRow,
+  type LoadedWeek,
   type ProjectOption,
   type WeekState,
-  type WeekView,
 } from '../lib/week';
 import { keyRing, type KeyRing } from './client-keys';
 import { blobBytes } from './credentials';
 import { projectsParam, requirePersonVisible, type Scope } from './scope';
+import { weekFingerprint } from './week-print';
 
 export interface RowRecord {
   row_id: string;
@@ -94,12 +96,13 @@ export async function loadWeek(
   keks: NoteKeks,
   personId: string,
   weekStart: string,
-): Promise<WeekView> {
+): Promise<LoadedWeek> {
   requirePersonVisible(scope, personId);
-  const [rows, cells, state] = await Promise.all([
+  const [rows, cells, state, print] = await Promise.all([
     readRows(scope, db, personId, weekStart),
     readCells(scope, db, personId, weekStart),
     weekState(scope, db, personId, weekStart),
+    weekFingerprint(scope, db, personId, weekStart),
   ]);
   const ring = keyRing(db, keks);
   const stored = new Map<string, Cell[]>();
@@ -121,7 +124,7 @@ export async function loadWeek(
     removable: !present.has(r.row_id),
     cells: stored.get(r.row_id) ?? blankCells(),
   }));
-  return { weekStart, state, rows: grid };
+  return { weekStart, state, rows: grid, fingerprint: fingerprintText(print) };
 }
 
 export const blankCells = (): Cell[] =>

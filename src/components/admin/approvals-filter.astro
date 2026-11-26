@@ -1,0 +1,63 @@
+---
+import { LISTED_STATES, type ListedState } from '../../db/approvals';
+import { LINK } from '../auth/classes';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+// What the approvals list shows: one state at a time, as links that survive a refresh, and an optional range of
+// weeks as a plain GET form. Both keep the search term, and the range keeps the state.
+interface Props {
+  state: ListedState;
+  term: string;
+  from: string;
+  to: string;
+}
+const { state, term, from, to } = Astro.props;
+const NAME: Record<ListedState, string> = {
+  submitted: 'Waiting',
+  approved: 'Approved',
+  returned: 'Returned',
+  draft: 'Not submitted',
+};
+const href = (of: ListedState) => {
+  const query = new URLSearchParams({ state: of });
+  if (term !== '') query.set('q', term);
+  if (from !== '') query.set('from', from);
+  if (to !== '') query.set('to', to);
+  return `/approvals?${query.toString()}`;
+};
+---
+
+<nav aria-label="Week state" class="flex flex-wrap gap-2 text-sm">
+  {LISTED_STATES.map((of) => (
+    <a
+      class:list={[
+        'inline-flex min-h-11 items-center rounded-lg border px-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:min-h-9',
+        of === state ? 'border-foreground font-semibold' : 'border-control',
+      ]}
+      href={href(of)}
+      aria-current={of === state ? 'page' : undefined}
+    >
+      {NAME[of]}
+    </a>
+  ))}
+</nav>
+<form method="GET" action="/approvals" class="flex flex-wrap items-end gap-2 text-sm">
+  <input type="hidden" name="state" value={state} />
+  {term !== '' && <input type="hidden" name="q" value={term} />}
+  <label class="grid gap-1 font-medium">
+    Weeks from
+    <Input type="date" name="from" value={from} className="h-11 w-auto border-control md:h-9" />
+  </label>
+  <label class="grid gap-1 font-medium">
+    to
+    <Input type="date" name="to" value={to} className="h-11 w-auto border-control md:h-9" />
+  </label>
+  <Button type="submit" size="lg" variant="outline" className="border-control max-md:h-11">
+    Show weeks
+  </Button>
+  {(from !== '' || to !== '') && (
+    <a class={LINK} href={href(state).replace(/&(from|to)=[^&]*/g, '')}>
+      Clear weeks
+    </a>
+  )}
+</form>

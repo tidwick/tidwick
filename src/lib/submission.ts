@@ -15,6 +15,9 @@ export interface Transition {
   readonly by: Sender;
 }
 
+/** The states an approver may approve out of for an offboarded person, who can no longer submit, on their behalf. */
+export const ON_BEHALF_FROM: readonly WeekState[] = ['draft', 'returned'];
+
 export const WEEK_STATES: readonly WeekState[] = ['draft', 'submitted', 'approved', 'returned'];
 export const SUBMISSION_EVENTS: readonly SubmissionEvent[] = ['submit', 'approve', 'return'];
 

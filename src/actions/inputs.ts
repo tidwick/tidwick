@@ -1,6 +1,7 @@
 // Zod pieces more than one Action's input uses. SimpleWebAuthn checks a credential response in full.
 import { z } from 'astro/zod';
 import { pathText } from '../lib/field-errors';
+import { parseFingerprint, type Fingerprint } from '../lib/fingerprint';
 import { MAX_IMPORT_BYTES } from '../lib/import';
 import { MAX_WEEK_ROWS } from '../lib/limits';
 import { DAYS_IN_WEEK, isWeekStart } from '../lib/week';
@@ -58,6 +59,27 @@ export const weekStartField = z
   .string()
   .trim()
   .refine(isWeekStart, 'Choose a week that starts on a Monday');
+
+/** The fingerprint of the week a form was drawn from; blank or absent means no check, text that is not one is refused. */
+export const fingerprintField = z
+  .string()
+  .trim()
+  .max(60)
+  .nullish()
+  .transform((text, ctx): Fingerprint | null => {
+    if (text === undefined || text === null || text === '') return null;
+    const print = parseFingerprint(text);
+    if (print !== null) return print;
+    ctx.addIssue({ code: 'custom', message: 'Reload the week and try again' });
+    return z.NEVER;
+  });
+
+/** Why an approver returns a week, in a line the owner will read. */
+export const returnReasonField = z
+  .string()
+  .trim()
+  .min(1, 'Say why the week is returned')
+  .max(500, 'Keep the reason under 500 characters');
 
 const MAX_CELLS = MAX_WEEK_ROWS * DAYS_IN_WEEK;
 

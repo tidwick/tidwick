@@ -52,6 +52,12 @@ export interface WeekGridProps {
   personId: string;
   /** In `for` mode, whether the admin chose to edit through the lock; the grid is read-only otherwise. */
   editing: boolean;
+  /** The fingerprint of the week as drawn, which a submit or a decision carries back. */
+  fingerprint: string;
+  /** In `for` mode, whether the person has left, so an approver may approve their open week on their behalf. */
+  offboarded?: boolean;
+  /** In `own` mode, the reason an approver gave when the week was returned. */
+  returnReason?: string | null;
   /** The export mapping's note limit, which a counter beside each note shows; null for none. */
   noteLimit: number | null;
 }
@@ -77,6 +83,7 @@ export function WeekGrid(props: WeekGridProps) {
   const base: Base = { csrf, weekStart };
   const [rows, setRows] = useState(props.rows);
   const [state, setState] = useState(props.state);
+  const [print, setPrint] = useState(props.fingerprint);
   const [drafts, setDrafts] = useState<Drafts>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(
@@ -95,6 +102,7 @@ export function WeekGrid(props: WeekGridProps) {
     }
     setRows(result.week.rows);
     setState(result.week.state);
+    setPrint(result.week.fingerprint);
     latest.current.rows = result.week.rows;
     setMessage(done ? { kind: 'info', text: done } : null);
     return true;
@@ -150,10 +158,14 @@ export function WeekGrid(props: WeekGridProps) {
     setMessage(null);
   };
 
+  const returned = own && state === 'returned' && props.returnReason ? props.returnReason : null;
   const notice =
     !own && editable
       ? 'Editing through the lock; every change is audited.'
-      : LOCKED[props.mode][state];
+      : returned !== null
+        ? `This week was returned to you: \u201c${returned}\u201d Edit it and submit again.`
+        : LOCKED[props.mode][state];
+  const choices = own ? [] : decisionsFor(state, props.offboarded);
   const shown = withDrafts(rows, drafts);
   const unsaved = Object.keys(dirtyFields(rows, drafts)).length > 0;
   useUnsavedGuard(unsaved);
@@ -171,6 +183,7 @@ export function WeekGrid(props: WeekGridProps) {
       >
         <input type="hidden" name="_csrf" value={csrf} />
         <input type="hidden" name="weekStart" value={weekStart} />
+        <input type="hidden" name="fingerprint" value={print} />
         {!own && <input type="hidden" name="personId" value={personId} />}
         <GridTable
           rows={rows}
@@ -194,9 +207,11 @@ export function WeekGrid(props: WeekGridProps) {
           busy={busy}
           unsaved={unsaved}
           message={message}
-          decisions={own ? [] : decisionsFor(state)}
+          decisions={choices}
           weekTotal={weekTotal(shown)}
-          onSubmitWeek={() => void run(() => submitWeek(base), 'Submitted; the week is locked')}
+          onSubmitWeek={() =>
+            void run(() => submitWeek(base, print), 'Submitted; the week is locked')
+          }
           onCopyLastWeek={() => void run(() => copyLastWeek(base), 'Copied last week\u2019s rows')}
         />
       </form>
@@ -206,7 +221,8 @@ export function WeekGrid(props: WeekGridProps) {
           csrf={csrf}
           weekStart={weekStart}
           personId={personId}
-          state={state}
+          fingerprint={print}
+          choices={choices}
         />
       )}
       {editable && own && (

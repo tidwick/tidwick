@@ -11,12 +11,17 @@ interface Props {
   term: string;
   hint: string;
   status: string;
+  /** Other fields the page keeps while a search runs, such as its filters, as hidden inputs. */
+  keep?: Record<string, string>;
 }
-const { action, label, term, hint, status } = Astro.props;
+const { action, label, term, hint, status, keep = {} } = Astro.props;
 const id = nextId('search');
 ---
 
 <form method="GET" action={action} role="search" class="grid gap-1.5">
+  {Object.entries(keep).map(([name, value]) => (
+    <input type="hidden" name={name} value={value} />
+  ))}
   <label for={id} class="text-sm font-medium">
     {label}
   </label>

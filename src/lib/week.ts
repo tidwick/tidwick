@@ -45,6 +45,11 @@ export interface WeekView {
   rows: GridRow[];
 }
 
+/** The week an Action returns: the view, with the fingerprint a later submit or decision on it can carry. */
+export interface LoadedWeek extends WeekView {
+  fingerprint: string;
+}
+
 /** Whether the owner may still edit: a submitted or approved week is locked. */
 export function isEditable(state: WeekState): boolean {
   return state === 'draft' || state === 'returned';

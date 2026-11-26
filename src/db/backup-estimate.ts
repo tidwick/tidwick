@@ -28,7 +28,7 @@ const ENTRY = `SELECT coalesce(sum(156 + ${ENTRY_LENGTHS} + coalesce(CASE WHEN n
 
 const WEEK_ROW = `SELECT coalesce(sum(133 + ${WEEK_ROW_LENGTHS}), 0) FROM week_row`;
 
-const WEEK_SUBMISSION = `SELECT coalesce(sum(143 + ${SUBMISSION_LENGTHS} + coalesce(length(decided_by) - 2, 0) + coalesce(length(decided_at) - 4, 0)), 0) FROM week_submission`;
+const WEEK_SUBMISSION = `SELECT coalesce(sum(164 + ${SUBMISSION_LENGTHS} + coalesce(2 * length(return_reason) + 2, 0) + coalesce(length(decided_by) - 2, 0) + coalesce(length(decided_at) - 4, 0)), 0) FROM week_submission`;
 
 const AUDIT_EVENT = `SELECT coalesce(sum(286 + ${AUDIT_LENGTHS} + coalesce(length(actor_id) - 2, 0) + coalesce(length(client_id) - 2, 0) + ${BEFORE_ESCAPED} - 2 + ${AFTER_ESCAPED} - 2), 0) FROM audit_event`;
 

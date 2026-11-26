@@ -1,40 +1,63 @@
 ---
+import ApprovalsFilter from '../../components/admin/approvals-filter.astro';
+import ApprovalsTable from '../../components/admin/approvals-table.astro';
 import Empty from '../../components/admin/empty.astro';
+import NotSubmitted from '../../components/admin/not-submitted.astro';
 import SearchForm from '../../components/admin/search-form.astro';
 import Shell from '../../components/admin/shell.astro';
 import StepUp from '../../components/admin/step-up.astro';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowHead,
-} from '../../components/ui/table';
-import { submittedWeeks, type SubmittedWeek } from '../../db/approvals';
-import { formatHours } from '../../lib/hours';
+import { approvalWeeks, LISTED_STATES, type ListedState } from '../../db/approvals';
+import { notSubmittedWeeks } from '../../db/not-submitted';
+import { timeZone } from '../../db/settings';
 import { searchTerm } from '../../lib/search';
+import { todayIn, weekStartOf } from '../../lib/week';
+import { completedWeeks, weekEndsAt } from '../../lib/week-end';
 import { pageContext } from '../_context';
 
+const LOOKS_BACK = 4;
 const ctx = pageContext(Astro);
-const term = searchTerm(Astro.url.searchParams.get('q'));
-const weeks = await submittedWeeks(ctx.scope, ctx.db, term);
-const people = new Map<string, SubmittedWeek[]>();
-for (const week of weeks) people.set(week.person_id, [...(people.get(week.person_id) ?? []), week]);
-const sum = (rows: readonly SubmittedWeek[]) => rows.reduce((total, w) => total + w.total, 0);
-const noun = (n: number) => (n === 1 ? '1 week' : `${String(n)} weeks`);
-const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const query = Astro.url.searchParams;
+const term = searchTerm(query.get('q'));
+const asked = query.get('state') ?? '';
+const state = LISTED_STATES.find((s): s is ListedState => s === asked) ?? 'submitted';
+const monday = (name: string) => weekStartOf(query.get(name) ?? '') ?? '';
+const [from, to] = [monday('from'), monday('to')];
+const { weeks, found } = await approvalWeeks(ctx.scope, ctx.db, {
+  state,
+  term,
+  from: from === '' ? null : from,
+  to: to === '' ? null : to,
+});
+const zone = await timeZone(ctx.db);
+const missing =
+  state === 'submitted'
+    ? await notSubmittedWeeks(
+        ctx.scope,
+        ctx.db,
+        completedWeeks(todayIn(zone, Date.now()), LOOKS_BACK).map((weekStart) => ({
+          weekStart,
+          endsAt: weekEndsAt(weekStart, zone),
+        })),
+        term,
+      )
+    : null;
 const open = ctx.stepUpUntil !== null;
-const whom = people.size === 1 ? '1 person' : `${String(people.size)} people`;
-const status = `${noun(weeks.length)} from ${whom}${term === '' ? '' : ` ${weeks.length === 1 ? 'matches' : 'match'} \u201c${term}\u201d`}.`;
+const people = new Set(weeks.map((w) => w.person_id)).size;
+const keep = { state, from, to };
+const NAME = {
+  submitted: 'waiting',
+  approved: 'approved',
+  returned: 'returned',
+  draft: 'unsubmitted',
+};
+const filtered = term !== '' || from !== '' || to !== '';
+const status = `${found === 1 ? '1 week' : `${String(found)} weeks`} from ${people === 1 ? '1 person' : `${String(people)} people`}${term === '' ? '' : ` ${found === 1 ? 'matches' : 'match'} “${term}”`}.`;
 ---
 
 <Shell title="Approvals">
   <Fragment slot="lead">
     Weeks people have submitted, one line each. Open one to read it, approve it, return it, or edit
-    it through the lock.
+    it through the lock. The other lists reach approved, returned and unsubmitted weeks.
   </Fragment>
 
   <StepUp
@@ -43,94 +66,33 @@ const status = `${noun(weeks.length)} from ${whom}${term === '' ? '' : ` ${weeks
     unlocks="opening a week, approving, returning and editing"
   />
 
-  {(weeks.length > 0 || term !== '') && (
+  <ApprovalsFilter state={state} term={term} from={from} to={to} />
+
+  {(weeks.length > 0 || filtered) && (
     <SearchForm
       action="/approvals"
       label="Search people"
       term={term}
       hint="Name, email or code"
       status={status}
+      keep={Object.fromEntries(Object.entries(keep).filter(([, value]) => value !== ''))}
     />
   )}
 
-  {weeks.length === 0 && term !== '' ? (
-    <Empty title="No waiting week matches that search">
-      Try part of a name, an email or an accounting code, or clear the search to see every week.
+  {weeks.length === 0 && filtered ? (
+    <Empty title={`No ${NAME[state]} week matches that search`}>
+      Try part of a name, an email or an accounting code, or widen the weeks, or clear the search.
     </Empty>
-  ) : weeks.length === 0 ? (
+  ) : weeks.length === 0 && state === 'submitted' ? (
     <Empty title="No weeks are waiting for approval">
       People submit a week from their Week page. It appears here, with its total, as soon as they
       do.
     </Empty>
+  ) : weeks.length === 0 ? (
+    <Empty title={`No ${NAME[state]} weeks`}>Weeks in this state appear here.</Empty>
   ) : (
-    <Table aria-label="Submitted weeks">
-      <TableHeader>
-        <TableRow>
-          <TableHead>Person</TableHead>
-          <TableHead>Week of</TableHead>
-          <TableHead>Submitted</TableHead>
-          <TableHead className="text-right">Hours</TableHead>
-          <TableHead>
-            <span class="sr-only">Open</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {[...people.values()].flatMap((rows) =>
-          rows.map((week, index) => (
-            <TableRow className="max-md:grid-cols-[1fr_auto]">
-              <TableRowHead className={`max-md:col-start-1 ${index === 0 ? '' : 'md:sr-only'}`}>
-                {week.name}
-                {index === 0 && rows.length > 1 && (
-                  <span class="block text-xs font-normal text-muted-foreground">
-                    {noun(rows.length)}, {formatHours(sum(rows))} hours
-                  </span>
-                )}
-              </TableRowHead>
-              <TableCell data-label="Week of" className="tabular-nums max-md:col-start-1">
-                {week.week_start}
-              </TableCell>
-              <TableCell
-                data-label="Submitted"
-                className="tabular-nums text-muted-foreground max-md:col-start-1"
-              >
-                {day(week.submitted_at)}
-              </TableCell>
-              <TableCell
-                data-label="Hours"
-                className="tabular-nums max-md:col-start-1 md:text-right"
-              >
-                {formatHours(week.total)}
-              </TableCell>
-              <TableCell className="max-md:col-start-2 max-md:row-span-4 max-md:row-start-1 max-md:self-center md:text-right">
-                {open ? (
-                  <a
-                    class="inline-flex h-9 items-center rounded-lg border border-control px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-md:h-11"
-                    href={`/approvals/${week.person_id}/${week.week_start}`}
-                    aria-label={`Open ${week.name}, week of ${week.week_start}`}
-                  >
-                    Open
-                  </a>
-                ) : (
-                  <span class="text-xs text-muted-foreground">Confirm to open</span>
-                )}
-              </TableCell>
-            </TableRow>
-          )),
-        )}
-      </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableRowHead colSpan={3}>
-            All {noun(weeks.length)},{' '}
-            {people.size === 1 ? '1 person' : `${String(people.size)} people`}
-          </TableRowHead>
-          <TableCell data-label="Hours" className="font-semibold tabular-nums md:text-right">
-            {formatHours(sum(weeks))}
-          </TableCell>
-          <TableCell />
-        </TableRow>
-      </TableFooter>
-    </Table>
+    <ApprovalsTable weeks={weeks} found={found} state={state} open={open} />
   )}
+
+  {missing && <NotSubmitted list={missing} open={open} looksBack={LOOKS_BACK} />}
 </Shell>

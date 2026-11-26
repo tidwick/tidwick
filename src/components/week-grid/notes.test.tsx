@@ -33,6 +33,7 @@ function render(
       editing={false}
       path="/week/2026-01-05"
       csrf="token"
+      fingerprint="0.0.0"
       weekStart="2026-01-05"
       days={[
         '2026-01-05',
