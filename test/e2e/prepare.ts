@@ -45,6 +45,9 @@ const CSV_ACCOUNTANTS = PROJECTS.map((project) => `csv-${project}`);
 // For the recovery spec, a member who recovers with a code; for the settings spec, an admin who also gets the accessibility scan.
 const RECOVERERS = PROJECTS.map((project) => `recover-${project}`);
 const SETTERS = PROJECTS.map((project) => `admin-set-${project}`);
+// For the agent spec: a member per project with five hours in the week of 2031-04-07 whose own token reads it, and one who approves an app.
+const AGENTS = PROJECTS.map((project) => `agent-${project}`);
+const CONNECTORS = PROJECTS.map((project) => `oauth-${project}`);
 const ids: Record<string, string> = {};
 for (const [i, project] of [
   ...PROJECTS,
@@ -58,6 +61,8 @@ for (const [i, project] of [
   ...SETTERS,
   ...RETURNEES,
   ...RETURNERS,
+  ...AGENTS,
+  ...CONNECTORS,
 ].entries()) {
   const id = `00000000-0000-4000-a000-${String(i).padStart(12, '0')}`;
   ids[project] = id;
@@ -116,6 +121,20 @@ for (const [n, name] of RETURNEES.entries()) {
     `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, updated_at) VALUES ('e2e-return-entry-${String(n)}', 'e2e-grid-client', 'e2e-return-row-${String(n)}', 0, 600, 1);`,
   );
 }
+
+// The agent spec's week: 2031-04-07 holds one row with five hours on Monday. The app approver has the same assignment and no week.
+for (const [n, name] of AGENTS.entries()) {
+  const person = ids[name] ?? '';
+  sql.push(
+    `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${person}', 1);`,
+    `INSERT OR IGNORE INTO week_row (id, client_id, person_id, week_start, project_id, task_code_id, position) VALUES ('e2e-agent-row-${String(n)}', 'e2e-grid-client', '${person}', '2031-04-07', 'e2e-grid-project', 'e2e-grid-des', 0);`,
+    `INSERT OR IGNORE INTO entry (id, client_id, row_id, dow, hundredths, updated_at) VALUES ('e2e-agent-entry-${String(n)}', 'e2e-grid-client', 'e2e-agent-row-${String(n)}', 0, 500, 1);`,
+  );
+}
+for (const name of CONNECTORS)
+  sql.push(
+    `INSERT OR IGNORE INTO assignment (client_id, project_id, person_id, assigned_at) VALUES ('e2e-grid-client', 'e2e-grid-project', '${ids[name] ?? ''}', 1);`,
+  );
 
 // The no-script spec's week: 2031-03-24 holds a Design row and a Review row, both blank.
 for (const [n, name] of PLAINS.entries()) {

@@ -38,6 +38,14 @@ test('a person enrols a passkey, keeps the recovery codes, signs out and signs b
 test('a used enrolment link is refused with a plain message', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'one width is enough for a server message');
   await page.goto('/enrol/not-a-real-token');
-  await page.getByRole('button', { name: 'Create a passkey' }).click();
-  await expect(page.getByRole('status')).toContainText('expired or was already used');
+  const status = page.getByRole('status');
+  // The public auth limit is 30 a minute and the specs before this one may have used it up; a refusal waits out the window.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByRole('button', { name: 'Create a passkey' }).click();
+    await expect(status).toContainText(/expired or was already used|Too many attempts/);
+    if (!(await status.innerText()).includes('Too many attempts')) break;
+    test.setTimeout(test.info().timeout + 65_000);
+    await page.waitForTimeout(30_000);
+  }
+  await expect(status).toContainText('expired or was already used');
 });
