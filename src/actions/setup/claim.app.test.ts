@@ -4,6 +4,7 @@ import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { formOriginFor } from '../../../test/helpers/browser';
 import { ORIGIN } from '../../../test/helpers/callers';
+import { withinOneWindow } from '../../../test/helpers/rate-window';
 import { withPasskey } from '../../../test/helpers/auth';
 import { lockedOutAdmin } from '../../db/rescue';
 import { adminGrants, claimedAs, rowCounts } from '../../db/test-support-bootstrap';
@@ -58,16 +59,18 @@ describe('the first-admin claim page', () => {
   });
 
   it('SEC-48 a wrong token is refused and the 301st POST from one address is 429', async () => {
-    const ip = '203.0.113.51';
-    const before = await rowCounts(env.DB);
-    const shown = await claim({ token: 'x'.repeat(43), ...WHO }, ip);
-    expect(await shown.text()).toContain('does not match SETUP_TOKEN');
-    const statuses: number[] = [];
-    for (let i = 0; i < 299; i++)
-      statuses.push((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status);
-    expect(statuses.every((s) => s === 403)).toBe(true);
-    expect((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status).toBe(429);
-    expect(await rowCounts(env.DB)).toEqual(before);
+    await withinOneWindow(async (attempt) => {
+      const ip = `203.0.113.${String(51 + attempt * 100)}`;
+      const before = await rowCounts(env.DB);
+      const shown = await claim({ token: 'x'.repeat(43), ...WHO }, ip);
+      expect(await shown.text()).toContain('does not match SETUP_TOKEN');
+      const statuses: number[] = [];
+      for (let i = 0; i < 299; i++)
+        statuses.push((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status);
+      expect(statuses.every((s) => s === 403)).toBe(true);
+      expect((await claim({ token: 'x'.repeat(43), ...WHO }, ip, ORIGIN, true)).status).toBe(429);
+      expect(await rowCounts(env.DB)).toEqual(before);
+    });
   });
 
   it('SEC-48 a newline in the name or firm is refused and writes nothing', async () => {

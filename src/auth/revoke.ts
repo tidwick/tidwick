@@ -4,6 +4,7 @@ import { isLastAdmin } from '../db/admins';
 import { auditedBatch, retryOnce, type AuditedBatch } from '../db/audit';
 import {
   activeCredentialsOf,
+  revokeCredentialsExcept,
   revokeCredentialsKeepingAdmin,
   revokeCredentialsOf,
 } from '../db/credentials';
@@ -12,13 +13,18 @@ import { liveIdentitiesOf, revokeIdentitiesOf } from '../db/identities';
 import { personById } from '../db/people';
 import { closeCodesOf, unusedCodeCount } from '../db/recovery-codes';
 import { requireAll, type Scope } from '../db/scope';
-import { liveSessionCount, revokeSessionsOf } from '../db/sessions';
+import {
+  liveSessionCount,
+  otherSessionCount,
+  revokeOtherSessions,
+  revokeSessionsOf,
+} from '../db/sessions';
 import { fail } from '../lib/errors';
 import { recordEnrolment } from './enrol';
 
 /**
  * Adds a person's agent grants' revocation to `batch`, with an `agents.revoke` event only when there are grants to
- * revoke. Every path that cuts a person's own access calls it, so an agent never outlives the sign-in behind it.
+ * revoke (the statement is queued either way). Every path that cuts a person's own access calls it, so an agent never outlives the sign-in behind it.
  */
 export async function recordGrantRevocation(
   batch: AuditedBatch,
@@ -27,7 +33,11 @@ export async function recordGrantRevocation(
   now: number,
 ): Promise<void> {
   const grants = await liveGrantIdsOf(db, personId);
-  if (grants.length === 0) return;
+  if (grants.length === 0) {
+    // Nothing to name, but a grant that slips in before the batch runs still ends with it.
+    batch.also(revokeGrantsOf(db, personId, now));
+    return;
+  }
   await batch.record(
     revokeGrantsOf(db, personId, now),
     {
@@ -42,10 +52,44 @@ export async function recordGrantRevocation(
 }
 
 /**
+ * Adds the end of a person's live sessions to `batch`, with an event only when there are sessions to end, and returns
+ * how many. With `keepIdHash` the holder's own session stays (`auth.logoutOthers`); without it every session ends
+ * (`people.revokeSessions`). `cause` names the action it belongs to, so the log reads as part of that action.
+ */
+export async function recordSessionRevocation(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  now: number,
+  cause: string,
+  keepIdHash?: string,
+): Promise<number> {
+  const sessions =
+    keepIdHash === undefined
+      ? await liveSessionCount(db, personId, now)
+      : await otherSessionCount(db, personId, keepIdHash, now);
+  if (sessions === 0) return 0;
+  await batch.record(
+    keepIdHash === undefined
+      ? revokeSessionsOf(db, personId, now)
+      : revokeOtherSessions(db, personId, keepIdHash, now),
+    {
+      at: now,
+      action: keepIdHash === undefined ? 'people.revokeSessions' : 'auth.logoutOthers',
+      clientId: null,
+      target: `person:${personId}`,
+      before: { sessions, cause },
+    },
+    sessions,
+  );
+  return sessions;
+}
+
+/**
  * Adds a person's identities' revocation to `batch`, with a `people.unlinkSso` event only when there are identities
  * to revoke, so a person who never used single sign-on adds no event.
  */
-async function recordIdentityRevocation(
+export async function recordIdentityRevocation(
   batch: AuditedBatch,
   db: D1Database,
   personId: string,
@@ -64,6 +108,36 @@ async function recordIdentityRevocation(
     },
     identities.length,
   );
+}
+
+/**
+ * A recovery has earned the person a new passkey (`keepCredentialId`, inserted earlier in `batch`): adds the
+ * revocation of every other passkey, every session (the recovery one too, so it must precede the new session's
+ * insert), every linked identity and every agent grant. Whoever held the lost device holds none of it afterwards.
+ */
+export async function recordRecoverySupersession(
+  batch: AuditedBatch,
+  db: D1Database,
+  personId: string,
+  keepCredentialId: string,
+  now: number,
+): Promise<void> {
+  const credentials = (await activeCredentialsOf(db, personId)).map((c) => c.id);
+  if (credentials.length > 0)
+    await batch.record(
+      revokeCredentialsExcept(db, personId, keepCredentialId, now),
+      {
+        at: now,
+        action: 'people.revokeCredentials',
+        clientId: null,
+        target: `person:${personId}`,
+        before: { credentials },
+      },
+      credentials.length,
+    );
+  await recordSessionRevocation(batch, db, personId, now, 'recovery');
+  await recordIdentityRevocation(batch, db, personId, now);
+  await recordGrantRevocation(batch, db, personId, now);
 }
 
 /** Adds every revocation to `batch`, each followed by an event that lands only if it changed what was read. */

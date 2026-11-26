@@ -46,6 +46,8 @@ try {
     fail('the off-account copy differs from the R2 object; fix the copy in src/backup/s3-copy.ts');
   } else {
     writeFileSync(out, second);
+    // The head the drill hands the restore, as an operator would have recorded it off-account.
+    writeFileSync(`${out}.head`, `${String(run.chain_seq)}:${run.chain_head}\n`);
     console.log(
       `PASS backup-fixture: ${out}, the off-account copy read back over HTTP, identical to the R2 object, ${String(run.bytes)} bytes, chain head seq ${String(run.chain_seq)}`,
     );

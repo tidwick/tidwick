@@ -103,7 +103,7 @@ describe('a person’s last passkey', () => {
   it('stays when nothing else signs them in', async () => {
     const { id } = await addPerson();
     const key = await withPasskey(id);
-    expect(await refused(revokeOwnPasskey(ceremonyScope(id), env.DB, id, key, T0))).toBe(
+    expect(await refused(revokeOwnPasskey(ceremonyScope(id), env.DB, id, key, 'keep', T0))).toBe(
       'last_method',
     );
   });
@@ -112,12 +112,12 @@ describe('a person’s last passkey', () => {
     const { id } = await addPerson();
     const key = await withPasskey(id);
     const identity = await withIdentity(id, ISSUER, subject());
-    await revokeOwnPasskey(ceremonyScope(id), env.DB, id, key, T0);
+    await revokeOwnPasskey(ceremonyScope(id), env.DB, id, key, 'keep', T0);
     expect(await liveIdentitiesOf(env.DB, id)).toHaveLength(1);
     expect((await liveIdentitiesOf(env.DB, id))[0]?.id).toBe(identity);
     await unlinkSso(await adminScope(), env.DB, id, identity, T0);
     const back = await withPasskey(id);
-    expect(await refused(revokeOwnPasskey(ceremonyScope(id), env.DB, id, back, T0))).toBe(
+    expect(await refused(revokeOwnPasskey(ceremonyScope(id), env.DB, id, back, 'keep', T0))).toBe(
       'last_method',
     );
   });

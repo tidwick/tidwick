@@ -4,7 +4,9 @@
 import { insertGrant, insertToken, listedGrantsOf, revokeGrant } from '../db/agent-grants';
 import { auditedBatch, retryOnce } from '../db/audit';
 import type { Scope } from '../db/scope';
-import { fail } from '../lib/errors';
+import { personById } from '../db/people';
+import { liveSessionCount } from '../db/sessions';
+import { AppError, fail } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { keyedHash, randomToken } from './tokens';
 
@@ -22,6 +24,27 @@ export interface PersonalToken {
   label: string;
   scopes: readonly (typeof TOKEN_SCOPES)[number][];
   days: number;
+}
+
+/**
+ * Runs a write that makes a grant. The insert changes nothing once the person's sign-in has been revoked, which the
+ * batch sees as a lost race and ends as `conflict`; when the person no longer holds a session that is `unauthenticated`.
+ */
+export async function whileSignedIn<T>(
+  db: D1Database,
+  personId: string,
+  now: number,
+  write: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== 'conflict') throw error;
+    const person = await personById(db, personId);
+    if (person?.offboarded_at !== null || (await liveSessionCount(db, personId, now)) === 0)
+      fail('unauthenticated');
+    throw error;
+  }
 }
 
 /**
@@ -48,36 +71,38 @@ export async function mintPersonalToken(
   const hash = await keyedHash(secret, 'agent_access', token);
   const grantId = newId();
   const expiresAt = now + input.days * DAY_MS;
-  await retryOnce(async () => {
-    if ((await listedGrantsOf(db, personId, now)).length >= MAX_LIVE_GRANTS) fail('agent_limit');
-    const batch = await auditedBatch(scope, db);
-    await batch.record(
-      insertGrant(
-        db,
+  await whileSignedIn(db, personId, now, () =>
+    retryOnce(async () => {
+      if ((await listedGrantsOf(db, personId, now)).length >= MAX_LIVE_GRANTS) fail('agent_limit');
+      const batch = await auditedBatch(scope, db);
+      await batch.record(
+        insertGrant(
+          db,
+          {
+            id: grantId,
+            personId,
+            clientId: PERSONAL_CLIENT,
+            clientName: label,
+            redirectUri: '',
+            scopes,
+            expiresAt,
+            cap: MAX_LIVE_GRANTS,
+          },
+          now,
+        ),
         {
-          id: grantId,
-          personId,
-          clientId: PERSONAL_CLIENT,
-          clientName: label,
-          redirectUri: '',
-          scopes,
-          expiresAt,
-          cap: MAX_LIVE_GRANTS,
+          at: now,
+          action: 'agents.mint',
+          clientId: null,
+          target: `person:${personId}`,
+          after: { grant: grantId, label, scopes, expiresAt },
         },
-        now,
-      ),
-      {
-        at: now,
-        action: 'agents.mint',
-        clientId: null,
-        target: `person:${personId}`,
-        after: { grant: grantId, label, scopes, expiresAt },
-      },
-      1,
-    );
-    batch.also(insertToken(db, { hash, grantId, kind: 'access', expiresAt }));
-    await batch.run();
-  });
+        1,
+      );
+      batch.also(insertToken(db, { hash, grantId, kind: 'access', expiresAt }));
+      await batch.run();
+    }),
+  );
   return { token, grantId, expiresAt };
 }
 

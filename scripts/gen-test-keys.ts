@@ -16,6 +16,7 @@ writeFileSync(
 );
 writeFileSync(`${dir}/backup-recipient.txt`, `${recipient}\n`);
 rmSync(`${dir}/backup.age`, { force: true });
+rmSync(`${dir}/backup.age.head`, { force: true });
 console.log(
-  `PASS gen-test-keys: ${dir}/backup-key.txt for ${recipient}; any old ${dir}/backup.age is removed, so run \`just backup-fixture\` before \`just restore ${dir}/backup.age ${dir}/backup-key.txt\``,
+  `PASS gen-test-keys: ${dir}/backup-key.txt for ${recipient}; any old ${dir}/backup.age is removed, so run \`just backup-fixture\` before \`just restore ${dir}/backup.age ${dir}/backup-key.txt "$(cat ${dir}/backup.age.head)"\``,
 );

@@ -106,6 +106,10 @@ export async function startFlow(
   return { location, cookie: ssoCookie(state) };
 }
 
+/** Whether the provider says the person authenticated there since the flow began; a reused provider session does not. */
+const fresh = (claims: Claims, flow: FlowRow): boolean =>
+  claims.authTime !== null && claims.authTime >= flow.created_at / 1000 - SKEW_S;
+
 const redirectUri = (env: Env): string => `${env.ORIGIN}/auth/sso/callback`;
 
 /** An identity cannot be linked to two people, nor a person to two accounts at one issuer. */
@@ -120,7 +124,15 @@ async function enrol(env: Env, provider: SsoProvider, claims: Claims, flow: Flow
   const { DB: db } = env;
   const { person_id: personId, enrol_hash: tokenHash } = flow;
   if (personId === null || tokenHash === null) fail('sso_failed');
-  const session = await newSession(db, env.SESSION_SECRET, personId, now);
+  const session = await newSession(
+    db,
+    env.SESSION_SECRET,
+    personId,
+    now,
+    false,
+    false,
+    fresh(claims, flow),
+  );
   const stillOpen = async () => (await openEnrolment(db, tokenHash, now))?.person_id === personId;
   await retryWhileOpen(
     async () => {
@@ -159,11 +171,19 @@ async function enrol(env: Env, provider: SsoProvider, claims: Claims, flow: Flow
 }
 
 /** Opens a session for the person whose live identity this is; an unlinked or offboarded one is `sso_unlinked`. */
-async function signIn(env: Env, provider: SsoProvider, claims: Claims, now: number) {
+async function signIn(env: Env, provider: SsoProvider, claims: Claims, flow: FlowRow, now: number) {
   const { DB: db, SESSION_SECRET: secret } = env;
   const found = await identityOfSubject(db, provider.issuer, claims.subject);
   if (!found || found.offboarded_at !== null) fail('sso_unlinked');
-  const session = await newSession(db, secret, found.person_id, now);
+  const session = await newSession(
+    db,
+    secret,
+    found.person_id,
+    now,
+    false,
+    false,
+    fresh(claims, flow),
+  );
   const [used] = await db.batch([useIdentity(db, found.id, now), session.statement]);
   if (used?.meta.changes !== 1) {
     await revokeSession(db, await keyedHash(secret, 'session', session.rawId), now).run();
@@ -183,8 +203,7 @@ async function stepUp(env: Env, provider: SsoProvider, claims: Claims, flow: Flo
     claims.subject,
   );
   if (found?.person_id !== personId) fail('sso_failed');
-  if (claims.authTime === null || claims.authTime < flow.created_at / 1000 - SKEW_S)
-    fail('sso_step_up_unsupported');
+  if (!fresh(claims, flow)) fail('sso_step_up_unsupported');
   const session = await liveSession(db, sessionHash);
   const alive = session?.person_id === personId && session.offboarded_at === null;
   if (!session || !alive || now >= session.expires_at || now - session.seen_at >= IDLE_MS)
@@ -221,7 +240,7 @@ export async function finishFlow(
   });
   const returnTo = safeReturn(flow.return_to);
   if (flow.purpose === 'login')
-    return { sessionId: await signIn(env, provider, claims, now), returnTo };
+    return { sessionId: await signIn(env, provider, claims, flow, now), returnTo };
   if (flow.purpose === 'enrol')
     return { sessionId: await enrol(env, provider, claims, flow, now), returnTo };
   await stepUp(env, provider, claims, flow, now);

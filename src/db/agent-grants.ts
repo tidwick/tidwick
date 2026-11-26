@@ -13,8 +13,10 @@ export interface GrantRow {
 
 const INSERT_GRANT = `INSERT INTO agent_grant (id, person_id, client_id, client_name, redirect_uri, scopes, created_at, expires_at)
 SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
-WHERE ?9 IS NULL OR (SELECT count(*) FROM agent_grant WHERE person_id = ?2 AND revoked_at IS NULL
-  AND (expires_at IS NULL OR expires_at > ?7)) < ?9`;
+WHERE (?9 IS NULL OR (SELECT count(*) FROM agent_grant WHERE person_id = ?2 AND revoked_at IS NULL
+  AND (expires_at IS NULL OR expires_at > ?7)) < ?9)
+AND EXISTS (SELECT 1 FROM person WHERE id = ?2 AND offboarded_at IS NULL)
+AND EXISTS (SELECT 1 FROM session WHERE person_id = ?2 AND revoked_at IS NULL AND expires_at > ?7)`;
 
 const INSERT_TOKEN =
   'INSERT INTO agent_token (hash, grant_id, kind, expires_at, challenge) VALUES (?1, ?2, ?3, ?4, ?5)';
@@ -65,6 +67,11 @@ export interface ListedGrant {
   last_used_at: number | null;
 }
 
+/**
+ * Makes the grant only while the person is not offboarded and holds a live session, and while they hold fewer than
+ * `cap` live grants when a cap is given. A grant approved while access was being revoked therefore changes no row,
+ * and the event recorded after it rolls the batch back.
+ */
 export function insertGrant(db: D1Database, grant: NewGrant, now: number): D1PreparedStatement {
   return db
     .prepare(INSERT_GRANT)

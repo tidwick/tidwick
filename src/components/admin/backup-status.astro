@@ -54,9 +54,20 @@ const { lastTest } = status;
           <span class="font-medium">{run.status === 'ok' ? 'Succeeded' : 'Failed'}</span>{' '}
           {when(run.finished_at)}, <code>{run.object_key}</code>
           {run.error !== null && <span class="block text-danger">{run.error}</span>}
+          {run.status === 'ok' && (
+            <span class="block break-all text-muted-foreground">
+              Chain head <code data-head>{`${String(run.chain_seq)}:${run.chain_head}`}</code>
+            </span>
+          )}
         </li>
       ))}
     </ol>
+  )}
+  {status.runs.some((run) => run.status === 'ok') && (
+    <p class="text-sm text-muted-foreground">
+      Record a chain head off this account, in the offline kit: a restore refuses a backup that does
+      not end at the head you give it.
+    </p>
   )}
   {status.runs[0]?.status === 'failed' && (
     <Alert variant="danger" className="font-medium">

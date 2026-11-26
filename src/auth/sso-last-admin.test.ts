@@ -28,7 +28,7 @@ async function soleAdmin() {
 describe('SEC-11 the last admin keeps a passkey', () => {
   it('SEC-11 an admin with an identity still cannot drop their last passkey, by the call or a raced statement', async () => {
     const a = await soleAdmin();
-    const drop = revokeOwnPasskey(ceremonyScope(a.id), env.DB, a.id, a.key, T0);
+    const drop = revokeOwnPasskey(ceremonyScope(a.id), env.DB, a.id, a.key, 'keep', T0);
     await expect(drop).rejects.toMatchObject({ code: 'last_admin' });
     expect((await revokeCredential(env.DB, a.id, a.key, T0).run()).meta.changes).toBe(0);
   });
@@ -37,7 +37,7 @@ describe('SEC-11 the last admin keeps a passkey', () => {
     const a = await soleAdmin();
     const peer = await addPerson([ADMIN]);
     await withPasskey(peer.id);
-    await revokeOwnPasskey(ceremonyScope(a.id), env.DB, a.id, a.key, T0);
+    await revokeOwnPasskey(ceremonyScope(a.id), env.DB, a.id, a.key, 'keep', T0);
   });
 
   it('SEC-11 an admin who has only an identity is no replacement: the admin with a passkey stays the last', async () => {

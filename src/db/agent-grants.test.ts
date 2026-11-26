@@ -2,7 +2,7 @@
 // raced it, and a revoked or ended grant does not count.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { addPerson } from '../../test/helpers/auth';
+import { addPerson, withSession } from '../../test/helpers/auth';
 import { newId } from '../lib/ids';
 import { insertGrant } from './agent-grants';
 
@@ -21,6 +21,7 @@ const grant = (personId: string, expiresAt: number | null) => ({
 describe('insertGrant with a cap', () => {
   it('changes nothing at the cap, and counts neither a revoked nor an ended grant', async () => {
     const { id } = await addPerson();
+    await withSession(id, NOW);
     const insert = async (expiresAt: number | null = NOW + 1000) =>
       (await insertGrant(env.DB, grant(id, expiresAt), NOW).run()).meta.changes;
     expect(await insert()).toBe(1);

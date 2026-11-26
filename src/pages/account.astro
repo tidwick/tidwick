@@ -65,7 +65,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       <section>
         <Heading text="Your account">Signed in as {session.name}.</Heading>
         <Alert variant="notice" role="status" className="mt-4">
-          You signed in with a recovery code. Add a passkey to finish.
+          You signed in with a recovery code. Add a passkey within 30 minutes to finish: it replaces
+          your other passkeys and sessions.
         </Alert>
         <SavedLine problem={problem} />
         {problem && (
@@ -116,8 +117,8 @@ const CONFIRM = cn(SECONDARY, 'w-fit');
       )}
       {!session.mustEnrol && spare && passkeys.length > 0 && (
         <p data-remove-note class="text-sm text-muted-foreground">
-          Removing a passkey does not sign out a browser already signed in with it, but it does
-          revoke agent access. Use Sign out other sessions below for browsers.
+          Removing a passkey signs out your other browsers and revokes agent access. This browser
+          stays signed in.
         </p>
       )}
       <button type="button" data-passkey="add" data-csrf={ctx.csrf} class={ADD}>

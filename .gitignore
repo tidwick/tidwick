@@ -9,3 +9,4 @@ test-results
 test/fixtures/backup-key.txt
 test/fixtures/backup-recipient.txt
 test/fixtures/backup.age
+test/fixtures/backup.age.head

@@ -5,6 +5,8 @@ import { keyedHash, randomToken } from './tokens';
 export const SESSION_COOKIE = '__Host-tidwick-session';
 export const IDLE_MS = 8 * 60 * 60 * 1000;
 export const ABSOLUTE_MS = 14 * 24 * 60 * 60 * 1000;
+/** A recovery session may only enrol a passkey, so it lives as long as that ceremony needs and no longer. */
+export const ENROL_MS = 30 * 60 * 1000;
 /** A demo sign-in's whole life; its step-up stamp is set to the expiry, so it never meets a passkey prompt. */
 export const DEMO_SESSION_MS = 2 * 60 * 60 * 1000;
 /** `seen_at` is written at most this often, so a busy session costs one write a minute, not one per request. */
@@ -45,7 +47,11 @@ export function cookieValue(header: string | null, name: string): string | null 
   return null;
 }
 
-/** A fresh session id and the insert for it, to ride the batch of the ceremony that earned it. */
+/**
+ * A fresh session id and the insert for it, to ride the batch of the ceremony that earned it. `steppedUp` is false
+ * when the ceremony proved no fresh gesture (a single sign-on the provider answered from its own session), so the
+ * session meets the step-up prompt before any row that needs one.
+ */
 export async function newSession(
   db: D1Database,
   secret: string,
@@ -53,11 +59,18 @@ export async function newSession(
   now: number,
   mustEnrol = false,
   demo = false,
+  steppedUp = true,
 ): Promise<{ rawId: string; statement: D1PreparedStatement }> {
   const rawId = randomToken();
   const idHash = await keyedHash(secret, 'session', rawId);
-  const expiresAt = now + (demo ? DEMO_SESSION_MS : ABSOLUTE_MS);
-  const row = { idHash, personId, expiresAt, mustEnrol, stepUpAt: demo ? expiresAt : now };
+  const expiresAt = now + (demo ? DEMO_SESSION_MS : mustEnrol ? ENROL_MS : ABSOLUTE_MS);
+  const row = {
+    idHash,
+    personId,
+    expiresAt,
+    mustEnrol,
+    stepUpAt: demo ? expiresAt : steppedUp ? now : 0,
+  };
   return { rawId, statement: insertSession(db, row, now) };
 }
 

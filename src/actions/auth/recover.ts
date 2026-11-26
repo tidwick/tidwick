@@ -1,7 +1,7 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { recover } from '../../auth/recovery';
-import { endSession, sessionCookie } from '../../auth/session';
+import { endSession, ENROL_MS, sessionCookie } from '../../auth/session';
 import { act, queueCookie, throttled } from '../context';
 import { csrfField } from '../inputs';
 
@@ -19,7 +19,7 @@ export default defineAction({
       const { sessionId } = await recover(deps, input.email, input.code, now);
       const previous = context.locals.session;
       if (previous) await endSession(deps.db, deps.secret, previous.rawId, now);
-      queueCookie(context, sessionCookie(sessionId));
+      queueCookie(context, sessionCookie(sessionId, ENROL_MS));
       return { next: '/account' };
     }),
 });

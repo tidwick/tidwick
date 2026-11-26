@@ -74,7 +74,7 @@ describe('revoking a person revokes their agents', () => {
     const first = await withPasskey(p.id);
     await withPasskey(p.id);
     const seq = await headSeq();
-    await revokeOwnPasskey(systemScope(), env.DB, p.id, first, T0);
+    await revokeOwnPasskey(systemScope(), env.DB, p.id, first, 'keep', T0);
     await revoked(seq, [p.agent, p.second]);
   });
 

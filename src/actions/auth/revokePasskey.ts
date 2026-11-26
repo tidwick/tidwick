@@ -1,7 +1,8 @@
 import { defineAction } from 'astro:actions';
 import { z } from 'astro/zod';
 import { revokeOwnPasskey } from '../../auth/revoke-passkey';
-import { currentEnv } from '../../lib/env';
+import { authEnv } from '../../lib/env';
+import { keyedHash } from '../../auth/tokens';
 import { act, scopeOf, signedIn } from '../context';
 import { credentialIdField, csrfField } from '../inputs';
 
@@ -11,11 +12,13 @@ export default defineAction({
   handler: (input, context) =>
     act(async () => {
       const session = signedIn(context);
+      const { db, secret } = authEnv();
       await revokeOwnPasskey(
         scopeOf(context),
-        currentEnv().DB,
+        db,
         session.personId,
         input.id,
+        await keyedHash(secret, 'session', session.rawId),
         Date.now(),
       );
       return { id: input.id };
