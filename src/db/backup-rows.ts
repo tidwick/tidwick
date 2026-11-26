@@ -74,6 +74,16 @@ export async function countRows(db: D1Database, table: BackupTable): Promise<num
   return (await db.prepare(COUNT[table]).first<{ n: number }>())?.n ?? 0;
 }
 
+const ALL = Object.fromEntries(BACKUP_TABLES.map((t) => [t, `SELECT * FROM ${t}`])) as Record<
+  BackupTable,
+  string
+>;
+
+/** Every row of a kept table, whole, for the restore drill's content digest. */
+export async function tableRows(db: D1Database, table: BackupTable): Promise<unknown[]> {
+  return (await db.prepare(ALL[table]).all()).results;
+}
+
 /** The newest audit event's seq and hash, or seq 0 and the genesis hash for an empty log. */
 export async function chainHead(db: D1Database): Promise<{ seq: number; hash: string }> {
   return (

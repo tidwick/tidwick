@@ -13,8 +13,11 @@ export const MAX_WEEK_ROWS = 50;
  */
 export const BACKUP_DUMP_CHARS = 24_000_000;
 
-/** Characters past which the 09:00 check warns that the last good backup is nearing the cap: 70% of it. */
-export const BACKUP_WARN_CHARS = (BACKUP_DUMP_CHARS / 10) * 7;
+/** The share of the cap, in percent, past which the 09:00 check and `just backup-size` say to plan the streaming backup. */
+export const BACKUP_WARN_PERCENT = 70;
+
+/** Characters past which the 09:00 check warns that the last good backup is nearing the cap. */
+export const BACKUP_WARN_CHARS = (BACKUP_DUMP_CHARS / 100) * BACKUP_WARN_PERCENT;
 
 /** Rows of one client's approved entries one export may hold; a larger range is refused (ADR 0010). */
 export const MAX_EXPORT_ROWS = 20_000;

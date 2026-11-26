@@ -74,7 +74,15 @@ A week with no row is a draft. The dashed loops are the audited admin edit. Subm
 
 Recipes carry the order: `deploy-init`, edit `wrangler.jsonc`, `deploy-keys`, `deploy`, `deploy-secrets`, `deploy-check`, `first-admin` (`env` is empty, or `demo` for the demo). What a recipe cannot do:
 
-- A Cloudflare account on the Workers Paid plan for the Worker, and a second account for backups, with its own bucket (a lock rule is required: a first-account takeover can otherwise overwrite the off-account copy; object lock shorter than its expiry, e.g. 35 days against 40) and an R2 token scoped to that one bucket.
+- A Cloudflare account on the Workers Paid plan for the Worker, and a second account for backups, with its own bucket and an R2 token scoped to that one bucket. The lock rule is required: a first-account takeover can otherwise overwrite the off-account copy. Lock for 35 days and expire at 40, so the lock always ends first. In the second account (`wrangler login` as it, or its API token), with `<bucket>` the bucket name:
+  ```sh
+  npx wrangler r2 bucket create <bucket>
+  npx wrangler r2 bucket lock add <bucket> keep-35d "" --retention-days 35
+  npx wrangler r2 bucket lifecycle add <bucket> expire-40d "" --expire-days 40
+  npx wrangler r2 bucket lock list <bucket>
+  npx wrangler r2 bucket lifecycle list <bucket>
+  ```
+  In the dashboard, create the token as Object Read & Write on that bucket only, never account-wide. Then put the four values, one per line (endpoint, bucket, key id, secret), in a file outside the repo and run `just offsite-check < <file>`; it probes the bucket with the Worker's key: it must write, must not overwrite or delete, and must not list the account. It leaves one small object under `offsite-check/` that the expiry removes. It does not read the expiry, so check the two `list` lines show 35 and 40 days.
 - A domain. Set `ORIGIN`, `RP_ID`, `MAIL_FROM` and the route in `wrangler.jsonc`; the D1 database is found by name, so there is no `database_id` to copy. Leave `BACKUP_COPY` and `BACKUP_S3_REGION`.
 - The Deploy to Cloudflare button: see "With the button" below. It leaves the 35-day expiry and the second-account copy to you.
 - Name an owner for the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`, the domain); losing `NOTE_KEK` loses every note. Copy it out of `.wrangler/kit` and read it back before any data exists.
@@ -114,10 +122,29 @@ Lab checklist, run by hand each release, on a fresh account. Order: merge the re
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.
-- Lost first enrolment link, `SETUP_TOKEN` still set: the `/setup` form. Otherwise, no admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
+- Lost first enrolment link, `SETUP_TOKEN` still set: the `/setup` form. Otherwise, no admin can sign in. Read the live audit head and the admin ids (a backup's header head is stale and the rescue then writes nothing):
+  ```sh
+  npx wrangler d1 execute tidwick --remote --command "SELECT seq, hash FROM audit_event ORDER BY seq DESC LIMIT 1"
+  npx wrangler d1 execute tidwick --remote --command "SELECT person_id FROM person_role WHERE role = 'admin'"
+  ```
+  Then `just rescue <person id> <seq> <hash>` with the deployed `SESSION_SECRET` on standard input, and run the two commands it prints: apply the file, then the check, which answers `landed` or `no-op`. A no-op means the head moved or an admin can still sign in. For the only admin who lost every device but whose passkeys are still on file, add `.wrangler/rescue.sql --revoke-passkeys` after the hash: it revokes that person's passkeys as well, audited as `people.rescue`, and still writes nothing while another admin holds a passkey.
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Update as in step 8 of §9; your `wrangler.jsonc` edits merge with the release there. v0.1.0 squashed the first eleven migrations into `0001_init.sql`; an instance deployed from `main` before it deploys the last `next` commit before the squash once (it then holds all eleven), runs `wrangler d1 execute DB --remote --command "INSERT INTO d1_migrations (name) VALUES ('0001_init.sql')"` to mark the squash applied (same schema), then deploys the release. A backup taken under `0011_sso.sql` is refused by restore; take a new one.
-- Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.
+- `just backup-size` runs the size estimate against the live D1. Past 70% of the backup cap (`BACKUP_WARN_PERCENT` in `src/lib/limits.ts`, the same line the 09:00 check warns at), plan the streaming backup.
+
+### Restore
+
+A lost or corrupted production D1, in order. Check out the release whose last migration the backup header names (`restore` says which). Never run this against a database that holds rows.
+
+1. If the database still exists but its data is wrong, try D1 Time Travel first: `npx wrangler d1 time-travel info tidwick`, then `restore tidwick --timestamp <time just before the damage>`. It rewinds in place within the plan's retention window, and it belongs to the database, so a deleted database takes it along. The audit log rewinds with the rows, so the chain stays whole.
+2. Fetch the newest good night: `just backup-fetch YYYY-MM-DD` from the Worker account's R2, or from the off-account bucket with any S3 client, for example `aws s3 cp --endpoint-url <endpoint> s3://<bucket>/backups/YYYY/MM/DD.ndjson.gz.age .wrangler/restore-remote/backup.age` with the off-account key as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+3. Create the empty database: `npx wrangler d1 create tidwick` (the Worker finds it by name; delete the lost one first).
+4. `just restore-remote .wrangler/restore-remote/backup.age <age identity from the offline kit>` checks the header, schema version and audit chain, migrates the new database and loads the rows, and refuses a database that holds any. Delete `.wrangler/restore-remote/restore.sql`, which holds every row in the clear.
+5. `just deploy-secrets` with the same offline kit (`NOTE_KEK` must be the original, or every note stays sealed), then `just deploy`, then `just deploy-check`.
+6. Sessions, challenges and agent tokens were never backed up, so everyone signs in again. The restore brings back passkeys and open links as of the backup's time: offboard or re-enrol anyone who left or was re-enrolled since, and sign in as an admin to check `/healthz`.
+7. Take a backup by hand or wait for 03:00, and confirm it lands in both buckets. Writes since the backup are gone; say so to the people who entered them.
+
+The same steps against a throwaway database are what `just restore-drill` runs on every change, with hostile text in the seed and a per-table content digest. The walk on a real Cloudflare account has not been done: lab: pending. Its checklist: (a) `backup-fetch` from R2, (b) the S3 fetch from the off-account bucket, (c) `d1 create`, `restore-remote`, deploy, sign in, (d) `rescue` and `rescue --revoke-passkeys` landed and no-op on the live head, (e) `offsite-check` passes and `lifecycle list` shows 40 days, (f) `time-travel restore` on a copy, and whether Time Travel survives deleting a database, (g) `backup-size` prints a percentage.
 
 Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just restore` decrypts it and rebuilds a SQLite database, the same path the restore drill in `just check` exercises on every change. Keep the age identity, export the CSV too, and run the Worker, or any SQLite reader, elsewhere.
 
