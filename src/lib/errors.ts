@@ -49,6 +49,11 @@ export const CATALOG = {
     message: 'Confirm with your passkey to continue; it has been more than 15 minutes',
   },
   setup_failed: { status: 403, message: 'That setup token does not match SETUP_TOKEN' },
+  setup_rp_id: {
+    status: 409,
+    message:
+      'RP_ID must be the host of ORIGIN or a parent domain of it; fix both in wrangler.jsonc, then claim',
+  },
   rate_limited: { status: 429, message: 'Too many attempts; wait a minute and try again' },
   enrolment_invalid: {
     status: 410,

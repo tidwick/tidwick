@@ -184,16 +184,7 @@ deploy-keys out=".wrangler/kit":
     echo "PASS deploy-keys: backup-key.txt, backup-recipient.txt, session-secret, note-kek in {{ out }}; copy the kit to the owner's offline storage and read it back before any data exists"
 
 deploy-check env="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    eval "$(just _wr {{ quote(env) }})"
-    if [ -n "$flags" ]; then todo='REPLACE_WITH'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER|BACKUP_S3_'; else todo='example\.com|localhost'; skip='NOTE_KEK_PREVIOUS|DEMO_BANNER'; fi
-    if grep -nE "$todo" wrangler.jsonc; then echo "FAIL deploy-check: wrangler.jsonc still holds a placeholder (lines above); edit it as ARCHITECTURE, Deploy says"; exit 1; fi
-    have="$(npx --no-install wrangler secret list $flags --format json | grep -oE '"name": *"[A-Z_0-9]+"' | grep -oE '[A-Z_0-9]+"$' | tr -d '"')"
-    want="$(grep -oE '^[A-Z_0-9]+=' .dev.vars.example | tr -d '=' | grep -vE "^($skip)")"
-    missing="$(comm -23 <(sort <<< "$want") <(sort <<< "$have") | tr '\n' ' ')"
-    [ -z "$missing" ] || { echo "FAIL deploy-check: secrets not set on the target: $missing; run just deploy-secrets"; exit 1; }
-    echo "PASS deploy-check"
+    ./scripts/deploy-check.sh {{ env }}
 
 deploy env="":
     #!/usr/bin/env bash
@@ -260,6 +251,7 @@ guard:
     echo "PASS migrations"
     ./scripts/restore-target.test.sh
     ./scripts/restore-errors.test.sh
+    ./scripts/deploy-check.test.sh
     ./scripts/size-guard.sh
     ./scripts/colour-literals.test.sh
     ./scripts/colour-literals.sh

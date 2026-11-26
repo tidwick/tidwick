@@ -91,10 +91,11 @@ The button clones `main`, so it deploys the last release. It builds on Node from
 1. Press the button, accept the names, let the build finish.
 2. Open `/setup`. Until the secrets exist every route fails closed; on an empty database `/setup` lists what is missing, and with any history it shows the same error.
 3. Generate `SESSION_SECRET`, `NOTE_KEK` and the age key on `/setup` (nothing is sent) and keep the kit offline.
-4. Set `SESSION_SECRET`, `NOTE_KEK` and `BACKUP_RECIPIENT` under Settings, Variables and Secrets, and `SETUP_TOKEN` (`openssl rand -base64 32`).
-5. Reload `/setup`, claim the first admin with the token, enrol a passkey.
-6. Delete `SETUP_TOKEN`. Add the 35-day expiry to `tidwick-backups`; `/setup` repeats the command.
-7. Update by a documented merge from a release tag: in the clone, `git pull https://github.com/tidwick/tidwick vX.Y.Z && git push`; the build migrates and deploys.
+4. Set `SESSION_SECRET`, `NOTE_KEK`, `BACKUP_RECIPIENT` and `SETUP_TOKEN` under Settings, Variables and Secrets (the kit file from `/setup` holds all four, and the age identity). Set `RP_ID` in `wrangler.jsonc` to the host of `ORIGIN` or a parent of it; `/setup` keeps the claim closed until it is.
+5. The off-account copy: `BACKUP_COPY` is `s3`, so also set `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_KEY_ID` and `BACKUP_S3_SECRET` (the button's form leaves them empty), or the nightly backup fails and `/healthz` answers 503. An instance that opts out sets `BACKUP_COPY` to `none` in `wrangler.jsonc` and keeps only the in-account copy.
+6. Reload `/setup`, claim the first admin with the token, enrol a passkey. A lost link: the same form with the same email issues a new one while that admin has no passkey and no linked identity; once either exists it does nothing.
+7. Delete `SETUP_TOKEN`. Add the 35-day expiry to `tidwick-backups`; `/setup` repeats the command.
+8. Update by a documented merge from a release tag: in the clone, `git pull https://github.com/tidwick/tidwick vX.Y.Z && git push`; the build migrates and deploys.
 
 Lab checklist, run by hand each release, on a fresh account. Order: merge the release PR to `next`, fast-forward `main` (`git push origin origin/next:main`), run the lab, then tag. The button clones `main`, so the lab only sees the release after the fast-forward:
 
@@ -113,7 +114,7 @@ Lab checklist, run by hand each release, on a fresh account. Order: merge the re
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.
-- No admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
+- Lost first enrolment link, `SETUP_TOKEN` still set: the `/setup` form. Otherwise, no admin can sign in: `just rescue` with the audit head from `/healthz` or a backup header, the deployed `SESSION_SECRET`, and an admin's `person.id` (D1 console: `SELECT person_id FROM person_role WHERE role = 'admin'`).
 - Offboarding revokes sessions, passkeys, linked identities and codes and is audited.
 - Migrations only move forward. Update as in step 7 of §9; your `wrangler.jsonc` edits merge with the release there. v0.1.0 squashed the first eleven migrations into `0001_init.sql`; an instance deployed from `main` before it deploys the last `next` commit before the squash once (it then holds all eleven), runs `wrangler d1 execute DB --remote --command "INSERT INTO d1_migrations (name) VALUES ('0001_init.sql')"` to mark the squash applied (same schema), then deploys the release. A backup taken under `0011_sso.sql` is refused by restore; take a new one.
 - Past 60% of the backup cap (`ESTIMATE_SQL` in `src/db/backup-estimate.ts`), plan the streaming backup.

@@ -1,5 +1,6 @@
 // SQL text that issues an admin a new 24-hour enrolment link when no admin can sign in, one statement per line,
-// for `wrangler d1 execute --file`. Only scripts/rescue.ts uses it; no request path reaches it (ADR 0003).
+// for `wrangler d1 execute --file`. scripts/rescue.ts writes the file; the one request path that runs the same
+// statements is the setup claim, only for the sole admin with no passkey, no linked identity and the SETUP_TOKEN (ADR 0003).
 //
 // The file is for a deployment where no admin can sign in: the bootstrap link expired unused, or the only admin
 // lost every passkey and recovery code. Its first statement appends one
@@ -24,6 +25,21 @@ export interface RescueInput {
 const NO_ADMIN_SIGNS_IN = `NOT EXISTS (SELECT 1 FROM person_role r JOIN person p ON p.id = r.person_id
 WHERE r.role = 'admin' AND p.offboarded_at IS NULL
 AND EXISTS (SELECT 1 FROM credential c WHERE c.person_id = r.person_id AND c.revoked_at IS NULL))`;
+
+/** The one admin the setup page may re-issue a link to: the only admin, active, with no passkey and no linked identity. */
+export async function lockedOutAdmin(
+  db: D1Database,
+): Promise<{ id: string; email: string } | null> {
+  return db
+    .prepare(
+      `SELECT p.id, p.email FROM person_role r JOIN person p ON p.id = r.person_id
+WHERE r.role = 'admin' AND p.offboarded_at IS NULL
+AND (SELECT count(*) FROM person_role WHERE role = 'admin') = 1
+AND NOT EXISTS (SELECT 1 FROM credential c WHERE c.person_id = p.id AND c.revoked_at IS NULL)
+AND NOT EXISTS (SELECT 1 FROM person_identity i WHERE i.person_id = p.id AND i.revoked_at IS NULL)`,
+    )
+    .first<{ id: string; email: string }>();
+}
 
 function q(value: Cell): string {
   return literal(value) ?? 'NULL';
@@ -87,4 +103,26 @@ SELECT ${link}, ${person}, ${q(expiresAt)}
 WHERE ${ours} AND NOT EXISTS (SELECT 1 FROM enrolment WHERE token_hash = ${link})`),
     ],
   };
+}
+
+/** Runs the rescue for the locked-out admin onto the audit head as it stands; true only if the new link was written. */
+export async function reissueLink(
+  db: D1Database,
+  personId: string,
+  enrolmentHash: string,
+  now: number,
+): Promise<boolean> {
+  const head = await db
+    .prepare('SELECT seq, hash FROM audit_event ORDER BY seq DESC LIMIT 1')
+    .first<{ seq: number; hash: string }>();
+  if (head === null) return false;
+  const { statements } = await rescueSql({
+    personId,
+    headSeq: head.seq,
+    headHash: head.hash,
+    enrolmentHash,
+    now,
+  });
+  const results = await db.batch(statements.map((sql) => db.prepare(sql)));
+  return results.at(-1)?.meta.changes === 1;
 }

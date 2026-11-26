@@ -1,9 +1,11 @@
 // Runs instead of session, CSRF and authz on `/setup` alone while the env does not parse: it renders only while a
 // binding is missing and the database is empty; with any history, or no readable database, it throws what
 // `readEnv` would have, so the page and log line are the old ones. It reports names, never a configured value.
-// Once the env parses, `/setup` is a 404 without SETUP_TOKEN (and no database read), and a 404 unless the database
-// is empty; then the page is the first-admin claim and runs the full chain (session, CSRF, authz) like every other form.
+// Once the env parses, `/setup` is a 404 unless the database is empty or its one admin cannot yet sign in; then the
+// page is the first-admin claim (or, without SETUP_TOKEN, the line that names it) and runs the full chain (session,
+// CSRF, authz) like every other form.
 import type { MiddlewareHandler } from 'astro';
+import { claimOpen, rpIdFits } from '../auth/setup-claim';
 import { instanceEmpty } from '../db/empty';
 import { s3Target } from '../backup/s3-copy';
 import { fail } from '../lib/errors';
@@ -23,15 +25,19 @@ export function setup(configured: MiddlewareHandler, source?: object): Middlewar
     const env = setupEnv(source);
     if (env === null) {
       const ready = source === undefined ? currentEnv() : readEnv(source);
-      if (ready.SETUP_TOKEN === null || !(await instanceEmpty(ready.DB))) fail('not_found');
+      if (!(await claimOpen(ready.DB))) fail('not_found');
       const { origin, hostname } = context.url;
-      const wrong = ready.ORIGIN !== origin;
+      const flags: string[] = [];
+      if (ready.ORIGIN !== origin)
+        flags.push(`ORIGIN is not this address: set ORIGIN=${origin} and RP_ID=${hostname}`);
+      else if (!rpIdFits(ready.ORIGIN, ready.RP_ID))
+        flags.push(
+          `RP_ID is not this host or a parent of it: set RP_ID=${hostname}; a passkey made under the wrong one never works`,
+        );
       context.locals.setup = {
-        missing: [],
-        flags: wrong
-          ? [`ORIGIN is not this address: set ORIGIN=${origin} and RP_ID=${hostname}`]
-          : [],
-        claim: !wrong,
+        missing: ready.SETUP_TOKEN === null ? ['SETUP_TOKEN'] : [],
+        flags,
+        claim: flags.length === 0 && ready.SETUP_TOKEN !== null,
       };
       const response = await configured(context, next);
       if (response === undefined) fail('internal');
@@ -54,7 +60,8 @@ export function setup(configured: MiddlewareHandler, source?: object): Middlewar
     context.locals.cookies = [];
     context.locals.scope = null;
     context.locals.grants = [];
-    context.locals.setup = { missing: env.missing, flags, claim: false };
+    const missing = env.SETUP_TOKEN === null ? [...env.missing, 'SETUP_TOKEN'] : env.missing;
+    context.locals.setup = { missing, flags, claim: false };
     return next();
   };
 }

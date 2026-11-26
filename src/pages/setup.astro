@@ -19,7 +19,7 @@ const problem = result?.error
   : '';
 const { missing, flags, claim } = Astro.locals.setup ?? { missing: [], flags: [], claim: false };
 const ready = missing.length === 0;
-const GENERATED = ['SESSION_SECRET', 'NOTE_KEK', 'BACKUP_RECIPIENT'] as const;
+const GENERATED = ['SESSION_SECRET', 'NOTE_KEK', 'BACKUP_RECIPIENT', 'SETUP_TOKEN'] as const;
 const bindings: Record<string, { description: string }> = cloudflare.bindings;
 const rows = GENERATED.filter((name) => missing.includes(name)).map((name) => ({
   name,
@@ -32,12 +32,13 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
   <section class="grid gap-block">
     {ready ? (
       <Heading text="Claim this instance">
-        Create the first admin with the SETUP_TOKEN you set in Cloudflare.
+        Create the first admin with the SETUP_TOKEN you set in Cloudflare. If an admin already
+        exists but has no passkey yet, the same form issues a new enrolment link for that email.
       </Heading>
     ) : (
       <Heading text="Set up this instance">
         These values are not set yet. They are named, never shown; set them in Cloudflare, then
-        reload.
+        reload. SETUP_TOKEN is the one that lets you claim the first admin afterwards.
       </Heading>
     )}
     <ul class="grid gap-1 list-disc pl-5">
@@ -113,17 +114,17 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
             )}
           </div>
         ))}
-        {rows.some((row) => row.name === 'BACKUP_RECIPIENT') && (
-          <p class="text-sm">
-            <a class={LINK} download="backup-key.txt" data-key-download hidden>
-              Download backup-key.txt
-            </a>
-            <span class="block text-muted-foreground">
-              Store it offline; without it no backup can be read. Only the age1 value above goes in
-              BACKUP_RECIPIENT.
-            </span>
-          </p>
-        )}
+        <p role="status" class="text-sm" data-status></p>
+        <p class="text-sm">
+          <a class={LINK} download="tidwick-kit.txt" data-kit-download hidden>
+            Download kit
+          </a>
+          <span class="block text-muted-foreground">
+            One file with every value above and the backup identity. Store it offline; without the
+            identity no backup can be read, and without NOTE_KEK no note can. Only the values above,
+            never the identity, go in Cloudflare.
+          </span>
+        </p>
       </div>
     )}
     <p class="text-sm">
@@ -146,19 +147,36 @@ const CODE = 'rounded bg-muted px-1.5 py-0.5 font-mono text-sm break-all';
   const field = (name: string) =>
     document.querySelector<HTMLInputElement>(`[data-field="${name}"]`);
   document.querySelector('[data-generate]')?.addEventListener('click', async () => {
-    const set = (name: string, value: string) => {
-      const input = field(name);
-      if (input) input.value = value;
+    const values: Record<string, string> = {
+      SESSION_SECRET: sessionSecret(),
+      NOTE_KEK: noteKek(),
+      SETUP_TOKEN: sessionSecret(),
     };
-    set('SESSION_SECRET', sessionSecret());
-    set('NOTE_KEK', noteKek());
-    const link = document.querySelector<HTMLAnchorElement>('[data-key-download]');
-    if (link) {
+    let identity = '';
+    if (field('BACKUP_RECIPIENT')) {
       const { recipient, file } = await ageKey();
-      set('BACKUP_RECIPIENT', recipient);
+      values['BACKUP_RECIPIENT'] = recipient;
+      identity = file;
+    }
+    const shown: string[] = [];
+    for (const [name, value] of Object.entries(values)) {
+      const input = field(name);
+      if (input) {
+        input.value = value;
+        shown.push(`${name}=${value}\n`);
+      }
+    }
+    const link = document.querySelector<HTMLAnchorElement>('[data-kit-download]');
+    if (link) {
       if (link.href) URL.revokeObjectURL(link.href);
-      link.href = URL.createObjectURL(new Blob([file], { type: 'text/plain' }));
+      link.href = URL.createObjectURL(
+        new Blob([`# tidwick kit: keep offline\n${shown.join('')}${identity}`], {
+          type: 'text/plain',
+        }),
+      );
       link.hidden = false;
     }
+    const status = document.querySelector('[data-status]');
+    if (status) status.textContent = 'Values generated; the kit is ready to download.';
   });
 </script>

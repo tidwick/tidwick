@@ -87,6 +87,10 @@ export async function errorPage(
 function plainPage(code: ErrorCode, detail: string | undefined): Response {
   const { status } = CATALOG[code];
   const message = escaped(errorMessage(code, detail));
-  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><title>${message} · tidwick</title><p>${message}.</p><p><a href="/">Home</a></p></html>\n`;
+  const link =
+    code === 'missing_binding'
+      ? '<a href="/setup">Check the setup page</a>'
+      : '<a href="/">Home</a>';
+  const body = `<!doctype html><html lang="en"><meta charset="utf-8"><title>${message} · tidwick</title><p>${message}.</p><p>${link}</p></html>\n`;
   return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }

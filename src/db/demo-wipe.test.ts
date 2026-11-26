@@ -5,6 +5,7 @@ import { demoSignIn } from '../auth/demo';
 import { DEMO_RESET_CRON, scheduled } from '../backup/scheduled';
 import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv } from '../lib/env';
+import { D1_QUERIES_PER_INVOCATION } from '../lib/limits';
 import { checkChain } from './audit';
 import { wipeDemo } from './demo-wipe';
 import { instanceEmpty } from './empty';
@@ -83,5 +84,25 @@ describe('the nightly demo wipe', () => {
   it('leaves the seed admin in place, so the setup gate stays shut after a wipe', async () => {
     await wipeDemo(env.DB, currentEnv().NOTE_KEK, NOW);
     expect(await instanceEmpty(env.DB)).toBe(false);
+  });
+
+  it('runs as one batch inside the D1 query budget, so a larger seed fails here and not at 04:00', async () => {
+    const sizes: number[] = [];
+    const spy = new Proxy(env.DB, {
+      get(target, key) {
+        if (key !== 'batch')
+          return (Reflect.get(target, key) as (...args: unknown[]) => unknown).bind(target);
+        return (statements: D1PreparedStatement[]) => {
+          sizes.push(statements.length);
+          return target.batch(statements);
+        };
+      },
+    });
+    await wipeDemo(spy, currentEnv().NOTE_KEK, NOW);
+    expect(sizes).toHaveLength(1);
+    expect(
+      sizes[0],
+      `the wipe batch holds ${String(sizes[0])} statements of ${String(D1_QUERIES_PER_INVOCATION)}; trim the demo seed`,
+    ).toBeLessThanOrEqual(D1_QUERIES_PER_INVOCATION);
   });
 });

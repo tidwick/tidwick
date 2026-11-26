@@ -61,6 +61,16 @@ describe('the setup gate', () => {
     expect(json).not.toContain(env.ORIGIN);
   });
 
+  it('SEC-47 an unconfigured Worker without SETUP_TOKEN lists it last, so the page can generate it', async () => {
+    const shown = await report({ SETUP_TOKEN: undefined });
+    expect(shown.missing).toEqual([
+      'BACKUP_RECIPIENT',
+      'SESSION_SECRET',
+      'NOTE_KEK',
+      'SETUP_TOKEN',
+    ]);
+  });
+
   it('SEC-47 flags an ORIGIN that is not this address, MAIL_FROM on example.com and an unset off-account copy, and none once each is right', async () => {
     const wrong = await report({
       ORIGIN: 'https://elsewhere.example',
@@ -82,14 +92,22 @@ describe('the setup gate', () => {
     NOTE_KEK: currentEnv().NOTE_KEK,
   };
 
-  it('SEC-48 a configured Worker without SETUP_TOKEN answers not_found and never reads the database', async () => {
-    const touched = vi.fn();
-    const gate = setup(
-      next,
-      source({ ...ready, SETUP_TOKEN: undefined, DB: { ...failingDb, prepare: touched } }),
-    );
-    expect((await refusal(() => gate(context(), next))).code).toBe('not_found');
-    expect(touched).not.toHaveBeenCalled();
+  it('SEC-48 a configured empty Worker without SETUP_TOKEN names it and offers no form', async () => {
+    const c = context();
+    const gate = setup(next, source({ ...ready, SETUP_TOKEN: undefined }));
+    expect(await gate(c, next)).toBe(reached);
+    expect(c.locals.setup).toMatchObject({ missing: ['SETUP_TOKEN'], claim: false });
+  });
+
+  it('SEC-48 an RP_ID that is not the ORIGIN host or a parent keeps the claim closed and says why', async () => {
+    for (const rp of ['other.example', 'imesheet.example', 'sub.timesheet.example']) {
+      const shown = await report({ ...ready, RP_ID: rp });
+      expect([rp, shown.claim, shown.flags.length]).toEqual([rp, false, 1]);
+      expect(shown.flags[0]).toContain('set RP_ID=timesheet.example');
+    }
+    for (const rp of ['timesheet.example', 'example']) {
+      expect((await report({ ...ready, RP_ID: rp })).claim, rp).toBe(true);
+    }
   });
 
   it('SEC-48 a configured empty Worker with ORIGIN not this address shows the flag and no form', async () => {
@@ -124,6 +142,9 @@ describe('the setup gate', () => {
     expect(await (response as Response).text()).toBe(
       await (await errorPage(refusalContext('/error'), 'missing_binding')).text(),
     );
+    expect(await (await errorPage(refusalContext('/error'), 'missing_binding')).text()).toContain(
+      'href="/setup"',
+    );
     expect(log).toHaveBeenCalledWith(
       'tidwick: request failed:',
       'missing_binding: BACKUP_RECIPIENT',
@@ -149,5 +170,10 @@ describe('the setup gate', () => {
       new Request(`${ADDRESS}/setup`, { method: 'POST', body: '{}' }),
     );
     expect(posted.status).toBe(404);
+  });
+
+  it('SEC-48 a configured Worker without SETUP_TOKEN but with history is still not_found', async () => {
+    const gate = setup(next, source({ ...ready, SETUP_TOKEN: undefined }));
+    expect((await refusal(() => gate(context(), next))).code).toBe('not_found');
   });
 });

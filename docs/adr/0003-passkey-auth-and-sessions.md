@@ -24,7 +24,7 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 
 ## Consequences
 
-- A `SETUP_TOKEN` left set opens nothing once any audit event or admin exists.
+- A `SETUP_TOKEN` left set opens nothing once any audit event or admin exists, except that while the sole admin has no passkey and no linked identity the claim re-issues that admin's enrolment link (audited as `people.rescue`).
 - A lost device is recovered by code or by an admin, never by email.
 - Sessions can be revoked server-side by deleting a row.
 - Disabling a person at the identity provider stops new SSO sign-ins only. Offboarding in tidwick ends their sessions and unlinks their identities.
