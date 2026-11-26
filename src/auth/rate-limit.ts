@@ -33,3 +33,17 @@ export async function throttle(
   const { success } = await limiter.limit({ key: await keyedHash(secret, 'ip', rateKey(ip)) });
   if (!success) fail('rate_limited');
 }
+
+/**
+ * Counts one agent request in the same binding under its own key, `agent:<person>` for a tool call and
+ * `agent-ip:<address>` for a failed token lookup, so neither shares a bucket with the auth Actions.
+ */
+export async function throttleAgent(
+  limiter: Env['RATE_LIMIT'],
+  secret: string,
+  who: { person: string } | { ip: string },
+): Promise<void> {
+  const key = 'person' in who ? `agent:${who.person}` : `agent-ip:${rateKey(who.ip)}`;
+  const { success } = await limiter.limit({ key: await keyedHash(secret, 'ip', key) });
+  if (!success) fail('rate_limited');
+}

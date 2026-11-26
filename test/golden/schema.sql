@@ -1,3 +1,25 @@
+-- table agent_grant
+CREATE TABLE agent_grant (
+  id TEXT PRIMARY KEY,
+  person_id TEXT NOT NULL REFERENCES person (id),
+  client_id TEXT NOT NULL,
+  client_name TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  scopes TEXT NOT NULL CHECK (json_valid(scopes)),
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  last_used_at INTEGER,
+  revoked_at INTEGER
+) STRICT;
+
+-- table agent_token
+CREATE TABLE agent_token (
+  hash TEXT PRIMARY KEY,
+  grant_id TEXT NOT NULL REFERENCES agent_grant (id),
+  kind TEXT NOT NULL CHECK (kind IN ('code', 'access', 'refresh')),
+  expires_at INTEGER NOT NULL
+) STRICT;
+
 -- table assignment
 CREATE TABLE assignment (
   client_id TEXT NOT NULL,
@@ -269,6 +291,12 @@ CREATE TABLE week_submission (
   return_reason TEXT,
   PRIMARY KEY (person_id, week_start)
 ) STRICT;
+
+-- index agent_grant_person
+CREATE INDEX agent_grant_person ON agent_grant (person_id);
+
+-- index agent_token_grant
+CREATE INDEX agent_token_grant ON agent_token (grant_id);
 
 -- index assignment_person
 CREATE INDEX assignment_person ON assignment (person_id);

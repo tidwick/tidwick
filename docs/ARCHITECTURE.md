@@ -144,7 +144,7 @@ A lost or corrupted production D1, in order. Check out the release whose last mi
 3. Create the empty database: `npx wrangler d1 create tidwick` (the Worker finds it by name; delete the lost one first).
 4. `just restore-remote .wrangler/restore-remote/backup.age <age identity from the offline kit>` checks the header, schema version and audit chain, migrates the new database and loads the rows, and refuses a database that holds any. Delete `.wrangler/restore-remote/restore.sql`, which holds every row in the clear.
 5. `just deploy-secrets` with the same offline kit (`NOTE_KEK` must be the original, or every note stays sealed), then `just deploy`, then `just deploy-check`.
-6. Sessions and challenges were never backed up, so everyone signs in again. The restore brings back passkeys and open links as of the backup's time: offboard or re-enrol anyone who left or was re-enrolled since, and sign in as an admin to check `/healthz`.
+6. Sessions, challenges and agent tokens were never backed up, so everyone signs in again and anyone using an agent makes a new token. The restore brings back passkeys and open links as of the backup's time: offboard or re-enrol anyone who left or was re-enrolled since, and sign in as an admin to check `/healthz`.
 7. Take a backup by hand or wait for 03:00, and confirm it lands in both buckets. Writes since the backup are gone; say so to the people who entered them.
 
 The same steps against a throwaway database are what `just restore-drill` runs on every change, with hostile text in the seed and a per-table content digest. The walk on a real Cloudflare account has not been done: lab: pending. Its checklist: (a) `backup-fetch` from R2, (b) the S3 fetch from the off-account bucket, (c) `d1 create`, `restore-remote`, deploy, sign in, (d) `rescue` and `rescue --revoke-passkeys` landed and no-op on the live head, (e) `offsite-check` passes and `lifecycle list` shows 40 days, (f) `time-travel restore` on a copy, and whether Time Travel survives deleting a database, (g) `backup-size` prints a percentage.
@@ -156,7 +156,7 @@ Leaving Cloudflare: a backup is age-encrypted NDJSON, one line per row. `just re
 Numbers live in code; see the cited ADR.
 
 - Client erasure is not built; notes cannot be shredded.
-- No agent surface in 0.1: one is planned after it, see branch `keep/mcp-pre-0.1`.
+- Agents reach a person's own weeks only through `/mcp` with a personal token, off unless `MCP=on` (ADR 0014); nothing there approves, exports or administers.
 - Enrolment links are shown once to the issuing admin, never emailed. `addPasskeyVerify` revokes no other passkey.
 - `NOTE_KEK` rotation re-wraps client keys, it does not re-key notes: an old KEK plus an old read still opens them. It lives in the same account as the data.
 - Rate limiting is approximate, per location, per IPv4 or IPv6 /64. Anyone who knows an email can delay that person's recovery.

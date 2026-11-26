@@ -2,7 +2,7 @@
 // hours only by failing the `entry` trigger, a locked week writes nothing because every statement carries the
 // lock predicate, and a row outside the scope or on a project its owner is no longer assigned to writes nothing,
 // whatever grants the caller holds, because every statement carries the assignment predicate too (SEC-12). An
-// owner's own edits to an unlocked week are not audited.
+// owner's own edits to an unlocked week are not audited; an agent's are, as one event per save (entry-audit.ts).
 import { fail } from '../lib/errors';
 import { DAY_CAP } from '../lib/hours';
 import { newId } from '../lib/ids';
@@ -11,18 +11,9 @@ import { DAY_NAMES, DAYS_IN_WEEK, isBlank, isEditable, type Cell } from '../lib/
 import type { CellEdit } from '../lib/week-form';
 import { retryOnce } from './audit';
 import { keyRing, type KeyRing } from './client-keys';
+import { auditedCells, type Planned } from './entry-audit';
 import type { Scope } from './scope';
 import { openCell, readCells, readRows, weekState, type CellRecord } from './week-view';
-
-/** One cell's change, planned: the statement that makes it. */
-interface Planned {
-  rowId: string;
-  statement: D1PreparedStatement;
-  /** Hours added to the day. The batch applies the most negative first, so no step passes the cap. */
-  delta: number;
-  /** An insert or update changes one row; zero means the lock predicate refused it. */
-  writes: boolean;
-}
 
 /** SQL true unless the person has submitted, or had approved, the week of the week row `rowId` names. */
 export const WEEK_OPEN = (rowId: string): string => `NOT EXISTS (
@@ -82,7 +73,15 @@ async function planCell(
     const current = await openCell(before, ring);
     if (current.hundredths === next.hundredths && current.note === next.note) return null;
     const delta = next.hundredths - before.hundredths;
-    const shown = { rowId: edit.rowId, delta };
+    const shown = {
+      rowId: edit.rowId,
+      clientId,
+      dow: edit.dow,
+      delta,
+      from: before.hundredths,
+      to: next.hundredths,
+      noteChanged: current.note !== next.note,
+    };
     if (isBlank(next)) {
       const statement = db.prepare(DELETE).bind(before.id, edit.rowId);
       return { ...shown, statement, writes: false };
@@ -98,7 +97,17 @@ async function planCell(
   const statement = db
     .prepare(INSERT)
     .bind(id, edit.dow, next.hundredths, ...sealed, now, edit.rowId, personId);
-  return { rowId: edit.rowId, statement, delta: next.hundredths, writes: true };
+  return {
+    rowId: edit.rowId,
+    clientId,
+    dow: edit.dow,
+    statement,
+    delta: next.hundredths,
+    writes: true,
+    from: 0,
+    to: next.hundredths,
+    noteChanged: next.note !== '',
+  };
 }
 
 /** The person's rows in the week whose project they are no longer assigned to. */
@@ -176,7 +185,7 @@ export async function saveCells(
     const over = days.findIndex((total) => total > DAY_CAP);
     if (over >= 0) fail('day_cap', DAY_NAMES[over]);
     planned.sort((a, b) => a.delta - b.delta);
-    await apply(scope, db, personId, weekStart, planned);
+    await apply(scope, db, personId, weekStart, planned, now);
   });
 }
 
@@ -190,11 +199,15 @@ async function apply(
   personId: string,
   weekStart: string,
   planned: readonly Planned[],
+  now: number,
 ): Promise<void> {
   if (planned.length === 0) return;
   let results: D1Result[];
   try {
-    results = await db.batch(planned.map((p) => p.statement));
+    results =
+      scope.kind === 'agent'
+        ? await auditedCells(scope, db, personId, weekStart, planned, now)
+        : await db.batch(planned.map((p) => p.statement));
   } catch (error) {
     if (error instanceof Error && error.message.includes('day_cap')) fail('day_cap');
     throw error;

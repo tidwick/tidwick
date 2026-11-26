@@ -8,7 +8,7 @@
 // admin holds an unrevoked passkey. Every later statement writes only while that event exists, by its hash, and
 // still no admin can sign in, so a deployment with a working admin, a moved head, or a link already used takes
 // no row. With `revokePasskeys` the lost-device case is covered too: the person's own passkeys are revoked by
-// the second statement, and the first needs no admin other than that person to hold one. As re-enrolment does, it revokes the person's sessions, unused recovery codes and other open links.
+// the second statement, and the first needs no admin other than that person to hold one. As re-enrolment does, it revokes the person's sessions, agent grants, unused recovery codes and other open links.
 import { eventHash } from '../lib/chain.ts';
 import type { Cell } from '../lib/backup-format.ts';
 import { BOOTSTRAP_ENROLMENT_MS } from './bootstrap.ts';
@@ -74,6 +74,7 @@ export async function rescueSql(
       revoked: [
         ...(input.revokePasskeys === true ? ['passkeys'] : []),
         'sessions',
+        'agent grants',
         'unused recovery codes',
         'open enrolment links',
       ],
@@ -120,6 +121,8 @@ AND NOT EXISTS (SELECT 1 FROM enrolment WHERE token_hash = ${link} AND used_at I
           ]
         : []),
       line(`UPDATE session SET revoked_at = ${q(now)}
+WHERE person_id = ${person} AND revoked_at IS NULL AND ${ours}`),
+      line(`UPDATE agent_grant SET revoked_at = ${q(now)}
 WHERE person_id = ${person} AND revoked_at IS NULL AND ${ours}`),
       line(`UPDATE recovery_code SET used_at = ${q(now)}
 WHERE person_id = ${person} AND used_at IS NULL AND ${ours}`),

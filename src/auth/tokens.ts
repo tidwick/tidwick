@@ -11,6 +11,10 @@ export type HashKind =
   | 'recovery'
   | 'email'
   | 'ip'
+  | 'agent_code'
+  | 'agent_access'
+  | 'agent_refresh'
+  | 'agent_confirm'
   | 'sso_flow'
   | 'setup'
   | 'pending';

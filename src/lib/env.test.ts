@@ -22,7 +22,7 @@ function complete(): Record<string, unknown> {
 }
 
 /** Vars a local run may set in .dev.vars that wrangler.jsonc sets only for the demo environment. */
-const LOCAL_SWITCHES = ['DEMO_BANNER', 'SSO_PROVIDERS'];
+const LOCAL_SWITCHES = ['DEMO_BANNER', 'MCP', 'MCP_NOTES', 'SSO_PROVIDERS'];
 
 function caught(source: object): AppError {
   try {
@@ -134,6 +134,19 @@ describe('typed env', () => {
       expect(caught({ ...complete(), DEMO_BANNER }).detail).toBe('DEMO_BANNER');
     }
     expect(env).not.toHaveProperty('DEMO_BANNER');
+  });
+
+  it('MCP is off by default and its notes withheld: only "on" opens the agent routes, only "read" shows notes', () => {
+    expect(readEnv(complete()).MCP).toBe(false);
+    expect(readEnv({ ...complete(), MCP: '' }).MCP).toBe(false);
+    expect(readEnv({ ...complete(), MCP: 'on' }).MCP).toBe(true);
+    for (const MCP of ['ON', 'true', '1', 'off'])
+      expect(caught({ ...complete(), MCP }).detail).toBe('MCP');
+    expect(readEnv(complete()).MCP_NOTES).toBe('off');
+    expect(readEnv({ ...complete(), MCP_NOTES: '' }).MCP_NOTES).toBe('off');
+    expect(readEnv({ ...complete(), MCP_NOTES: 'read' }).MCP_NOTES).toBe('read');
+    for (const MCP_NOTES of ['on', 'READ', 'write'])
+      expect(caught({ ...complete(), MCP_NOTES }).detail).toBe('MCP_NOTES');
   });
 
   it('SSO is off by default and, when set, needs each provider’s secret', () => {

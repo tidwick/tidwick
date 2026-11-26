@@ -90,6 +90,9 @@ export default defineConfig({
                 NOTE_KEK_PREVIOUS: randomBytes(32).toString('base64'),
                 // The first-admin claim is open here (src/actions/setup/claim.app.test.ts); the demo project sets none.
                 SETUP_TOKEN: randomBytes(32).toString('base64url'),
+                // The agent routes are on here; the demo project leaves them off, as a deployment does by default.
+                MCP: 'on',
+                MCP_NOTES: '',
                 SSO_PROVIDERS: ssoProviders,
                 ...ssoSecrets(),
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),
@@ -110,6 +113,8 @@ export default defineConfig({
                 DEMO_LOGIN: 'on',
                 DEMO_BANNER: 'on',
                 DEMO_PASSWORD: 'a-long-demo-<&"pass',
+                // Off, whatever a local .dev.vars says: the demo project proves the default (src/mcp/off.demo.test.ts).
+                MCP: '',
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),
               },
             },

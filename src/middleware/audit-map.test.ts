@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest';
 import {
   AUDIT_EVENTS,
   AUDIT_OF,
+  AUDIT_OF_AGENT,
   AUDIT_OF_PAGES,
   NON_ACTION_SOURCES,
   type AuditEvent,
 } from '../db/audit-actions';
-import { PAGES } from '../routes';
+import { PAGES, TOOLS } from '../routes';
 
 const ACTION_FILES = Object.keys(
   import.meta.glob(['../actions/*/*.ts', '!../actions/*/*.test.ts']),
@@ -57,9 +58,26 @@ describe('audit map', () => {
     }
   });
 
-  it('audits no person’s own cell save: the entries.save row is none', () => {
-    expect(AUDIT_OF['entries.save']).toBe('none');
-    expect(AUDIT_EVENTS).not.toContain('entries.save');
+  it('declares, for every tool that writes, the events an agent’s call may append', () => {
+    const writers = Object.values(TOOLS)
+      .filter((tool) => tool.scope !== 'read' && 'action' in tool.gate)
+      .map((tool) => ('action' in tool.gate ? tool.gate.action : ''));
+    expect(writers.length).toBeGreaterThan(0);
+    expect(undeclaredAudit(AUDIT_OF_AGENT, writers)).toEqual([]);
+    const known: readonly string[] = AUDIT_EVENTS;
+    for (const [name, events] of Object.entries(AUDIT_OF_AGENT)) {
+      if (events === 'none') continue;
+      const declared = AUDIT_OF[name];
+      for (const event of events) {
+        expect(known, name).toContain(event);
+        expect(declared === 'none' ? [] : declared, name).toContain(event);
+      }
+    }
+  });
+
+  it('audits an agent’s cell save and its submit, and no row add, remove or copy', () => {
+    expect(AUDIT_OF_AGENT['entries.save']).toEqual(['entries.save']);
+    expect(AUDIT_OF_AGENT['submission.submit']).toEqual(AUDIT_OF['submission.submit']);
   });
 
   it('can reach every event in the vocabulary from some row', () => {
@@ -68,6 +86,9 @@ describe('audit map', () => {
       if (events !== 'none') for (const e of events) reachable.add(e);
     }
     for (const events of Object.values(AUDIT_OF_PAGES)) for (const e of events) reachable.add(e);
+    for (const events of Object.values(AUDIT_OF_AGENT)) {
+      if (events !== 'none') for (const e of events) reachable.add(e);
+    }
     expect(AUDIT_EVENTS.filter((e) => !reachable.has(e))).toEqual([]);
   });
 });

@@ -18,6 +18,9 @@ dev-vars:
 dev-session who:
     @node test/local/dev-session.ts {{ quote(who) }}
 
+dev-agent-token who:
+    @node test/local/dev-agent-token.ts {{ quote(who) }}
+
 build:
     npx --no-install wrangler types
     npx --no-install astro build

@@ -1,10 +1,11 @@
 // Runs in the `app` project: every route Astro built and every Action file meets the route table at the real
 // middleware, through both Action callers.
 import { describe, expect, it } from 'vitest';
+import { mcp, mintAgent, rpc2025 } from '../../test/helpers/agent';
 import { caller, formPost, getPage, rpc, type Caller } from '../../test/helpers/callers';
 import { builtRoutes, samplePath, type BuiltRoute } from '../../test/helpers/route-manifest';
 import { GRANTS, type Grant } from '../db/roles';
-import { ACTIONS, actionRule, PAGES, type Rule } from '../routes';
+import { ACTIONS, actionRule, PAGES, TOOLS, toolRule, type Rule } from '../routes';
 import { RPC_PATTERN } from './authz';
 
 const ACTION_FILES = Object.keys(
@@ -166,6 +167,41 @@ describe('SEC-09 the route table covers every route and denies by default', () =
     expect(await denial(await formPost('/account', null, null))).toBe('403');
     const twoNames = await rpc('auth.loginOptions?_action=people.setRoles', admin);
     expect(await denial(twoNames)).toBe('forbidden');
+  });
+});
+
+const PUBLIC_ROW = { roles: ['public'], stepUp: false, recovery: true };
+
+describe('SEC-09 the agent tools are gated by member rows and nothing else', () => {
+  const tools = Object.keys(TOOLS) as (keyof typeof TOOLS)[];
+
+  it('SEC-09 every TOOLS gate names a row that exists', () => {
+    for (const name of tools) {
+      const { gate } = TOOLS[name];
+      if ('action' in gate) expect(ACTIONS, name).toHaveProperty(gate.action);
+      else expect(PAGES[gate.page]?.GET, name).toBeDefined();
+      expect(toolRule(name), name).toBeDefined();
+    }
+  });
+
+  it('SEC-09 no tool resolves to a step-up, steward, admin or recovery row, so the agent principal could not pass one', () => {
+    for (const name of tools) {
+      const rule = toolRule(name);
+      expect(rule?.roles, name).toEqual(['member']);
+      expect(rule?.stepUp, name).toBe(false);
+      expect(rule?.recovery, name).toBe(false);
+    }
+  });
+
+  it('SEC-09 tools/list is exactly TOOLS, and a name outside it is unknown', async () => {
+    const who = await mintAgent((await caller()).personId);
+    const listed = await mcp(who.token, rpc2025('tools/list'));
+    const names = (listed.body.result as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect(names.toSorted()).toEqual(Object.keys(TOOLS).toSorted());
+  });
+
+  it('SEC-09 /mcp has a row of its own and no other method has one', () => {
+    expect(PAGES['/mcp']).toEqual({ GET: PUBLIC_ROW, POST: PUBLIC_ROW });
   });
 });
 

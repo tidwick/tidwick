@@ -1,0 +1,21 @@
+---
+import { actions } from 'astro:actions';
+import { DANGER } from '../auth/classes';
+// Ending every other session, and with them every agent token, in one form.
+const { csrf } = Astro.props as { csrf: string };
+---
+
+<section aria-labelledby="sessions-h" class="grid gap-3">
+  <h2 id="sessions-h" class="text-lg font-semibold">
+    Other sessions
+  </h2>
+  <p class="text-sm text-muted-foreground">
+    Sign out every other browser and device, and revoke agent access. This one stays signed in.
+  </p>
+  <form method="POST" action={`/account${actions.auth.logoutOthers}`}>
+    <input type="hidden" name="_csrf" value={csrf} />
+    <button type="submit" class={DANGER}>
+      Sign out other sessions
+    </button>
+  </form>
+</section>
