@@ -6,17 +6,14 @@ import { call2025, mcp } from '../../../test/helpers/agent';
 import { addPerson } from '../../../test/helpers/auth';
 import { caller, formPost, getPage, rpcForm } from '../../../test/helpers/callers';
 import { MAX_LIVE_GRANTS } from '../../auth/agent-personal';
-
-async function storedRows(_db: D1Database, name: 'agent_grant' | 'agent_token' | 'audit_event') {
-  return (await env.DB.prepare(`SELECT * FROM ${name}`).all<Record<string, unknown>>()).results;
-}
+import { endGrantsOf, rowsOf } from '../../db/test-support-agents';
 
 const TOKEN = /[A-Za-z0-9_-]{43}/;
 const fields = { label: 'Laptop', days: '30', scopes: ['read', 'write'] };
 
 async function everything(): Promise<string> {
   const tables = ['agent_grant', 'agent_token', 'audit_event'] as const;
-  return JSON.stringify(await Promise.all(tables.map((t) => storedRows(env.DB, t))));
+  return JSON.stringify(await Promise.all(tables.map((t) => rowsOf(env.DB, t))));
 }
 
 async function mint(who: Awaited<ReturnType<typeof caller>>, extra = {}) {
@@ -33,7 +30,7 @@ describe('SEC-60 making an agent token', () => {
     ]) {
       expect(response.status).toBe(403);
     }
-    expect(await storedRows(env.DB, 'agent_grant')).not.toContainEqual(
+    expect(await rowsOf(env.DB, 'agent_grant')).not.toContainEqual(
       expect.objectContaining({ person_id: stale.personId }),
     );
     expect((await rpcForm('agents.mint', await caller(), fields)).status).toBe(200);
@@ -70,9 +67,7 @@ describe('SEC-60 making an agent token', () => {
   it('records the label, scopes and end date on the grant, with the life asked for', async () => {
     const who = await caller();
     await rpcForm('agents.mint', who, { label: 'Quick', days: '7', scopes: ['read'] });
-    const grant = (await storedRows(env.DB, 'agent_grant')).find(
-      (g) => g.person_id === who.personId,
-    );
+    const grant = (await rowsOf(env.DB, 'agent_grant')).find((g) => g.person_id === who.personId);
     expect(grant).toMatchObject({
       client_id: 'token',
       client_name: 'Quick',
@@ -99,7 +94,7 @@ describe('SEC-60 making an agent token', () => {
       ).toBe(400);
     }
     expect(
-      (await storedRows(env.DB, 'agent_grant')).filter((g) => g.person_id === who.personId),
+      (await rowsOf(env.DB, 'agent_grant')).filter((g) => g.person_id === who.personId),
     ).toEqual([]);
   });
 
@@ -112,7 +107,7 @@ describe('SEC-60 making an agent token', () => {
     }
     const sixth = await rpcForm('agents.mint', who, fields);
     expect(sixth.status).toBe(409);
-    const one = (await storedRows(env.DB, 'agent_grant')).find((g) => g.person_id === who.personId);
+    const one = (await rowsOf(env.DB, 'agent_grant')).find((g) => g.person_id === who.personId);
     expect((await rpcForm('agents.revoke', who, { id: String(one?.id) })).status).toBe(200);
     expect((await rpcForm('agents.mint', who, fields)).status).toBe(200);
   });
@@ -134,9 +129,7 @@ describe('SEC-61 listing and revoking agent tokens', () => {
     const other = await caller();
     const body = await (await rpcForm('agents.mint', owner, fields)).text();
     const token = TOKEN.exec(body.replace(/^.*?"token"/s, ''))?.[0] ?? '';
-    const grant = (await storedRows(env.DB, 'agent_grant')).find(
-      (g) => g.person_id === owner.personId,
-    );
+    const grant = (await rowsOf(env.DB, 'agent_grant')).find((g) => g.person_id === owner.personId);
     const id = String(grant?.id);
     const refused = await rpcForm('agents.revoke', other, { id });
     const unknown = await rpcForm('agents.revoke', other, { id: 'no-such-grant' });
@@ -154,9 +147,7 @@ describe('SEC-61 listing and revoking agent tokens', () => {
     expect(person.id).not.toBe(who.personId);
     const fresh = await caller();
     await rpcForm('agents.mint', fresh, fields);
-    const grant = (await storedRows(env.DB, 'agent_grant')).find(
-      (g) => g.person_id === fresh.personId,
-    );
+    const grant = (await rowsOf(env.DB, 'agent_grant')).find((g) => g.person_id === fresh.personId);
     const stale = await formPost('/account', 'agents.revoke', fresh, { id: String(grant?.id) });
     expect(stale.status).toBe(303);
     expect(stale.headers.get('location')).toContain('saved=1');
@@ -166,9 +157,7 @@ describe('SEC-61 listing and revoking agent tokens', () => {
     const who = await caller();
     const body = await (await rpcForm('agents.mint', who, { ...fields, label: 'Fading' })).text();
     const token = TOKEN.exec(body.replace(/^.*?"token"/s, ''))?.[0] ?? '';
-    await env.DB.prepare('UPDATE agent_grant SET expires_at = 1 WHERE person_id = ?1')
-      .bind(who.personId)
-      .run();
+    await endGrantsOf(env.DB, who.personId, 1);
     expect((await mcp(token, call2025('list_projects'))).status).toBe(401);
     expect(await (await getPage('/account', who)).text()).not.toContain('Fading');
   });

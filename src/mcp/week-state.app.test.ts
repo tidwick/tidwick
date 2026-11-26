@@ -8,6 +8,7 @@ import { WEEK, weekOf } from '../../test/helpers/booking';
 import { eventsAfter, headSeq } from '../../test/helpers/reference';
 import { offboard } from '../auth/offboard';
 import { decideWeek } from '../db/submissions';
+import { dropAssignments, setReturnReasons } from '../db/test-support-agents';
 import { REASON_SHOWN } from './cells';
 
 async function submitted() {
@@ -38,7 +39,7 @@ describe('rows on a project the person no longer has', () => {
   it('stay in the agent’s view of its own week, so its totals match the person’s', async () => {
     const { b, agent, rowId } = await setup();
     await tool(agent, 'save_entries', { weekStart: WEEK, cells: cells(rowId, [0, 5]) });
-    await env.DB.prepare('DELETE FROM assignment WHERE person_id = ?1').bind(b.who.personId).run();
+    await dropAssignments(env.DB, b.who.personId);
     const seen = await tool(agent, 'get_week', { weekStart: WEEK });
     const rows = seen.data.rows as { rowId: string; cells: { hundredths: number }[] }[];
     expect(rows.map((r) => r.rowId)).toEqual([rowId]);
@@ -57,9 +58,7 @@ describe('a returned week', () => {
     expect(returned.data).toMatchObject({ state: 'returned', returnReason: 'Day 1 is short' });
     expect(returned.text).not.toMatch(/"(by|decidedBy|decided_by|approver)"/);
 
-    await env.DB.prepare('UPDATE week_submission SET return_reason = ?1 WHERE person_id = ?2')
-      .bind('r'.repeat(900), b.who.personId)
-      .run();
+    await setReturnReasons(env.DB, b.who.personId, 'r'.repeat(900));
     const long = await tool(agent, 'get_week', { weekStart: WEEK });
     expect(String(long.data.returnReason)).toHaveLength(REASON_SHOWN);
 

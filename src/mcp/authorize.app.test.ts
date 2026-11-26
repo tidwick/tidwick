@@ -9,12 +9,14 @@ import { handleMcp } from './dispatch';
 import { IMPLS } from './tools';
 
 const names = Object.keys(TOOLS) as ToolName[];
+// Rows from the table that sit above a member's: a steward's, an accounting admin's with step-up, an admin's,
+// a member's own with step-up, and an admin's with step-up.
 const ROWS: Record<string, Rule> = {
-  accounting: { roles: ['accounting_admin'], stepUp: false, recovery: false },
-  steward: { roles: ['accounting_admin', 'admin'], stepUp: false, recovery: false },
-  admin: { roles: ['admin'], stepUp: false, recovery: false },
-  'member with step-up': { roles: ['member'], stepUp: true, recovery: false },
-  'admin with step-up': { roles: ['admin'], stepUp: true, recovery: false },
+  steward: ACTIONS['clients.create'] as Rule,
+  'accounting admin with step-up': ACTIONS['submission.approve'] as Rule,
+  admin: ACTIONS['settings.save'] as Rule,
+  'member with step-up': ACTIONS['auth.regenerateCodes'] as Rule,
+  'admin with step-up': ACTIONS['people.offboard'] as Rule,
 };
 
 const ARGS = { weekStart: '2026-01-05' };
@@ -22,7 +24,7 @@ const ARGS = { weekStart: '2026-01-05' };
 /** The row table that holds a tool's row, and its key there. */
 function rowOf(name: ToolName): { rows: Record<string, Rule>; key: string } {
   const { gate } = TOOLS[name];
-  if ('action' in gate) return { rows: ACTIONS as Record<string, Rule>, key: gate.action };
+  if ('action' in gate) return { rows: ACTIONS, key: gate.action };
   return { rows: PAGES[gate.page] as unknown as Record<string, Rule>, key: 'GET' };
 }
 
@@ -36,7 +38,7 @@ async function call(token: string, name: ToolName) {
     }),
   );
   const result = (
-    (await response.json()) as { result?: { isError?: boolean; content: { text: string }[] } }
+    await response.json<{ result?: { isError?: boolean; content: { text: string }[] } }>()
   ).result;
   const text = result?.content[0]?.text ?? '{}';
   return {
@@ -51,7 +53,7 @@ describe('SEC-09 each tool runs only after authorize passes its own route-table 
     const agent = await mintAgent((await addPerson()).id);
     for (const name of names) {
       const impl = IMPLS[name];
-      const real = impl.call;
+      const real = impl.call.bind(impl);
       let ran = 0;
       impl.call = () => {
         ran += 1;
