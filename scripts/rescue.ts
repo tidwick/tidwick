@@ -15,7 +15,8 @@ function stop(why: string): never {
 const args = process.argv.slice(2);
 const revokePasskeys = args.includes('--revoke-passkeys');
 const [personId, seq, head, out, extra] = args.filter((a) => a !== '--revoke-passkeys');
-if (extra !== undefined) stop(`unexpected argument "${extra}"; the only option is --revoke-passkeys`);
+if (extra !== undefined)
+  stop(`unexpected argument "${extra}"; the only option is --revoke-passkeys`);
 if (personId === undefined || seq === undefined || head === undefined || out === undefined) {
   stop(
     'usage: just rescue <person id> <head seq> <head hash> [out sql] [--revoke-passkeys], with SESSION_SECRET on standard input',

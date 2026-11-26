@@ -34,7 +34,7 @@ const decrypter = new Decrypter();
 decrypter.addIdentity(identity);
 const sealed = read(
   file,
-  'pass a backup fetched as in "Copy backups off the account", or run `just backup-fixture` to make test/fixtures/backup.age',
+  'pass a backup fetched as in docs/ARCHITECTURE.md, Operate, Restore, or run `just backup-fixture` to make test/fixtures/backup.age',
 );
 let gz: Uint8Array;
 try {

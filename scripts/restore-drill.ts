@@ -3,7 +3,13 @@
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { getPlatformProxy } from 'wrangler';
-import { BACKUP_TABLES, chainHead, countRows } from '../src/db/backup-rows.ts';
+import {
+  BACKUP_TABLES,
+  chainHead,
+  countRows,
+  tableRows,
+  type BackupTable,
+} from '../src/db/backup-rows.ts';
 
 const [source, restored] = process.argv.slice(2);
 if (source === undefined || restored === undefined) {
@@ -20,8 +26,8 @@ interface Snapshot {
 }
 
 /** One hash over a table's rows, each as JSON, sorted, so row order and rowids do not matter but any byte of content does. */
-async function digest(db: D1Database, table: string, skipNewest: boolean): Promise<string> {
-  const { results } = await db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all();
+async function digest(db: D1Database, table: BackupTable, skipNewest: boolean): Promise<string> {
+  const results = await tableRows(db, table);
   const rows = skipNewest ? results.slice(0, -1) : results;
   const lines = rows.map((row) => JSON.stringify(row)).toSorted();
   return createHash('sha256').update(lines.join('\n')).digest('hex');
@@ -81,4 +87,6 @@ if (!ok) {
   );
   process.exit(1);
 }
-console.log('PASS restore-drill: every table count, every table content digest and the chain head match the source');
+console.log(
+  'PASS restore-drill: every table count, every table content digest and the chain head match the source',
+);

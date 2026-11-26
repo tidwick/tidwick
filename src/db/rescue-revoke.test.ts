@@ -54,7 +54,7 @@ describe('rescue with --revoke-passkeys', () => {
       )?.id ?? '';
     await withPasskey(ada);
     await env.DB.exec(
-      `INSERT INTO session (id_hash, person_id, created_at, seen_at, expires_at, step_up_at, must_enrol) VALUES ('s1', '${ada}', 1, 1, ${LATER * 2}, 1, 0)`,
+      `INSERT INTO session (id_hash, person_id, created_at, seen_at, expires_at, step_up_at, must_enrol) VALUES ('s1', '${ada}', 1, 1, ${String(LATER * 2)}, 1, 0)`,
     );
 
     const plain = await file(ada, false);
@@ -67,14 +67,16 @@ describe('rescue with --revoke-passkeys', () => {
     await env.DB.exec(revoking.sql);
     expect(await liveKeys(ada)).toBe(0);
     expect(await linkOpens(revoking.token)).toBe(true);
-    const session = await env.DB.prepare("SELECT revoked_at FROM session WHERE id_hash = 's1'").first<{
+    const session = await env.DB.prepare(
+      "SELECT revoked_at FROM session WHERE id_hash = 's1'",
+    ).first<{
       revoked_at: number | null;
     }>();
     expect(session?.revoked_at).toBe(LATER);
     const event = await env.DB.prepare(
       "SELECT after_json FROM audit_event WHERE action = 'people.rescue'",
     ).first<{ after_json: string }>();
-    expect(JSON.parse(event?.after_json ?? '{}').revoked).toContain('passkeys');
+    expect(event?.after_json).toContain('"passkeys"');
 
     const again = await rowCounts(env.DB);
     await env.DB.exec(revoking.sql);

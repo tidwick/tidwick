@@ -146,6 +146,40 @@ restore file identity persist=".wrangler/restore":
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$persist" --file "$persist/restore.sql" > "$persist/load.log" 2>&1 || { cat "$persist/load.log"; echo "FAIL restore: the rows did not load; NOT NULL on setting.value_json means the target D1 was not empty, so pass a new target; otherwise the statement wrangler names above shows which table"; exit 1; }
     echo "PASS restore: loaded into the local D1 at $persist"
 
+# Fetches one night's sealed backup from the Worker account's R2 bucket (YYYY-MM-DD, UTC).
+backup-fetch day out=".wrangler/restore-remote/backup.age":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ {{ quote(day) }} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "FAIL backup-fetch: pass the night as YYYY-MM-DD, not {{ quote(day) }}"; exit 1; }
+    mkdir -p -m 700 "$(dirname {{ quote(out) }})"
+    npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo {{ quote(day) }} | tr - /).ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; list the bucket ; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
+    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit>"
+
+# Loads a backup into the deployed database of the same name: migrate, then the rows. For a lost database: create
+# it first (`wrangler d1 create tidwick`), run this BEFORE `just deploy`, then follow ARCHITECTURE, Operate, Restore.
+# The first statement fails on a database that already holds rows, so a live one is never overwritten.
+restore-remote file identity env="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(just _wr {{ quote(env) }})"
+    dir=.wrangler/restore-remote
+    rm -rf "$dir/restore.sql" && mkdir -p -m 700 "$dir"
+    node scripts/restore.ts {{ quote(file) }} {{ quote(identity) }} "$dir/restore.sql"
+    npx --no-install wrangler d1 migrations apply "$mig" --remote $flags || { echo "FAIL restore-remote: migrations did not apply; check the database exists (wrangler d1 list) and wrangler is logged in to the right account"; exit 1; }
+    npx --no-install wrangler d1 execute "$db" --remote $flags --file "$dir/restore.sql" || { echo "FAIL restore-remote: the rows did not load; NOT NULL on setting.value_json means the database was not empty: create a new one and start again"; exit 1; }
+    echo "PASS restore-remote: loaded into $db; delete $dir/restore.sql, then the post-restore steps in ARCHITECTURE, Operate, Restore"
+
+# The backup size estimate against the live database, as a percentage of the cap (ARCHITECTURE, Operate).
+backup-size env="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(just _wr {{ quote(env) }})"
+    npx --no-install wrangler d1 execute "$db" --remote $flags --command "$(node scripts/backup-size.ts)"
+
+# Probes the off-account bucket with its key (src/backup/offsite-probe.ts); the four BACKUP_S3 lines on standard input.
+offsite-check:
+    node scripts/offsite-check.ts
+
 restore-drill: backup-fixture
     just restore test/fixtures/backup.age test/fixtures/backup-key.txt
     node scripts/restore-drill.ts .wrangler/drill/source .wrangler/restore
