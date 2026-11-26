@@ -88,7 +88,7 @@ describe('SEC-15 the off-account copy', () => {
     ]);
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]?.text).toContain(REFUSED);
-    expect((await readHealth(env.DB, at + HOUR)).body.backup_at).toBeLessThan(at);
+    expect((await readHealth(env.DB, at + HOUR)).backupAt).toBeLessThan(at);
 
     bucket.refuse = null;
     expect((await backupAt(bucket, at + DAY))?.status).toBe('ok');
