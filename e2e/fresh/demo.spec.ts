@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { scan } from '../axe';
 
 // The demo's seed loaded and its two flags on: the entry is a picker of invented people, and one click signs in.
 // Each persona lands on /week, where the main navigation shows what that role can reach.
@@ -19,6 +20,10 @@ test('the entry routes lead to the picker, which has no passkey step', async ({ 
   await expect(page.getByRole('button', { name: /passkey/i })).toHaveCount(0);
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
   for (const { name } of PEOPLE) await expect(page.getByRole('button', { name })).toBeVisible();
+});
+
+test('the picker has no axe violations', async ({ page }) => {
+  await scan(page, '/demo');
 });
 
 for (const person of PEOPLE) {
@@ -46,7 +51,7 @@ test('the banner link switches person, and signing out returns to the picker', a
     page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'People' }),
   ).toBeVisible();
   await page.goto('/account');
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).first().click();
   await expect(page).toHaveURL(/\/demo$/);
 });
 
