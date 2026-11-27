@@ -72,30 +72,42 @@ export function s3Copy(
   timeoutMs = COPY_TIMEOUT_MS,
 ): BackupCopy {
   const key = { keyId: target.keyId, secret: target.secret, region: target.region, service: 's3' };
-  // A key this copy already tried: its earlier PUT may have landed with the response lost, and the bucket's lock refuses a second write.
+  // A key whose earlier PUT may have landed with the response lost (it threw, timed out or answered 5xx), where the bucket's lock refuses a second write.
   const tried = new Set<string>();
+  const sameBytes = (a: Uint8Array, b: Uint8Array) =>
+    a.length === b.length && a.every((v, i) => v === b[i]);
   return {
     async write(objectKey, sealed) {
       const retry = tried.has(objectKey);
-      tried.add(objectKey);
       const body = new Uint8Array(sealed);
       const url = `${target.endpoint}/${target.bucket}/${objectKey.split('/').map(uriEncode).join('/')}`;
-      try {
-        const headers = await s3Headers(key, 'PUT', url, body, Date.now());
+      const send = async (method: 'PUT' | 'GET') => {
+        const payload = method === 'PUT' ? body : new Uint8Array();
+        const headers = await s3Headers(key, method, url, payload, Date.now());
         const signal = AbortSignal.timeout(timeoutMs);
-        const response = await fetcher(new Request(url, { method: 'PUT', headers, body, signal }));
+        return fetcher(
+          new Request(url, { method, headers, body: method === 'PUT' ? body : null, signal }),
+        );
+      };
+      try {
+        const response = await send('PUT');
         const text = await response.text();
+        if (response.ok) return null;
+        if (response.status >= 500) tried.add(objectKey);
         // R2's bucket lock answers a write over an existing key with 409 ObjectLockedByBucketPolicy, before any condition is read.
-        // The key carries the run's second, so on a retry that key is the earlier attempt, which landed.
+        // On a retry the key may hold the earlier attempt; it counts as landed only when the stored bytes are this file.
         if (
-          response.ok ||
-          (retry &&
-            response.status === 409 &&
-            text.includes('<Code>ObjectLockedByBucketPolicy</Code>'))
-        )
-          return null;
+          retry &&
+          response.status === 409 &&
+          text.includes('<Code>ObjectLockedByBucketPolicy</Code>')
+        ) {
+          const stored = await send('GET');
+          if (stored.ok && sameBytes(new Uint8Array(await stored.arrayBuffer()), body)) return null;
+          return 'the off-account bucket refused the write: the object already at this key is not this backup';
+        }
         return refused(response.status, text);
       } catch (error) {
+        tried.add(objectKey);
         return `the off-account bucket could not be reached: ${errorText(error)}`;
       }
     },
