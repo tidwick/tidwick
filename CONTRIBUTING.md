@@ -30,13 +30,13 @@ None of this needs a Cloudflare account, a login or a secret. The database is a 
 - `just dev` runs the app locally.
 - `just dev-session <who>` signs in as one of the seeded people.
 - `just dev-agent-token <who>` prints a bearer for `/mcp` as one of them (needs `MCP=on`, which the generated `.dev.vars` sets).
-- `just demo-local` loads the demo data and serves it at `http://localhost:4321/demo`, with member, approver and admin personas.
+- `just demo-local` loads the demo data and serves it at `http://localhost:4321/demo`, with its four seeded personas on a picker.
 
 The deploy recipes (ARCHITECTURE, Deploy) act on a real Cloudflare account. Nothing in a contribution needs them.
 
 ## The checks
 
-`just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at both widths; `just live` checks that both public sites answer after each deploy, and the weekly run also checks advisories (`just audit`). It runs typecheck, lint, format check, build, a Worker deploy dry-run, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
+`just check` is the one gate, and CI runs it after a clean install (`just ci`), then the browser specs at both widths; `just live` checks that both public sites answer after each deploy, and the weekly run also checks advisories (`just audit`). It runs typecheck, lint, the workflow lint (actionlint and zizmor), format check, build, a Worker deploy dry-run, tests, a migration check, a backup restore drill and `just guard`. A failing check prints one `FAIL` line that names the next action. `just fmt` fixes formatting.
 
 There are no migrations before v0.1.0: `migrations/` holds only `0001_init.sql`, edited in place (the demo resets itself on deploy), and `just guard` fails any other file. Migrations freeze at the first release tag: from it on, a file that exists at the newest tag `v*` cannot be modified, renamed or deleted, and a change is a new file. CI clones the full history for this.
 

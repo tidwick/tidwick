@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-A small firm's timesheet app must run for pennies, with no servers to patch. Every extra platform is a credential, a bill and a failure mode the adopter inherits. Forms and the week grid must keep working when script is slow or absent.
+A small firm's timesheet app must run for very little, with no servers to patch. Every extra platform is a credential, a bill and a failure mode the adopter inherits. Forms and the week grid must keep working when script is slow or absent.
 
 ## Decision
 

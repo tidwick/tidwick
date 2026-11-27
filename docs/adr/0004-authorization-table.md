@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-Scattered role checks drift, and one missed check leaks client data. Roles must stay few and auditable. Some reads, such as another person's week, deserve a fresh passkey proof.
+Scattered role checks drift, and one missed check leaks client data. Roles must stay few and auditable. Some reads, such as another person's week, deserve a fresh step-up confirmation (passkey or provider).
 
 ## Decision
 

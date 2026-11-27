@@ -1,4 +1,4 @@
-// Runs first: attaches the live session and its CSRF token, then appends the cookies an Action queued.
+// Attaches the live session and its CSRF token, then appends the cookies an Action queued.
 import type { MiddlewareHandler } from 'astro';
 import { cookieValue, readSession, SESSION_COOKIE } from '../auth/session';
 import { csrfToken } from '../auth/tokens';
