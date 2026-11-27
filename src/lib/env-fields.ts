@@ -132,13 +132,21 @@ export function clientPrefixes(source: Source): readonly string[] {
   return prefixes;
 }
 
+/** Hosts that mean this machine; the OAuth client fetch and the `MCP=on` origin check both read them. */
+export const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '[::1]'];
+
 /**
  * `MCP=on` needs an https `ORIGIN`: the OAuth client-document fetch treats an http loopback `ORIGIN` as a development
  * machine, so a deploy left on the shipped http default must not open the agent routes. `LOCAL_DEV=on` (the generated
- * `.dev.vars` and the test bindings) allows it.
+ * `.dev.vars` and the test bindings) waives https for a loopback http `ORIGIN` only, so a stray `LOCAL_DEV` on a
+ * deployed host changes nothing.
  */
 export function mcpOrigin(source: Source): void {
   if (choice(source, 'MCP', ['', 'on'], '') !== 'on') return;
-  if (choice(source, 'LOCAL_DEV', ['', 'on'], '') === 'on') return;
-  if (!origin(source, 'ORIGIN').startsWith('https://')) fail('missing_binding', 'ORIGIN');
+  const here = origin(source, 'ORIGIN');
+  const local =
+    choice(source, 'LOCAL_DEV', ['', 'on'], '') === 'on' &&
+    here.startsWith('http://') &&
+    LOOPBACK_HOSTS.includes(new URL(here).hostname);
+  if (!local && !here.startsWith('https://')) fail('missing_binding', 'ORIGIN');
 }

@@ -24,4 +24,12 @@ describe('MCP and ORIGIN', () => {
     expect(detail({ ...base, MCP: '' })).toBeUndefined();
     expect(detail({ ...base, LOCAL_DEV: 'yes' })).toBe('LOCAL_DEV');
   });
+
+  it('SEC-71 LOCAL_DEV=on waives https for a loopback http ORIGIN only', () => {
+    const local = { ...base, LOCAL_DEV: 'on' };
+    for (const host of ['http://localhost:4321', 'http://127.0.0.1', 'http://[::1]:4321'])
+      expect(detail({ ...local, ORIGIN: host }), host).toBeUndefined();
+    for (const host of ['http://tidwick.test', 'http://localhost.example', 'http://10.0.0.5:4321'])
+      expect(detail({ ...local, ORIGIN: host, RP_ID: 'tidwick.test' }), host).toBe('ORIGIN');
+  });
 });
