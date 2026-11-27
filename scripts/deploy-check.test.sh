@@ -2,7 +2,8 @@
 # Proves deploy-check.sh with a stubbed wrangler that logs its arguments: the required secrets alone pass (prod and
 # demo), each one missing fails by name, a near-miss name does not count, an optional secret is never demanded, a
 # placeholder fails, the demo is addressed with --env demo, and a BACKUP_COPY that is not exactly s3 or none at the top
-# level fails (a demo-only or commented "none" must not open the gate).
+# level fails (a demo-only or commented "none" must not open the gate), a missing DEMO_PASSWORD is not sent to deploy-secrets,
+# and each SSO provider id in the top-level SSO_PROVIDERS needs its SSO_SECRET_<ID> (a secret-only SSO_PROVIDERS warns).
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d)"
@@ -67,6 +68,28 @@ refuses 'an example.com ORIGIN on prod' "$prod"
 config '"BACKUP_COPY": "s3"' https://time.firm.test REPLACE_WITH_ID
 refuses 'a REPLACE_WITH placeholder on demo' "$demo" demo
 passes 'a REPLACE_WITH in the demo block does not stop prod' "$prod"
+
+# A missing DEMO_PASSWORD is fixed by hand: deploy-secrets never puts it.
+config '"BACKUP_COPY": "s3"' https://time.firm.test
+refuses 'demo without DEMO_PASSWORD' "$keys" demo
+grep -q 'wrangler secret put DEMO_PASSWORD --env demo' out.txt || fail 'the DEMO_PASSWORD failure does not say to set it by hand'
+grep -q 'just deploy-secrets' out.txt && fail 'the DEMO_PASSWORD failure must not send the operator to deploy-secrets'
+refuses 'demo without DEMO_PASSWORD or SESSION_SECRET' "$(without "$demo DEMO_PASSWORD" SESSION_SECRET | sed 's/ DEMO_PASSWORD//')" demo
+grep -q 'just deploy-secrets' out.txt || fail 'a missing SESSION_SECRET must still say deploy-secrets'
+
+# A provider id in the top-level SSO_PROVIDERS needs SSO_SECRET_<ID>, as an array or as a string of JSON.
+sso='"id": "tenant-a", "label": "Tenant A", "issuer": "https://idp.firm.test", "client_id": "x"'
+config "\"BACKUP_COPY\": \"s3\", \"SSO_PROVIDERS\": [{$sso}]" https://time.firm.test
+refuses 'an SSO provider without its secret' "$prod"
+grep -q 'SSO_SECRET_TENANT_A' out.txt || fail 'the failure does not name SSO_SECRET_TENANT_A'
+passes 'an SSO provider with its secret' "$prod SSO_SECRET_TENANT_A"
+config '"BACKUP_COPY": "s3", "SSO_PROVIDERS": "[{\"id\":\"google\",\"client_id\":\"x\"}]"' https://time.firm.test
+refuses 'a string SSO_PROVIDERS without its secret' "$prod"
+grep -q 'SSO_SECRET_GOOGLE' out.txt || fail 'the failure does not name SSO_SECRET_GOOGLE'
+passes 'a string SSO_PROVIDERS with its secret' "$prod SSO_SECRET_GOOGLE"
+config '"BACKUP_COPY": "s3"' https://time.firm.test
+passes 'a secret-only SSO_PROVIDERS' "$prod SSO_PROVIDERS"
+grep -q '^WARN deploy-check: SSO_PROVIDERS is a secret' out.txt || fail 'a secret-only SSO_PROVIDERS printed no WARN'
 
 # workers.dev left on with a custom-domain ORIGIN warns (it does not fail); off, or ORIGIN on workers.dev, stays quiet.
 config '"BACKUP_COPY": "s3"' https://time.firm.test
