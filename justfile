@@ -372,35 +372,44 @@ playwright-version:
 # The deployed sites answer as the code says they do, GET only: the demo's entry is a picker of four people with no password
 # field and the demo banner, / and /login send a signed-out visitor to it, /demo carries its CSP and a hashed stylesheet that
 # loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
+# Each probe pass is retried for up to 90 s (LIVE_WAIT), because the previous version can answer just after a deploy.
 # The demo binds no BACKUPS and its nightly wipe clears backup_run, so no good backup ever exists there: /healthz answers 503 by design.
 live:
     #!/usr/bin/env bash
     set -euo pipefail
     demo=https://demo.tidwick.dev
     get() { curl -sS --retry 4 --retry-delay 15 --retry-all-errors --max-time 30 -o "$1" -D "$1.h" -w '%{http_code}' "$2"; }
-    t="$(mktemp -d)"
-    want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
-    want /demo "$(get "$t/demo" $demo/demo)" 200
-    grep -q 'Sign in as' "$t/demo" || { echo "FAIL live: /demo lacks the persona picker (\"Sign in as\"); check src/pages/demo.astro and DEMO_LOGIN"; exit 1; }
-    [ "$(grep -o 'name="persona"' "$t/demo" | wc -l)" -eq 4 ] || { echo "FAIL live: /demo does not offer four people; check DEMO_PERSONAS in src/lib/demo-personas.ts"; exit 1; }
-    ! grep -q 'type="password"' "$t/demo" || { echo "FAIL live: /demo asks for a password; the picker takes none, check src/pages/demo.astro"; exit 1; }
-    grep -q 'resets daily at 04:00' "$t/demo" || { echo "FAIL live: /demo lacks the demo banner; check src/layouts/base.astro and DEMO_BANNER"; exit 1; }
-    grep -qi '^content-security-policy:' "$t/demo.h" || { echo "FAIL live: /demo sends no content-security-policy"; exit 1; }
-    sheet="$(grep -o 'href="/_astro/[^"]*\.css"' "$t/demo" | head -1 | cut -d'"' -f2)"
-    [ -n "$sheet" ] || { echo "FAIL live: /demo names no hashed stylesheet"; exit 1; }
-    want "$sheet" "$(get "$t/css" "$demo$sheet")" 200
-    for path in / /login; do
-      want "$path" "$(get "$t/entry" "$demo$path")" 303
-      grep -qi '^location: /demo' "$t/entry.h" || { echo "FAIL live: $path does not send a signed-out visitor to /demo; check src/pages/index.astro and src/pages/login.astro"; exit 1; }
+    probe() (
+      t="$(mktemp -d)"
+      want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
+      want /demo "$(get "$t/demo" $demo/demo)" 200
+      grep -q 'Sign in as' "$t/demo" || { echo "FAIL live: /demo lacks the persona picker (\"Sign in as\"); check src/pages/demo.astro and DEMO_LOGIN"; exit 1; }
+      [ "$(grep -o 'name="persona"' "$t/demo" | wc -l)" -eq 4 ] || { echo "FAIL live: /demo does not offer four people; check DEMO_PERSONAS in src/lib/demo-personas.ts"; exit 1; }
+      ! grep -q 'type="password"' "$t/demo" && true || { echo "FAIL live: /demo asks for a password; the picker takes none, check src/pages/demo.astro"; exit 1; }
+      grep -q 'resets daily at 04:00' "$t/demo" || { echo "FAIL live: /demo lacks the demo banner; check src/layouts/base.astro and DEMO_BANNER"; exit 1; }
+      grep -qi '^content-security-policy:' "$t/demo.h" || { echo "FAIL live: /demo sends no content-security-policy"; exit 1; }
+      sheet="$(grep -o 'href="/_astro/[^"]*\.css"' "$t/demo" | head -1 | cut -d'"' -f2)"
+      [ -n "$sheet" ] || { echo "FAIL live: /demo names no hashed stylesheet"; exit 1; }
+      want "$sheet" "$(get "$t/css" "$demo$sheet")" 200
+      for path in / /login; do
+        want "$path" "$(get "$t/entry" "$demo$path")" 303
+        grep -qi '^location: /demo' "$t/entry.h" || { echo "FAIL live: $path does not send a signed-out visitor to /demo; check src/pages/index.astro and src/pages/login.astro"; exit 1; }
+      done
+      want /healthz "$(get "$t/hz" $demo/healthz)" 503
+      want /week "$(get "$t/week" $demo/week)" 303
+      grep -qi '^location: /login?return=%2Fweek' "$t/week.h" || { echo "FAIL live: /week does not send a signed-out visitor to /login?return=%2Fweek"; exit 1; }
+      want /mcp "$(get "$t/mcp" $demo/mcp)" 404
+      want /.well-known/oauth-protected-resource "$(get "$t/prm" $demo/.well-known/oauth-protected-resource)" 404
+      want /oauth/authorize "$(get "$t/authorize" $demo/oauth/authorize)" 404
+      want /oauth/token "$(get "$t/token" $demo/oauth/token)" 404
+      want /.well-known/oauth-authorization-server "$(get "$t/asm" $demo/.well-known/oauth-authorization-server)" 404
+      want /setup "$(get "$t/setup" $demo/setup)" 404
+      want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
+    )
+    # Cloudflare can serve the previous version for some seconds after a deploy, so a miss is retried for up to 90 s; the last answer is the failure.
+    end=$((SECONDS + ${LIVE_WAIT:-90}))
+    until out="$(probe)"; do
+      [ "$SECONDS" -lt "$end" ] || { echo "$out"; exit 1; }
+      sleep 5
     done
-    want /healthz "$(get "$t/hz" $demo/healthz)" 503
-    want /week "$(get "$t/week" $demo/week)" 303
-    grep -qi '^location: /login?return=%2Fweek' "$t/week.h" || { echo "FAIL live: /week does not send a signed-out visitor to /login?return=%2Fweek"; exit 1; }
-    want /mcp "$(get "$t/mcp" $demo/mcp)" 404
-    want /.well-known/oauth-protected-resource "$(get "$t/prm" $demo/.well-known/oauth-protected-resource)" 404
-    want /oauth/authorize "$(get "$t/authorize" $demo/oauth/authorize)" 404
-    want /oauth/token "$(get "$t/token" $demo/oauth/token)" 404
-    want /.well-known/oauth-authorization-server "$(get "$t/asm" $demo/.well-known/oauth-authorization-server)" 404
-    want /setup "$(get "$t/setup" $demo/setup)" 404
-    want tidwick.dev "$(get "$t/site" https://tidwick.dev/)" 200
     echo "PASS live"
