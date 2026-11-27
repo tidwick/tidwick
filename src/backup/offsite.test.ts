@@ -211,7 +211,8 @@ describe('SEC-15 the off-account copy', () => {
     expect(run).toMatchObject({ status: 'ok', error: null });
     // The retry's 409 is believed only after a signed GET shows the stored bytes are this run's file.
     expect(bucket.seen).toEqual([
-      ...Array(2).fill(`PUT /offsite-backups/${objectKey(at)}`),
+      `PUT /offsite-backups/${objectKey(at)}`,
+      `PUT /offsite-backups/${objectKey(at)}`,
       `GET /offsite-backups/${objectKey(at)}`,
     ]);
     // A first write over an existing object is not a retry: it meets the lock's refusal.

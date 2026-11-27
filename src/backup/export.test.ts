@@ -12,6 +12,7 @@ import {
   writeLateRow,
 } from '../db/test-support-backup';
 import { loadSeededWeek, type SeededEntry } from '../db/test-support-week';
+import { recentRuns } from '../db/backup-runs';
 import { parseBackup, rowsDigest, type BackupLine } from '../lib/backup-format';
 import { readEnv } from '../lib/env';
 import { recordingMailer } from '../../test/helpers/mail';
@@ -64,11 +65,7 @@ describe('SEC-15 nightly backup', () => {
     // The digest of every other row is in the header and on the run record the settings page shows.
     expect(parsed.header.rows_digest).toBe(await rowsDigest(parsed.rows));
     expect(parsed.rows.length).toBe(parsed.lines.filter((l) => l.t !== 'audit_event').length);
-    const recorded = await env.DB.prepare(
-      'SELECT rows_digest FROM backup_run WHERE object_key = ?1',
-    )
-      .bind(objectKey(AT))
-      .first<{ rows_digest: string }>();
+    const recorded = (await recentRuns(env.DB, 50)).find((r) => r.object_key === objectKey(AT));
     expect(recorded?.rows_digest).toBe(parsed.header.rows_digest);
     expect(head.seq).toBeGreaterThanOrEqual(5);
     for (const table of BACKUP_TABLES) {
