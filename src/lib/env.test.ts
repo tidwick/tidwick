@@ -242,7 +242,6 @@ describe('typed env', () => {
     const both = setupEnv({ ...complete(), AGENT_TOKEN_DAYS: '0', AGENT_TOKEN_DEFAULT_DAYS: '7' });
     expect(both?.missing).toEqual(['AGENT_TOKEN_DAYS']);
     expect(backupEnv({ ...complete(), BACKUP_TRIES: '2' }).policy.backupTries).toBe(2);
-    // A bad knob never stops the backup's env: the backup's own are named and defaulted, the others ignored.
     const bad = backupEnv({ ...complete(), BACKUP_TRIES: '9', REPORT_MAX_BARS: '500' });
     expect(bad.gaps).toEqual(['BACKUP_TRIES']);
     expect(bad.policy.backupTries).toBe(3);
