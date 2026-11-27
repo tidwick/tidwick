@@ -104,12 +104,12 @@ demo-reset target="local":
     npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo-drop.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the tables did not drop; the statement wrangler names above is in test/demo/reset.ts"; exit 1; }
     npx --no-install wrangler d1 migrations apply "${db[@]}" --force >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: migrations did not apply to the {{ target }} D1; fix the SQL named above"; exit 1; }
     npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the demo seed did not load; the statement wrangler names above is built in test/demo/"; exit 1; }
-    echo "PASS demo-reset ({{ target }}): 2 invented firms, 25 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
+    echo "PASS demo-reset ({{ target }}): 2 invented firms, 26 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
 
 # One command for a human to see the demo: reset and load the demo seed into the local D1, give the generated dummy
 # .dev.vars the demo sign-in's signals (DEMO_LOGIN, DEMO_BANNER, a dummy DEMO_PASSWORD), then serve the production
-# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Pick a persona there: member, approver
-# (accounting admin) or admin. The seed itself carries the fourth signal, and no real secret is involved.
+# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Pick a persona there: member, a second-firm
+# member, approver (accounting admin) or admin (key manager). The seed itself carries the fourth signal, and no real secret is involved.
 demo-local:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -363,6 +363,7 @@ playwright-version:
 
 # The deployed sites answer as the code says they do, GET only: the demo's sign-in is open, /login carries its CSP and a
 # hashed script that loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
+# The demo binds no BACKUPS and its nightly wipe clears backup_run, so no good backup ever exists there: /healthz answers 503 by design.
 live:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -371,7 +372,9 @@ live:
     t="$(mktemp -d)"
     want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
     want /demo "$(get "$t/demo" $demo/demo)" 200
-    grep -q 'Pick a person' "$t/demo" || { echo "FAIL live: /demo lacks \"Pick a person\""; exit 1; }
+    grep -q 'Sign in as' "$t/demo" || { echo "FAIL live: /demo lacks the persona picker (\"Sign in as\"); check src/pages/demo.astro and DEMO_LOGIN"; exit 1; }
+    grep -q 'name="password"' "$t/demo" || { echo "FAIL live: /demo lacks the password field; check src/pages/demo.astro"; exit 1; }
+    want /healthz "$(get "$t/hz" $demo/healthz)" 503
     want /login "$(get "$t/login" $demo/login)" 200
     grep -qi '^content-security-policy:' "$t/login.h" || { echo "FAIL live: /login sends no content-security-policy"; exit 1; }
     script="$(grep -o 'src="/_astro/[^"]*\.js"' "$t/login" | head -1 | cut -d'"' -f2)"
