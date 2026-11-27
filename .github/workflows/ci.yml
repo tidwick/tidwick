@@ -92,4 +92,5 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      # The previous version can answer for some seconds after the deploy; `just live` retries each pass for up to 90 s.
       - run: just live
