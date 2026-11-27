@@ -95,6 +95,16 @@ describe('Back up now', () => {
     expect(run.status).toBe('failed');
     expect(run.error).toContain('BACKUP_RECIPIENT');
   });
+
+  it('an invalid backup knob is a failed run naming it, also on demand', async () => {
+    const run = await backUpNow(
+      await adminScope(),
+      backupEnv({ ...env, BACKUP_TRIES: 'x' }),
+      AT + 9500,
+    );
+    expect(run.status).toBe('failed');
+    expect(run.error).toMatch(/^missing_binding: BACKUP_TRIES /);
+  });
 });
 
 describe('Send test alert', () => {

@@ -33,7 +33,7 @@ function lives(source: Source): readonly number[] {
   return sorted;
 }
 
-/** Reads every knob from `source`. With `gaps`, a refused one is recorded by name and left at its default. */
+/** Reads every knob from `source`. With `gaps`, a refused one is recorded by name and left at its default (a bad value never becomes 0). */
 export function readPolicy(source: Source, gaps?: string[]): Policy {
   const out: Record<string, number | readonly number[]> = {};
   const read = (
@@ -50,12 +50,16 @@ export function readPolicy(source: Source, gaps?: string[]): Policy {
     }
   };
   for (const knob of KNOBS) {
-    out[knob.key] = read(knob.name, () => {
-      const value = whole(source[knob.name]);
-      if (value === undefined || (value !== null && (value < knob.min || value > knob.max)))
-        fail('missing_binding', knob.name);
-      return (value ?? knob.def) * knob.scale;
-    });
+    out[knob.key] = read(
+      knob.name,
+      () => {
+        const value = whole(source[knob.name]);
+        if (value === undefined || (value !== null && (value < knob.min || value > knob.max)))
+          fail('missing_binding', knob.name);
+        return (value ?? knob.def) * knob.scale;
+      },
+      knob.def * knob.scale,
+    );
   }
   out['agentTokenDays'] = read(TOKEN_DAYS.name, () => lives(source), TOKEN_DAYS.def);
   const days = out['agentTokenDays'] as readonly number[];
