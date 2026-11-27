@@ -7,6 +7,8 @@ import { ceremonyScope } from '../db/scope';
 import { currentEnv } from '../lib/env';
 import { readSession, newSession } from './session';
 import { revokeOwnPasskey } from './revoke-passkey';
+import { recordSessionRevocation } from './revoke';
+import { auditedBatch } from '../db/audit';
 import { keyedHash } from './tokens';
 import { unlinkSso } from './unlink-sso';
 import { DEFAULT_POLICY } from '../lib/policy';
@@ -86,5 +88,19 @@ describe('SEC-66 ending a credential ends the sessions it opened', () => {
       sessions: 2,
       cause: 'unlinkSso',
     });
+  });
+
+  it('a session opened after the count read 0 and before the batch runs still ends with it, unnamed', async () => {
+    const { id } = await addPerson();
+    const seq = await headSeq();
+    const batch = await auditedBatch(await adminScope(), env.DB);
+    expect(await recordSessionRevocation(batch, env.DB, id, T0, 'recovery')).toBe(0);
+    const late = await signedIn(id);
+    expect(await live(late)).toBe(true);
+    await batch.run();
+    expect(await live(late)).toBe(false);
+    expect((await eventsAfter(seq)).filter((e) => e.action === 'people.revokeSessions')).toEqual(
+      [],
+    );
   });
 });

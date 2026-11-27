@@ -69,11 +69,17 @@ export async function recordSessionRevocation(
     keepIdHash === undefined
       ? await liveSessionCount(db, personId, now)
       : await otherSessionCount(db, personId, keepIdHash, now);
-  if (sessions === 0) return 0;
-  await batch.record(
+  const revoke =
     keepIdHash === undefined
       ? revokeSessionsOf(db, personId, now)
-      : revokeOtherSessions(db, personId, keepIdHash, now),
+      : revokeOtherSessions(db, personId, keepIdHash, now);
+  if (sessions === 0) {
+    // Nothing to name, but a session that slips in before the batch runs still ends with it.
+    batch.also(revoke);
+    return 0;
+  }
+  await batch.record(
+    revoke,
     {
       at: now,
       action: keepIdHash === undefined ? 'people.revokeSessions' : 'auth.logoutOthers',
