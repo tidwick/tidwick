@@ -1,4 +1,4 @@
-// The demo seed's reference data: two invented firms, 25 invented people, five invented clients, 12 projects and
+// The demo seed's reference data: two invented firms, 26 invented people, five invented clients, 12 projects and
 // eight task codes, distinct from the test seed in every name and id, so a stranger sees a small practice at work.
 // Pure and deterministic; `weeks.ts` books the time and `scripts/seed-demo.ts` prints both.
 
@@ -79,7 +79,11 @@ const PEOPLE = [
   'Wren Kittering',
   'Yara Lindqvist',
   'Zeb Marchbank',
+  'Ottoline Brackenridge',
 ] as const;
+
+/** The last person, who left: offboarded, with open weeks an accounting admin can approve on their behalf. */
+export const DEMO_LEAVER = PEOPLE.length - 1;
 
 /** The people who hold the accounting admin grant: the first of each firm. Only the admin persona holds `admin`. */
 export const DEMO_ACCOUNTANTS = [0, DEMO_FIRMS[0].people] as const;
@@ -171,6 +175,7 @@ export function demoReferenceStatements(): string[] {
     p.name,
     `D${String(2000 + n)}`,
     CREATED,
+    n === DEMO_LEAVER ? CREATED + 30 * 86_400_000 : null,
   ]);
   const roles = [
     ...DEMO_ACCOUNTANTS.map((n) => [demoId('5c', n + 1), 'accounting_admin', CREATED]),
@@ -183,7 +188,11 @@ export function demoReferenceStatements(): string[] {
   return [
     insert('client', ['id', 'name', 'created_at'], clients),
     insert('firm', ['id', 'client_id'], firms),
-    insert('person', ['id', 'firm_id', 'email', 'name', 'external_code', 'created_at'], people),
+    insert(
+      'person',
+      ['id', 'firm_id', 'email', 'name', 'external_code', 'created_at', 'offboarded_at'],
+      people,
+    ),
     insert('person_role', ['person_id', 'role', 'granted_at'], roles),
     insert(
       'task_code',
