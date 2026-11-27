@@ -11,7 +11,6 @@ import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv } from '../lib/env';
 import { DEFAULT_POLICY } from '../lib/policy';
 
-const PASSWORD = 'a-long-demo-<&"pass';
 const [member, , , manager] = DEMO_PERSONAS;
 const stranger = demoPeople().find((p) => !DEMO_PERSONAS.some((d) => d.id === p.id));
 
@@ -22,7 +21,6 @@ beforeAll(async () => {
 /** POST the sign-in form from `ip`; the cookie it sets, if any. */
 async function signIn(
   persona: string,
-  password: string,
   ip: string,
   cookie?: string,
 ): Promise<{ status: number; raw: string | null; cookie: string }> {
@@ -37,7 +35,6 @@ async function signIn(
       method: 'POST',
       headers,
       body: new URLSearchParams({
-        password,
         persona,
         ...(cookie
           ? { _csrf: await csrfToken(currentEnv().SESSION_SECRET, cookie.split('=')[1] ?? '') }
@@ -54,7 +51,7 @@ async function signIn(
 }
 
 async function asPersona(persona: string, ip: string): Promise<Caller> {
-  const { raw } = await signIn(persona, PASSWORD, ip);
+  const { raw } = await signIn(persona, ip);
   const rawId = raw ?? expect.unreachable('no session cookie');
   return {
     personId: DEMO_PERSONAS.find((p) => p.key === persona)?.id ?? '',
@@ -91,11 +88,10 @@ describe('the persona guards are wired into their Actions', () => {
 
 describe('the sign-in', () => {
   it('lives two hours in the cookie, and a switch ends the session it replaces', async () => {
-    const first = await signIn(member.key, PASSWORD, '203.0.113.60');
+    const first = await signIn(member.key, '203.0.113.60');
     expect(first.cookie).toContain(`Max-Age=${String(DEMO_SESSION_MS / 1000)}`);
     const second = await signIn(
       manager.key,
-      PASSWORD,
       '203.0.113.60',
       `__Host-tidwick-session=${first.raw ?? ''}`,
     );
@@ -120,20 +116,20 @@ describe('the sign-in', () => {
     ).not.toBeNull();
   });
 
-  it('counts every guess: the 31st in a minute is refused, even with the right password', async () => {
+  it('counts every pick: the 31st in a minute is refused, and refused for no one else', async () => {
     const ip = '203.0.113.61';
-    for (let i = 0; i < 30; i++) {
-      const guess = await signIn(member.key, `wrong-guess-number-${String(i)}`, ip);
-      expect(guess.status).toBe(401);
-    }
-    const refused = await signIn(member.key, PASSWORD, ip);
+    for (let i = 0; i < 30; i++) expect((await signIn(member.key, ip)).raw).not.toBeNull();
+    const refused = await signIn(member.key, ip);
     expect(refused.status).toBe(429);
     expect(refused.raw).toBeNull();
+    expect((await signIn(member.key, '203.0.113.63')).raw).not.toBeNull();
   });
 
-  it('a right password signs in on the 30th attempt, which is still allowed', async () => {
-    const ip = '203.0.113.62';
-    for (let i = 0; i < 29; i++) await signIn(member.key, `wrong-guess-number-${String(i)}`, ip);
-    expect((await signIn(member.key, PASSWORD, ip)).raw).not.toBeNull();
+  it('a pick with no persona, or one that is not offered, opens no session', async () => {
+    for (const persona of ['', 'stranger']) {
+      const miss = await signIn(persona, '203.0.113.64');
+      expect(miss.raw).toBeNull();
+      expect(miss.status).toBeGreaterThanOrEqual(400);
+    }
   });
 });

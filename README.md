@@ -4,7 +4,7 @@
 
 Weekly timesheet for professional-services firms on Cloudflare Workers, D1 and R2. AGPL-3.0 reference implementation: a technical person deploys it into the firm's own Cloudflare account; nobody hosts it. Version 0, author-tested only.
 
-**Try it: [demo.tidwick.dev/demo](https://demo.tidwick.dev/demo).** Pick one of four invented people; the data is reset every night.
+**Try it: [demo.tidwick.dev/demo](https://demo.tidwick.dev/demo).** Click one of four invented people to be them, with no sign-up or passkey; the data is reset every night.
 
 <p align="center"><img src="docs/screenshots/week.png" alt="The week grid: hours per project and task, Monday to Sunday, with a row of recent weeks above it" width="720"></p>
 <p align="center"><img src="docs/screenshots/approvals.png" alt="The approvals list an accounting admin works through" width="440"> <img src="docs/screenshots/week-phone.png" alt="The same week grid at phone width" width="180"></p>

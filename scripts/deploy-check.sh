@@ -33,7 +33,7 @@ case "${1:-}" in
   demo)
     flags=(--config wrangler.jsonc --env demo)
     todo='REPLACE_WITH'
-    need='SESSION_SECRET NOTE_KEK BACKUP_RECIPIENT DEMO_PASSWORD'
+    need='SESSION_SECRET NOTE_KEK BACKUP_RECIPIENT'
     ;;
   *) echo "FAIL deploy-check: the env is empty or demo, not \"$1\""; exit 1 ;;
 esac
@@ -48,9 +48,8 @@ fix=''
 for name in $need; do
   grep -qx "$name" <<< "$have" && continue
   missing="$missing $name"
-  # just deploy-secrets puts only the kit's three and the S3 four; DEMO_PASSWORD and the SSO secrets are set by hand.
+  # just deploy-secrets puts only the kit's three and the S3 four; the SSO secrets are set by hand.
   case "$name" in
-    DEMO_PASSWORD) fix="$fix; set DEMO_PASSWORD by hand: npx wrangler secret put DEMO_PASSWORD --env demo (16+ characters, ARCHITECTURE section 9)" ;;
     SSO_SECRET_*) fix="$fix; set $name by hand: npx wrangler secret put $name (the provider's client secret)" ;;
     *) grep -q 'run just deploy-secrets' <<< "$fix" || fix="$fix; run just deploy-secrets" ;;
   esac

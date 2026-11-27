@@ -33,9 +33,8 @@ describe('the demo deploy config', () => {
     expect(new URL(demo.vars?.['ORIGIN'] ?? '').hostname).toBe(demo.vars?.['RP_ID']);
   });
 
-  it('runs only the nightly reset on a cron, and the secret DEMO_PASSWORD is set on no config', () => {
+  it('runs only the nightly reset on a cron', () => {
     expect(demo['triggers']).toEqual({ crons: [DEMO_RESET_CRON] });
-    for (const path of Object.keys(files)) expect(files[path]).not.toMatch(/DEMO_PASSWORD/);
   });
 
   it('has no send-email binding and no account id, and carries its own database id and route', () => {

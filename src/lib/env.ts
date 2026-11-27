@@ -5,7 +5,6 @@ import {
   binding,
   choice,
   clientPrefixes,
-  demoPassword,
   hasMethods,
   mailOf,
   mcpOrigin,
@@ -23,8 +22,6 @@ import { readPolicy, type Policy } from './policy';
 import { isNoteKek, isSessionSecret } from './secrets';
 import { ssoProviders, type SsoProvider } from './sso-config';
 
-export { DEMO_PASSWORD_MIN } from './env-fields';
-
 export interface Env {
   DB: D1Database;
   /** The per-address limit on recovery and enrolment: 30 calls a minute (ADR 0003). */
@@ -39,10 +36,8 @@ export interface Env {
   MAIL_FROM: string | null;
   /** True only when `DEMO_BANNER` is `on`: every page then says it is a demo. Off by default. */
   DEMO_BANNER: boolean;
-  /** True only when `DEMO_LOGIN` is `on`: one of the four signals of the demo sign-in (`src/auth/demo.ts`). */
+  /** True only when `DEMO_LOGIN` is `on`: one of the three signals of the demo sign-in (`src/auth/demo.ts`). */
   DEMO_LOGIN: boolean;
-  /** The demo sign-in's shared password, or null when unset or shorter than 16 characters, which closes it. */
-  DEMO_PASSWORD: string | null;
   /** True only when `MCP` is `on`: `/mcp` and the agent routes answer; otherwise every one of them is a 404. Off by default. */
   MCP: boolean;
   /** `read` lets an agent read note text; `off` (the default) gives it `has_note` and nothing more. */
@@ -87,7 +82,6 @@ function parse(source: Source, gaps?: string[]): Env {
     MAIL_FROM: mail?.MAIL_FROM ?? null,
     DEMO_BANNER: field(() => choice(source, 'DEMO_BANNER', ['', 'on'], '') === 'on'),
     DEMO_LOGIN: field(() => choice(source, 'DEMO_LOGIN', ['', 'on'], '') === 'on'),
-    DEMO_PASSWORD: demoPassword(source),
     MCP: field(() => choice(source, 'MCP', ['', 'on'], '') === 'on'),
     MCP_NOTES: field(() =>
       choice(source, 'MCP_NOTES', ['', 'off', 'read'], '') === 'read' ? 'read' : 'off',
