@@ -55,7 +55,7 @@ Mitigations:
 - `via` in the hashed audit `after`, so an agent's change is never taken for the person's own.
 - Notes are off by default; free text from other people is capped and labelled as data.
 - Two-step submit under the fingerprint WHERE; rate limits; MCP off by default.
-- OAuth: the trust policy above, PKCE S256, single-use codes, rotating refresh tokens whose reuse cuts the grant, consent behind a passkey confirmation, and a hand-off page that keeps the code out of a referrer.
+- OAuth: the trust policy above, PKCE S256, single-use codes, rotating refresh tokens whose reuse cuts the grant, consent behind a step-up confirmation (passkey or provider), and a hand-off page that keeps the code out of a referrer.
 
 Honest limits:
 
