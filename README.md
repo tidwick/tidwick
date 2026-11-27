@@ -31,7 +31,7 @@ Read the threat model in `docs/adr/0014-agent-surface.md` before turning it on; 
 
 The button gets you a running Worker; a firm's instance needs more, and the nightly backup fails until it is done.
 
-- A Cloudflare account on the Workers Paid plan, and a second Cloudflare account for the off-account backup copy.
+- A Cloudflare account (plan: ARCHITECTURE §9), and a second Cloudflare account for the off-account backup copy.
 - A domain on that account, for passkeys and for the alert mail (Email Routing, with the alert address verified).
 - Someone who owns the offline kit (age identity, `NOTE_KEK`, `SESSION_SECRET`). Losing `NOTE_KEK` loses every note.
 - About an hour, and a terminal for the backup bucket and its secrets.

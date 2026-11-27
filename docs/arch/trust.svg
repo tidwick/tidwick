@@ -52,7 +52,7 @@
 <rect x="216" y="266" width="164" height="52" rx="6" class="sff bds" stroke-width="1"/>
 <text x="298.0" y="280.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">CONTROL</text>
 <text x="298.0" y="295.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Step-up</text>
-<text x="298.0" y="308.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">fresh passkey, 15 min</text>
+<text x="298.0" y="308.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">fresh confirmation, 15 min</text>
 <rect x="428" y="76" width="188" height="112" rx="6" class="sff bds" stroke-width="1"/>
 <text x="522.0" y="120.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">TRUSTED</text>
 <text x="522.0" y="135.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Cloudflare, WebAuthn</text>

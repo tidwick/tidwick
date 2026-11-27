@@ -21,7 +21,7 @@
 <rect x="136" y="72" width="116" height="48" rx="6" class="sff bds" stroke-width="1"/>
 <text x="194.0" y="84.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="tm">MIDDLEWARE</text>
 <text x="194.0" y="99.0" text-anchor="middle" font-size="12" font-weight="600" class="t">Gate chain</text>
-<text x="194.0" y="112.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" class="t2">err, session, CSRF</text>
+<text x="194.0" y="112.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" class="t2">host, session, CSRF</text>
 <rect x="272" y="72" width="84" height="48" rx="6" class="acf"/>
 <text x="314.0" y="84.0" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="8" letter-spacing="0.08em" class="ace" opacity="0.8">AUTHZ</text>
 <text x="314.0" y="99.0" text-anchor="middle" font-size="12" font-weight="600" class="ace">routes.ts</text>

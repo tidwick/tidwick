@@ -17,7 +17,7 @@ export type CsrfVerdict =
 /** The paths whose callers are not browsers: the MCP route, which takes a bearer, and the token endpoint, which takes a form. */
 const AGENT_PATHS: ReadonlySet<string> = new Set(['/mcp', '/oauth/token']);
 
-/** The route patterns that exist only while `MCP` is on; off, each is a 404 before a session or a table row is read. */
+/** The route patterns that exist only while `MCP` is on; off, each is a 404 before authorization or the route table is consulted. */
 const MCP_ONLY: ReadonlySet<string> = new Set([
   ...AGENT_PATHS,
   '/oauth/authorize',
