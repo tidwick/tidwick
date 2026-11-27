@@ -49,9 +49,12 @@ const { csrf, status, rotating, keepUntil, keepDays, perRun } = Astro.props;
   {rotating && status.previous === 0 && status.other === 0 && (
     <p class="text-sm">
       Every client key is under NOTE_KEK. Keep NOTE_KEK_PREVIOUS
-      {keepUntil === null ? ` for ${String(keepDays)} days` : ` until ${keepUntil}`}, so a backup
-      made before the rotation can still be restored, then delete it under Settings, Variables and
-      Secrets in the Cloudflare dashboard, or with
+      {keepUntil === null ? ` for ${String(keepDays)} days` : ` until ${keepUntil}`}, but only if
+      your off-account bucket expires backups at {keepDays} days. Confirm with
+      <code>npx wrangler r2 bucket lifecycle list &lt;bucket&gt;</code>; if its expiry is longer,
+      wait that long. A backup made before the rotation can only be restored while the retired key
+      exists. Then delete it under Settings, Variables and Secrets in the Cloudflare dashboard, or
+      with
       <code>npx wrangler secret delete NOTE_KEK_PREVIOUS</code>.
     </p>
   )}

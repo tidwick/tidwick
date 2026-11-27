@@ -29,9 +29,9 @@ async function counts(): Promise<number[]> {
 describe('the demo seed', () => {
   beforeAll(load);
 
-  it('holds two invented firms, 25 people, 12 projects and a key per client', async () => {
+  it('holds two invented firms, 26 people, 12 projects and a key per client', async () => {
     expect(await count('SELECT count(*) AS n FROM firm')).toBe(2);
-    expect(await count('SELECT count(*) AS n FROM person')).toBe(25);
+    expect(await count('SELECT count(*) AS n FROM person')).toBe(26);
     expect(await count('SELECT count(*) AS n FROM project')).toBe(12);
     expect(await count('SELECT count(*) AS n FROM client_key')).toBe(demoClientIds.length);
     expect(await count("SELECT count(*) AS n FROM person_role WHERE role = 'admin'")).toBe(1);
@@ -49,7 +49,7 @@ describe('the demo seed', () => {
       await count(
         'SELECT count(*) AS n FROM (SELECT person_id, week_start FROM week_row GROUP BY 1, 2)',
       ),
-    ).toBe(25 * 13);
+    ).toBe(26 * 13);
     expect(
       await count(`SELECT count(*) AS n FROM week_submission WHERE week_start = '${WEEK}'`),
     ).toBe(0);
@@ -68,6 +68,30 @@ describe('the demo seed', () => {
     expect(
       await count(
         "SELECT count(*) AS n FROM week_submission WHERE state = 'submitted' AND decided_by IS NOT NULL",
+      ),
+    ).toBe(0);
+  });
+
+  it('has one person who left, with open weeks to approve on their behalf, and returned weeks that say why', async () => {
+    const left = await env.DB.prepare('SELECT id FROM person WHERE offboarded_at IS NOT NULL').all<{
+      id: string;
+    }>();
+    expect(left.results).toHaveLength(1);
+    const id = left.results[0]?.id ?? '';
+    const open = `SELECT count(*) AS n FROM week_row r WHERE r.person_id = '${id}' AND NOT EXISTS
+      (SELECT 1 FROM week_submission s WHERE s.person_id = r.person_id AND s.week_start = r.week_start)`;
+    expect(await count(open)).toBeGreaterThan(0);
+    expect(
+      await count("SELECT count(*) AS n FROM week_submission WHERE state = 'returned'"),
+    ).toBeGreaterThan(0);
+    expect(
+      await count(
+        "SELECT count(*) AS n FROM week_submission WHERE state = 'returned' AND (return_reason IS NULL OR return_reason = '')",
+      ),
+    ).toBe(0);
+    expect(
+      await count(
+        "SELECT count(*) AS n FROM week_submission WHERE state != 'returned' AND return_reason IS NOT NULL",
       ),
     ).toBe(0);
   });

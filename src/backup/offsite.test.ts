@@ -209,7 +209,12 @@ describe('SEC-15 the off-account copy', () => {
     };
     const run = await runBackup({ ...deps, copy: s3Copy(bucket.settings, flaky) }, at);
     expect(run).toMatchObject({ status: 'ok', error: null });
-    expect(bucket.seen).toEqual(Array(2).fill(`PUT /offsite-backups/${objectKey(at)}`));
+    // The retry's 409 is believed only after a signed GET shows the stored bytes are this run's file.
+    expect(bucket.seen).toEqual([
+      `PUT /offsite-backups/${objectKey(at)}`,
+      `PUT /offsite-backups/${objectKey(at)}`,
+      `GET /offsite-backups/${objectKey(at)}`,
+    ]);
     // A first write over an existing object is not a retry: it meets the lock's refusal.
     const again = s3Copy(bucket.settings, (r) => bucket.fetch(r));
     expect(await again.write(objectKey(at), new Uint8Array([1]))).toBe(

@@ -56,7 +56,10 @@ const { lastTest } = status;
           {run.error !== null && <span class="block text-danger">{run.error}</span>}
           {run.status === 'ok' && (
             <span class="block break-all text-muted-foreground">
-              Chain head <code data-head>{`${String(run.chain_seq)}:${run.chain_head}`}</code>
+              Recorded value{' '}
+              <code
+                data-head
+              >{`${String(run.chain_seq)}:${run.chain_head}:${run.rows_digest}`}</code>
             </span>
           )}
         </li>
@@ -65,8 +68,8 @@ const { lastTest } = status;
   )}
   {status.runs.some((run) => run.status === 'ok') && (
     <p class="text-sm text-muted-foreground">
-      Record a chain head off this account, in the offline kit: a restore refuses a backup that does
-      not end at the head you give it.
+      Record this value (audit head and the digest of every other row) off this account, in the
+      offline kit: a restore refuses a backup that does not match the value you give it.
     </p>
   )}
   {status.runs[0]?.status === 'failed' && (

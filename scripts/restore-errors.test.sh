@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Proves the restore and gen-test-keys failure text: a missing identity, a missing backup, a backup that does not
-# open, and a missing or malformed expected head each print one FAIL line naming the path and the next step, never a stack; gen-test-keys removes the backup
+# open, and a missing or malformed recorded value (the audit head alone included) each print one FAIL line naming the path and the next step, never a stack; gen-test-keys removes the backup
 # it orphans and says to run backup-fixture. Works in a throwaway directory; test/fixtures/ is untouched.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,7 +13,8 @@ fail() {
   exit 1
 }
 
-head="0:$(printf '0%.0s' $(seq 64))"
+zeros="$(printf '0%.0s' $(seq 64))"
+head="0:$zeros:$zeros"
 
 # expect_args <label> <text the one FAIL line must hold> <every arg to restore.ts>
 expect_args() {
@@ -52,6 +53,7 @@ printf 'not an age file\n' > "$work/backup.age"
 expect "backup for another key" "just backup-fixture" "$work/backup.age" "$work/backup-key.txt"
 
 expect_args "no expected head" "usage: restore.ts" "$work/backup.age" "$work/backup-key.txt" "$work/out.sql"
-expect_args "malformed expected head" "must be seq:hash" "$work/backup.age" "$work/backup-key.txt" "$work/out.sql" "12:abc"
+expect_args "malformed expected head" "must be seq:hash:digest" "$work/backup.age" "$work/backup-key.txt" "$work/out.sql" "12:abc"
+expect_args "head without the digest" "must be seq:hash:digest" "$work/backup.age" "$work/backup-key.txt" "$work/out.sql" "0:$zeros"
 
 echo "PASS restore-errors self-test"

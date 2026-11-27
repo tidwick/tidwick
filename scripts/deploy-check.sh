@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Before a deploy: wrangler.jsonc holds no placeholder, and every secret the target needs is set on it. Usage:
 # scripts/deploy-check.sh [demo]. Optional secrets (NOTE_KEK_PREVIOUS, MCP, MCP_CLIENTS, SSO_PROVIDERS, SETUP_TOKEN, ...) are never
-# demanded. WRANGLER names the command that runs wrangler; the test points it at a stub.
+# demanded, except the SSO_SECRET_<ID> of each provider id the top-level SSO_PROVIDERS names in wrangler.jsonc (a provider without its
+# secret fails every request); a SSO_PROVIDERS kept as a secret cannot be read here, so it warns instead. WRANGLER names the command that runs wrangler; the test points it at a stub.
 set -euo pipefail
 wrangler="${WRANGLER:-npx --no-install wrangler}"
 case "${1:-}" in
@@ -16,6 +17,12 @@ case "${1:-}" in
     host="$(sed -nE 's/.*"ORIGIN"[[:space:]]*:[[:space:]]*"https?:\/\/([^"\/:]*).*/\1/p' <<< "$top" | head -1)"
     if grep -qE '"workers_dev"[[:space:]]*:[[:space:]]*true' <<< "$top" && [[ "$host" != *.workers.dev ]]; then
       echo "WARN deploy-check: workers_dev is still true with ORIGIN on $host; set \"workers_dev\": false in wrangler.jsonc now that the custom domain serves it"
+    fi
+    # Each provider id in a top-level SSO_PROVIDERS (a JSON array, or its text as a string with escaped quotes) needs its secret.
+    if grep -q '"SSO_PROVIDERS"' <<< "$top"; then
+      for id in $(grep -oE '\\?"id\\?"[[:space:]]*:[[:space:]]*\\?"[A-Za-z0-9-]+' <<< "$top" | sed -E 's/.*"//'); do
+        need="$need SSO_SECRET_$(tr 'a-z-' 'A-Z_' <<< "$id")"
+      done
     fi
     case "$copy" in
       none) ;;
@@ -35,9 +42,18 @@ if grep -nE "$todo" wrangler.jsonc; then
   exit 1
 fi
 have="$($wrangler secret list ${flags[@]+"${flags[@]}"} --format json | grep -oE '"name": *"[A-Z_0-9]+"' | grep -oE '[A-Z_0-9]+"$' | tr -d '"' || true)"
+grep -qx SSO_PROVIDERS <<< "$have" && echo "WARN deploy-check: SSO_PROVIDERS is a secret, so its SSO_SECRET_<ID> secrets cannot be checked here; confirm each provider has one"
 missing=''
+fix=''
 for name in $need; do
-  grep -qx "$name" <<< "$have" || missing="$missing $name"
+  grep -qx "$name" <<< "$have" && continue
+  missing="$missing $name"
+  # just deploy-secrets puts only the kit's three and the S3 four; DEMO_PASSWORD and the SSO secrets are set by hand.
+  case "$name" in
+    DEMO_PASSWORD) fix="$fix; set DEMO_PASSWORD by hand: npx wrangler secret put DEMO_PASSWORD --env demo (16+ characters, ARCHITECTURE section 9)" ;;
+    SSO_SECRET_*) fix="$fix; set $name by hand: npx wrangler secret put $name (the provider's client secret)" ;;
+    *) grep -q 'run just deploy-secrets' <<< "$fix" || fix="$fix; run just deploy-secrets" ;;
+  esac
 done
-[ -z "$missing" ] || { echo "FAIL deploy-check: secrets not set on the target:$missing; run just deploy-secrets"; exit 1; }
+[ -z "$missing" ] || { echo "FAIL deploy-check: secrets not set on the target:$missing$fix"; exit 1; }
 echo "PASS deploy-check"

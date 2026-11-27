@@ -68,6 +68,14 @@ for (const table of BACKUP_TABLES) {
     `${table.padEnd(16)} ${String(expected(table)).padStart(7)} ${String(after.counts.get(table)).padStart(8)} ${match ? `ok ${(after.digests.get(table) ?? '').slice(0, 12)}` : `MISMATCH ${same ? 'count' : 'content'}`}`,
   );
 }
+// A kept table with no source rows compares 0 against 0 and proves nothing; backup_run is exempt (its one source row is the run itself).
+const empty = BACKUP_TABLES.find((table) => table !== 'backup_run' && expected(table) === 0);
+if (empty !== undefined) {
+  console.error(
+    `FAIL restore-drill: source table ${empty} has 0 rows; seed one in test/seed/kept.sql so the drill proves it`,
+  );
+  process.exit(1);
+}
 const sqlMode = statSync(`${restored}/restore.sql`).mode & 0o777;
 if ((sqlMode & 0o077) !== 0) {
   console.error(

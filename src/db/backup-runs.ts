@@ -11,15 +11,17 @@ export interface BackupRun {
   chars: number;
   chain_seq: number;
   chain_head: string;
+  /** The digest of the file's non-audit rows, recorded off the file (see `rowsDigest`). */
+  rows_digest: string;
   status: 'ok' | 'failed';
   error: string | null;
 }
 
 const INSERT = `INSERT INTO backup_run
-  (id, started_at, finished_at, object_key, bytes, chain_seq, chain_head, status, error, chars)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`;
+  (id, started_at, finished_at, object_key, bytes, chain_seq, chain_head, status, error, chars, rows_digest)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`;
 
-const LATEST_GOOD = `SELECT id, started_at, finished_at, object_key, bytes, chars, chain_seq, chain_head, status, error
+const LATEST_GOOD = `SELECT id, started_at, finished_at, object_key, bytes, chars, chain_seq, chain_head, rows_digest, status, error
 FROM backup_run WHERE status = 'ok' ORDER BY finished_at DESC LIMIT 1`;
 
 const LATEST = `SELECT status, finished_at, error FROM backup_run ORDER BY finished_at DESC LIMIT 1`;
@@ -38,6 +40,7 @@ export async function recordRun(db: D1Database, run: BackupRun): Promise<void> {
       run.status,
       run.error,
       run.chars,
+      run.rows_digest,
     )
     .run();
 }
@@ -53,7 +56,7 @@ export async function latestRun(
   return db.prepare(LATEST).first<Pick<BackupRun, 'status' | 'finished_at' | 'error'>>();
 }
 
-const RECENT = `SELECT id, started_at, finished_at, object_key, bytes, chars, chain_seq, chain_head, status, error
+const RECENT = `SELECT id, started_at, finished_at, object_key, bytes, chars, chain_seq, chain_head, rows_digest, status, error
 FROM backup_run ORDER BY finished_at DESC LIMIT ?1`;
 
 /** The newest `count` runs of either status, newest first, for the settings page's status block. */

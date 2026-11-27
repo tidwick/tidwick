@@ -70,6 +70,7 @@ describe('verifying the audit chain on demand', () => {
       chars: 1,
       chain_seq: seq,
       chain_head: hash,
+      rows_digest: hash,
       status: 'ok',
       error: null,
     });

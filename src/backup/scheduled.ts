@@ -35,6 +35,7 @@ export async function scheduled(
         copy: offsiteCopy(env.copy, fetcher),
         retryPauseMs: retryPauseMs ?? env.policy.backupRetryPauseMs,
         tries: env.policy.backupTries,
+        gaps: env.gaps,
       },
       controller.scheduledTime,
     );

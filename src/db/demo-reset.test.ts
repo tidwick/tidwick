@@ -30,7 +30,7 @@ describe('the demo reset', () => {
     await applyD1Migrations(env.DB, TEST_MIGRATIONS);
     await env.DB.exec(seed);
     const people = await env.DB.prepare('SELECT count(*) AS n FROM person').first<{ n: number }>();
-    expect(people?.n).toBe(25);
+    expect(people?.n).toBe(26);
     const events = await env.DB.prepare('SELECT count(*) AS n FROM audit_event').first<{
       n: number;
     }>();

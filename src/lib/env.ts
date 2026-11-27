@@ -138,7 +138,8 @@ function copyOf(s: Source): CopySettings {
 /**
  * What the 03:00 backup reads: the recipient and the copy's settings as configured, each empty when unset, so a
  * missing or malformed one becomes a failed `backup_run` the 09:00 check reports rather than a cron that stops
- * before recording one. Only the 03:00 cron and the admin's "Back up now" read them.
+ * before recording one. An out-of-range knob does not stop it: only the backup's own (`BACKUP_*`) fail the run, and
+ * the rest are left to the web requests, which already refuse them. Only the 03:00 cron and "Back up now" read them.
  */
 export function backupEnv(source: object): {
   DB: D1Database;
@@ -146,14 +147,19 @@ export function backupEnv(source: object): {
   BACKUP_RECIPIENT: string;
   copy: CopySettings;
   policy: Policy;
+  /** The backup's own knobs that were out of range, left at their defaults; the run fails naming them. */
+  gaps: string[];
 } {
   const s = source as Source;
+  const gaps: string[] = [];
+  const policy = readPolicy(s, gaps);
   return {
     DB: binding(s, 'DB', ['prepare', 'batch']) as D1Database,
     BACKUPS: binding(s, 'BACKUPS', ['put', 'get', 'list']) as R2Bucket,
     BACKUP_RECIPIENT: configured(s, 'BACKUP_RECIPIENT'),
     copy: copyOf(s),
-    policy: readPolicy(s),
+    policy,
+    gaps: gaps.filter((name) => name.startsWith('BACKUP_')),
   };
 }
 

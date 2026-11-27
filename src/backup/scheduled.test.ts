@@ -43,4 +43,27 @@ describe('the scheduled handler', () => {
     expect(log).toHaveBeenCalledTimes(1);
     expect(await backupRuns(env.DB)).toHaveLength(before);
   });
+
+  it('an invalid knob the backup does not use still lets the 03:00 backup write its run', async () => {
+    const before = (await backupRuns(env.DB)).length;
+    await scheduled(createScheduledController({ cron: BACKUP_CRON, scheduledTime: AT + 1000 }), {
+      ...env,
+      REPORT_MAX_BARS: '500',
+    });
+    const runs = await backupRuns(env.DB);
+    expect(runs).toHaveLength(before + 1);
+    expect(runs.at(-1)).toMatchObject({ status: 'ok', error: null });
+  });
+
+  it('an invalid backup knob records a failed run naming it, writes no object, and the 09:00 check can report it', async () => {
+    const at = AT + 2000;
+    await scheduled(createScheduledController({ cron: BACKUP_CRON, scheduledTime: at }), {
+      ...env,
+      BACKUP_TRIES: '99',
+    });
+    const run = (await backupRuns(env.DB)).at(-1);
+    expect(run?.status).toBe('failed');
+    expect(run?.error).toMatch(/^missing_binding: BACKUP_TRIES /);
+    expect(await env.BACKUPS.get(run?.object_key ?? '')).toBeNull();
+  });
 });

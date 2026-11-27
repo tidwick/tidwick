@@ -5,6 +5,7 @@ import { addDays } from '../../src/lib/week.ts';
 import { sealedSeedNote } from '../seed/keys.ts';
 import {
   DEMO_ACCOUNTANTS,
+  DEMO_LEAVER,
   demoAssigned,
   demoId,
   demoPeople,
@@ -26,7 +27,8 @@ export type DemoState = 'submitted' | 'approved' | 'returned' | null;
 
 /** The state of person `n`'s week `back` weeks before the current one; null is a draft. */
 export function demoState(n: number, back: number): DemoState {
-  if (back === 0) return null;
+  // The leaver's last two weeks stay open drafts, for an accounting admin to approve on their behalf.
+  if (back === 0 || (n === DEMO_LEAVER && back === 1)) return null;
   if (back === 1) return n % 5 === 4 ? null : 'submitted';
   if (back === 2) return n % 8 === 3 ? 'returned' : n % 11 === 6 ? 'submitted' : 'approved';
   return (n + back) % 17 === 0 ? 'returned' : 'approved';
@@ -88,6 +90,9 @@ function rowsOf(n: number, week: number): Row[] {
   return leave.days.size > 0 ? [...rows, leave] : rows;
 }
 
+/** Why an accountant sent a week back; the demo's returned weeks all carry it, as the app requires one. */
+const RETURN_REASON = 'Please split the 3h block across both projects.';
+
 const at = (weekStart: string, days: number, hour: number, minutes: number): number =>
   Date.parse(`${addDays(weekStart, days)}T00:00:00Z`) + hour * 3600000 + minutes * 60000;
 
@@ -134,8 +139,9 @@ export async function demoWeekStatements(kek: string, currentWeek: string): Prom
         state === 'submitted'
           ? 'NULL, NULL'
           : `'${decider}', ${String(at(weekStart, 7, 9, 30 + n * 3))}`;
+      const reason = state === 'returned' ? `'${RETURN_REASON}'` : 'NULL';
       allSubmissions.push(
-        `('${person.id}', '${weekStart}', '${state}', ${String(submittedAt)}, ${decided})`,
+        `('${person.id}', '${weekStart}', '${state}', ${String(submittedAt)}, ${decided}, ${reason})`,
       );
     }
   }
@@ -149,7 +155,7 @@ export async function demoWeekStatements(kek: string, currentWeek: string): Prom
       allEntries,
     ),
     ...multiRow(
-      'week_submission (person_id, week_start, state, submitted_at, decided_by, decided_at)',
+      'week_submission (person_id, week_start, state, submitted_at, decided_by, decided_at, return_reason)',
       allSubmissions,
     ),
   ];

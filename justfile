@@ -104,12 +104,12 @@ demo-reset target="local":
     npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo-drop.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the tables did not drop; the statement wrangler names above is in test/demo/reset.ts"; exit 1; }
     npx --no-install wrangler d1 migrations apply "${db[@]}" --force >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: migrations did not apply to the {{ target }} D1; fix the SQL named above"; exit 1; }
     npx --no-install wrangler d1 execute "${db[@]}" --file .wrangler/demo.sql >> "$log" 2>&1 || { tail -n 40 "$log"; echo "FAIL demo-reset: the demo seed did not load; the statement wrangler names above is built in test/demo/"; exit 1; }
-    echo "PASS demo-reset ({{ target }}): 2 invented firms, 25 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
+    echo "PASS demo-reset ({{ target }}): 2 invented firms, 26 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
 
 # One command for a human to see the demo: reset and load the demo seed into the local D1, give the generated dummy
 # .dev.vars the demo sign-in's signals (DEMO_LOGIN, DEMO_BANNER, a dummy DEMO_PASSWORD), then serve the production
-# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Pick a persona there: member, approver
-# (accounting admin) or admin. The seed itself carries the fourth signal, and no real secret is involved.
+# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Pick a persona there: member, a second-firm
+# member, approver (accounting admin) or admin (key manager). The seed itself carries the fourth signal, and no real secret is involved.
 demo-local:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -144,6 +144,7 @@ backup-fixture:
     node scripts/seed.ts > "$state/seed.sql"
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file "$state/seed.sql" > "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the synthetic seed did not load; fix test/seed/"; exit 1; }
     npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file test/seed/hostile.sql >> "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the hostile-text rows did not load; fix test/seed/hostile.sql"; exit 1; }
+    npx --no-install wrangler d1 execute tidwick --local --config test/wrangler.test.jsonc --persist-to "$state/source" --file test/seed/kept.sql >> "$state/seed.log" 2>&1 || { cat "$state/seed.log"; echo "FAIL backup-fixture: the kept-table rows did not load; fix test/seed/kept.sql"; exit 1; }
     node scripts/backup-fixture.ts "$state/source" test/fixtures/backup-recipient.txt test/fixtures/backup.age
 
 restore file identity head persist=".wrangler/restore":
@@ -166,7 +167,7 @@ backup-fetch night out=".wrangler/restore-remote/backup.age":
     [[ "$night" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || { echo "FAIL backup-fetch: pass YYYY-MM-DD (nightly) or YYYY-MM-DD-HHMMSS (UTC, on-demand), not {{ quote(night) }}"; exit 1; }
     mkdir -p -m 700 "$(dirname {{ quote(out) }})"
     npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo "$night" | sed 's#-#/#; s#-#/#').ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; nightly keys end -030000, an on-demand time needs the full HHMMSS; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
-    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit> <the seq:hash head you recorded for this backup>"
+    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit> <the seq:hash:digest value you recorded for this backup>"
 
 # Loads a backup into the deployed database of the same name: migrate, then the rows. For a lost database: create
 # it first (`wrangler d1 create tidwick`), run this BEFORE `just deploy`, then follow ARCHITECTURE, Operate, Restore.
@@ -362,6 +363,7 @@ playwright-version:
 
 # The deployed sites answer as the code says they do, GET only: the demo's sign-in is open, /login carries its CSP and a
 # hashed script that loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
+# The demo binds no BACKUPS and its nightly wipe clears backup_run, so no good backup ever exists there: /healthz answers 503 by design.
 live:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -370,7 +372,9 @@ live:
     t="$(mktemp -d)"
     want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
     want /demo "$(get "$t/demo" $demo/demo)" 200
-    grep -q 'Pick a person' "$t/demo" || { echo "FAIL live: /demo lacks \"Pick a person\""; exit 1; }
+    grep -q 'Sign in as' "$t/demo" || { echo "FAIL live: /demo lacks the persona picker (\"Sign in as\"); check src/pages/demo.astro and DEMO_LOGIN"; exit 1; }
+    grep -q 'name="password"' "$t/demo" || { echo "FAIL live: /demo lacks the password field; check src/pages/demo.astro"; exit 1; }
+    want /healthz "$(get "$t/hz" $demo/healthz)" 503
     want /login "$(get "$t/login" $demo/login)" 200
     grep -qi '^content-security-policy:' "$t/login.h" || { echo "FAIL live: /login sends no content-security-policy"; exit 1; }
     script="$(grep -o 'src="/_astro/[^"]*\.js"' "$t/login" | head -1 | cut -d'"' -f2)"

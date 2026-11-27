@@ -4,6 +4,7 @@
 // Only local development and the browser tests, where ORIGIN is itself http on a loopback host, fetch a loopback
 // http document. The `global_fetch_strictly_public` compatibility flag (wrangler.jsonc) makes the runtime refuse a
 // public name that resolves to a private address, which this file cannot see.
+import { LOOPBACK_HOSTS } from '../lib/env-fields';
 import { OauthError } from './error';
 import { parseRedirect } from './redirect';
 
@@ -30,14 +31,8 @@ export function documentUrl(clientId: string, origin: string): URL {
   if (!URL.canParse(clientId)) return refuse('The client_id is not a web address.');
   const url = new URL(clientId);
   const here = new URL(origin);
-  const local =
-    here.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(here.hostname);
-  if (
-    local &&
-    url.protocol === 'http:' &&
-    ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-  )
-    return url;
+  const local = here.protocol === 'http:' && LOOPBACK_HOSTS.includes(here.hostname);
+  if (local && url.protocol === 'http:' && LOOPBACK_HOSTS.includes(url.hostname)) return url;
   if (url.protocol !== 'https:' || url.port !== '')
     return refuse('The client_id must be an https address on port 443.');
   if (url.username !== '' || url.password !== '' || url.hash !== '')

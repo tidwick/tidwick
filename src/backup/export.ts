@@ -1,23 +1,16 @@
 // The 03:00 backup: every kept table as NDJSON after a header, gzipped, encrypted with age to the adopter's
 // public key, written to the sink and to the off-account copy. Relative imports carry `.ts` so the restore drill
 // script runs it in Node. The same holds for every file the scripts import (backup/export, s3-copy, sigv4,
-// backup-runs, restore, rescue, db/backup-rows, lib/backup-format, chain, limits, note-crypto): relative `.ts`
+// backup-runs, dump, restore, rescue, db/backup-rows, lib/backup-format, chain, limits, note-crypto): relative `.ts`
 // imports, and never `cloudflare:*` or `astro:*` modules.
 import { Encrypter } from 'age-encryption';
-import {
-  BACKUP_TABLES,
-  chainHead,
-  PAGE_ROWS,
-  readPage,
-  schemaVersion,
-  snapshot,
-  type Snapshot,
-} from '../db/backup-rows.ts';
+import { chainHead, PAGE_ROWS, schemaVersion, snapshot, type Snapshot } from '../db/backup-rows.ts';
 import { recordRun, type BackupRun } from '../db/backup-runs.ts';
 import { errorText } from '../lib/error-text.ts';
 import { isAgeRecipient } from '../lib/secrets.ts';
 import { withRetry } from './retry.ts';
-import { encodeLine, FORMAT, VERSION, type BackupHeader } from '../lib/backup-format.ts';
+import { FORMAT, VERSION, type BackupHeader } from '../lib/backup-format.ts';
+import { gzip, ndjson } from './dump.ts';
 import { BACKUP_DUMP_CHARS, D1_QUERIES_PER_INVOCATION } from '../lib/limits.ts';
 
 /** Where the backup goes: the `BACKUPS` R2 binding, or anything with the same `put`. */
@@ -40,6 +33,8 @@ export interface BackupDeps {
   retryPauseMs?: number;
   /** Tries a write gets, the first included; `BACKUP_TRIES`. */
   tries?: number;
+  /** Backup settings that were out of range and left at their defaults; any makes the run fail naming them. */
+  gaps?: readonly string[];
 }
 
 /** `backups/YYYY/MM/DD-HHMMSS.ndjson.gz.age` for the UTC time of `now`, so a second backup the same day keeps both. */
@@ -51,44 +46,11 @@ export function objectKey(now: number): string {
 
 /**
  * Statements a run needs for these row counts: the schema version (two), the head and one count per table (one
- * batch),
- * one keyset page per started 2,000 rows plus the empty page that ends each table, and the run record.
+ * batch), one keyset page per started 2,000 rows plus the empty page that ends each table, and the run record.
  */
 export function plannedQueries(counts: readonly number[]): number {
   const pages = counts.reduce((sum, n) => sum + Math.floor(n / PAGE_ROWS) + 1, 0);
   return 2 + 1 + counts.length + pages + 1;
-}
-
-async function gzip(text: string): Promise<Uint8Array> {
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
-/** The dump as one string, or the table it was reading when it passed `cap` characters. */
-async function ndjson(
-  db: D1Database,
-  header: BackupHeader,
-  taken: Snapshot,
-  cap: number,
-): Promise<{ text: string } | { over: string }> {
-  const lines = [JSON.stringify(header)];
-  let chars = (lines[0]?.length ?? 0) + 1;
-  for (const [i, table] of BACKUP_TABLES.entries()) {
-    const last = taken.tables[i]?.last ?? 0;
-    let after = 0;
-    for (;;) {
-      const page = await readPage(db, table, after, last);
-      for (const row of page.rows) {
-        const line = encodeLine(table, row);
-        chars += line.length + 1;
-        if (chars > cap) return { over: table };
-        lines.push(line);
-      }
-      if (page.rows.length < PAGE_ROWS) break;
-      after = page.next;
-    }
-  }
-  return { text: `${lines.join('\n')}\n` };
 }
 
 /** The limits one run is held to: D1 statements, and characters of NDJSON built in memory. */
@@ -106,14 +68,20 @@ async function dumpOnce(
   startedAt: number,
   limits: BackupLimits,
 ): Promise<
-  string | { dump: { text: string }; head: Snapshot['head']; planned: number; steady: boolean }
+  | string
+  | {
+      dump: { text: string; digest: string };
+      head: Snapshot['head'];
+      planned: number;
+      steady: boolean;
+    }
 > {
   const taken = await snapshot(db);
   const planned = plannedQueries(taken.tables.map((t) => t.count));
   if (planned > limits.queries) {
     return `query budget: ${String(planned)} statements needed, ${String(limits.queries)} allowed`;
   }
-  const header: BackupHeader = {
+  const header: Omit<BackupHeader, 'rows_digest'> = {
     format: FORMAT,
     version: VERSION,
     schema_version: schema,
@@ -135,6 +103,9 @@ async function attempt(
   run: BackupRun,
   limits: BackupLimits,
 ): Promise<string | null> {
+  if (deps.gaps !== undefined && deps.gaps.length > 0) {
+    return `missing_binding: ${deps.gaps.join(', ')} is out of range; fix it in wrangler.jsonc vars`;
+  }
   if (!isAgeRecipient(deps.recipient)) {
     return 'missing_binding: BACKUP_RECIPIENT is not an age public key; set it from the offline kit';
   }
@@ -155,6 +126,7 @@ async function attempt(
     const dump = dumped.dump;
     run.chain_seq = dumped.head.seq;
     run.chain_head = dumped.head.hash;
+    run.rows_digest = dump.digest;
     run.chars = dump.text.length;
     step = 'encrypting';
     const encrypter = new Encrypter();
@@ -218,6 +190,7 @@ export async function runBackup(
     chars: 0,
     chain_seq: 0,
     chain_head: '0'.repeat(64),
+    rows_digest: '0'.repeat(64),
     status: 'failed',
     error: null,
   };

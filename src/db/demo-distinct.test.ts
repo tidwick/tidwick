@@ -26,7 +26,7 @@ describe('the demo seed is not the test seed', () => {
     await env.DB.exec((await demoSeedStatements(currentEnv().NOTE_KEK, '2026-11-16')).join('\n'));
     expect(await count('SELECT count(*) AS n FROM firm')).toBe(2 + 2);
     expect(await count('SELECT count(*) AS n FROM client')).toBe(10 + 7);
-    expect(await count('SELECT count(*) AS n FROM person')).toBe(100 + 25);
+    expect(await count('SELECT count(*) AS n FROM person')).toBe(100 + 26);
     expect(await count('SELECT count(*) AS n FROM task_code')).toBe(8 + 8);
     expect(await count('SELECT count(*) AS n FROM project')).toBe(40 + 12);
     for (const table of ['project', 'person']) {

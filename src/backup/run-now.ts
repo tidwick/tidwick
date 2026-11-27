@@ -24,6 +24,7 @@ export async function backUpNow(
       copy: offsiteCopy(env.copy, fetcher),
       retryPauseMs: env.policy.backupRetryPauseMs,
       tries: env.policy.backupTries,
+      gaps: env.gaps,
     },
     now,
   );
