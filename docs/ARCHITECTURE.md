@@ -142,14 +142,14 @@ Lab checklist, run by hand each release, on a fresh Cloudflare account that has 
 - `/admin/settings` shows the backup status; press "Send test alert" and "Back up now" and read the result.
 - Set the off-account copy values from step 5 (or `BACKUP_COPY` `none`) and add the 35-day expiry rule to `tidwick-backups` in the dashboard (R2, the bucket, Settings, Object lifecycle rules); `/healthz` answers 503 until the copy is configured.
 - `/healthz` is 200 the next day, after the 03:00 backup.
-- Rotate `NOTE_KEK` in the dashboard (the old value into `NOTE_KEK_PREVIOUS`), re-wrap on `/admin/settings`, and delete `NOTE_KEK_PREVIOUS` in the dashboard once the date the screen shows has passed.
+- Rotate `NOTE_KEK` in the dashboard (the old value into `NOTE_KEK_PREVIOUS`), re-wrap on `/admin/settings`, and delete `NOTE_KEK_PREVIOUS` in the dashboard once the date the screen shows has passed, but only if the off-account bucket expires backups within `BACKUP_KEEP_DAYS` (the Worker cannot see that bucket; check its rule with `npx wrangler r2 bucket lifecycle list <bucket>`, and if the expiry is longer, wait that long).
 - The restore walk below is a separate lab; it needs a terminal by design.
 
 Status: lab: pending. No release has been through this checklist on a real account yet; record the date and the result here when one has.
 
 ## 10. Operate
 
-- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys under NOTE_KEK" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired (`BACKUP_KEEP_DAYS`, 40 by default).
+- `NOTE_KEK` rotation: set `NOTE_KEK_PREVIOUS` to the old value, then `NOTE_KEK` to the new, press "Re-wrap keys under NOTE_KEK" until done, delete PREVIOUS. Keep the retired value until the last pre-rotation backup has expired in the off-account bucket (the bucket's own rule decides; `BACKUP_KEEP_DAYS`, 40 by default, is only the screen's estimate).
 - `SESSION_SECRET` rotation ends every session, recovery code, open enrolment link and lockout counter; passkeys and linked identities survive.
 - Keep each age identity as long as the oldest backup it encrypts; rehearse a restore after any `BACKUP_RECIPIENT` change, since a wrong recipient is undetectable in the Worker.
 - Backups are kept by bucket lifecycle only (ADR 0008). The Worker deletes none.

@@ -86,6 +86,9 @@ describe('SEC-32 keys.rewrap runs only for an admin with step-up', () => {
       .slice(0, 10);
     expect(done).toContain(`Keep NOTE_KEK_PREVIOUS until ${until}`);
     expect(done).not.toContain('Delete NOTE_KEK_PREVIOUS now');
+    // The date is a check against the bucket's own rule, not a fact.
+    expect(done).toContain('only if your off-account bucket expires backups at');
+    expect(done).toContain('wrangler r2 bucket lifecycle list');
     expect(done).toContain('in the Cloudflare dashboard');
     expect(done).not.toContain('?_action=keys.rewrap');
     const again = await rpcForm('keys.rewrap', admin);
