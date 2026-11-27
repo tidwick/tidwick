@@ -18,6 +18,7 @@ function run(overrides: Partial<BackupRun>): BackupRun {
     chars: 5000,
     chain_seq: 42,
     chain_head: HEAD,
+    rows_digest: HEAD,
     status: 'ok',
     error: null,
     ...overrides,

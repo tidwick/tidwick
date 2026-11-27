@@ -3,9 +3,15 @@
 // empty. Each is a negative case beside a load that works once.
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { FORMAT, VERSION, type BackupHeader, type BackupLine } from '../lib/backup-format';
+import {
+  FORMAT,
+  rowsDigest,
+  VERSION,
+  type BackupHeader,
+  type BackupLine,
+} from '../lib/backup-format';
 import { eventHash, GENESIS, type ChainLink } from '../lib/chain';
-import { parseHead, planRestore } from './restore';
+import { parseHead, planRestore, type Recorded } from './restore';
 
 const SCHEMA = '0006_example.sql';
 
@@ -30,7 +36,11 @@ async function chain(count: number): Promise<ChainLink[]> {
   return links;
 }
 
-function backup(header: Partial<BackupHeader>, lines: readonly BackupLine[]): string {
+async function backup(
+  header: Partial<BackupHeader>,
+  lines: readonly BackupLine[],
+): Promise<string> {
+  const rows = lines.filter((l) => l.t !== 'audit_event').map((l) => JSON.stringify(l));
   const head: BackupHeader = {
     format: FORMAT,
     version: VERSION,
@@ -38,6 +48,7 @@ function backup(header: Partial<BackupHeader>, lines: readonly BackupLine[]): st
     created_at: 1,
     chain_seq: 0,
     chain_head: GENESIS,
+    rows_digest: await rowsDigest(rows),
     ...header,
   };
   return [JSON.stringify(head), ...lines.map((l) => JSON.stringify(l))].join('\n');
@@ -58,12 +69,12 @@ async function valid(key: string, events = 2): Promise<string> {
 }
 
 /** The head the file's own header names, standing for one the operator recorded when the file is the genuine one. */
-function recorded(text: string): { seq: number; hash: string } {
+function recorded(text: string): Recorded {
   try {
     const header = JSON.parse(text.split('\n')[0] ?? '{}') as BackupHeader;
-    return { seq: header.chain_seq, hash: header.chain_head };
+    return { seq: header.chain_seq, hash: header.chain_head, digest: header.rows_digest };
   } catch {
-    return { seq: 0, hash: GENESIS };
+    return { seq: 0, hash: GENESIS, digest: '' };
   }
 }
 
@@ -94,28 +105,28 @@ describe('SEC-15 restore checks', () => {
     const lines = events.map((e) => ({ t: 'audit_event', r: { ...e } }));
     const last = events.at(-1) ?? { seq: 0, hash: '' };
     expect(await why(`not json\n${JSON.stringify(lines[0])}`)).toMatch(/^line 1 is not JSON/);
-    expect(await why(backup({ format: 'other' }, []))).toMatch(
+    expect(await why(await backup({ format: 'other' }, []))).toMatch(
       /^line 1 is not a tidwick-backup v1 header/,
     );
-    expect(await why(backup({ version: 2 }, []))).toMatch(
+    expect(await why(await backup({ version: 2 }, []))).toMatch(
       /^line 1 is not a tidwick-backup v1 header/,
     );
-    expect(await why(backup({ schema_version: '0001_audit.sql' }, []))).toMatch(
+    expect(await why(await backup({ schema_version: '0001_audit.sql' }, []))).toMatch(
       /^the backup was taken at migration 0001_audit.sql and this checkout ends at 0006_example.sql/,
     );
-    expect(await why(backup({ chain_seq: 2, chain_head: last.hash }, lines))).toMatch(
+    expect(await why(await backup({ chain_seq: 2, chain_head: last.hash }, lines))).toMatch(
       /^the audit chain ends at seq 3 but the header records 2/,
     );
-    expect(await why(backup({ chain_seq: last.seq, chain_head: 'ab'.repeat(32) }, lines))).toMatch(
-      /^the audit chain ends at seq 3/,
-    );
+    expect(
+      await why(await backup({ chain_seq: last.seq, chain_head: 'ab'.repeat(32) }, lines)),
+    ).toMatch(/^the audit chain ends at seq 3/);
     const spliced = lines.map((l, i) =>
       i === 1 ? { ...l, r: { ...l.r, target: 'probe:edited' } } : l,
     );
-    expect(await why(backup({ chain_seq: last.seq, chain_head: last.hash }, spliced))).toMatch(
-      /^the audit chain in the backup breaks at seq 2/,
-    );
-    expect(await why(backup({ chain_seq: last.seq, chain_head: last.hash }, lines))).toBe(
+    expect(
+      await why(await backup({ chain_seq: last.seq, chain_head: last.hash }, spliced)),
+    ).toMatch(/^the audit chain in the backup breaks at seq 2/);
+    expect(await why(await backup({ chain_seq: last.seq, chain_head: last.hash }, lines))).toBe(
       'accepted',
     );
   });
@@ -129,36 +140,57 @@ describe('SEC-15 restore checks', () => {
     expect(await why(forged, recorded(genuine))).toMatch(
       /^the backup's audit chain ends at seq 4, which is not the head you recorded \(seq 3\)/,
     );
-    expect(await why(genuine, { seq: 3, hash: 'ab'.repeat(32) })).toMatch(
+    expect(await why(genuine, { ...recorded(genuine), hash: 'ab'.repeat(32) })).toMatch(
       /^the backup's audit chain ends at seq 3, which is not the head you recorded/,
     );
     expect(await why(genuine, recorded(genuine))).toBe('accepted');
   });
 
+  it('SEC-70 a genuine audit history with swapped-in rows is refused: the recorded digest covers every other row', async () => {
+    const genuine = await valid('genuine', 3);
+    const [header, ...rest] = genuine.split('\n');
+    // Same header, same audit lines, but a role row nobody wrote: the chain check alone would pass.
+    const rogue = JSON.stringify({ t: 'person_role', r: { person_id: 'p-rogue', role: 'admin' } });
+    const swapped = [header, rogue, ...rest.filter((l) => l.includes('"audit_event"'))].join('\n');
+    const forged = await planRestore(swapped, SCHEMA, recorded(genuine));
+    expect(forged.ok ? 'accepted' : forged.why).toMatch(
+      /^the rows other than the audit events are not the ones you recorded/,
+    );
+    // The same rows, one byte changed or one row dropped, fail too; the untouched file still loads.
+    const edited = genuine.replace('"Probe"', '"Probe2"');
+    expect(await why(edited, recorded(genuine))).toMatch(/^the rows other than the audit events/);
+    expect(await why(genuine, recorded(genuine))).toBe('accepted');
+  });
+
   it('SEC-70 the recorded head is read as seq:hash and nothing else', () => {
     const hash = 'ab'.repeat(32);
-    expect(parseHead(`12:${hash}`)).toEqual({ seq: 12, hash });
-    expect(parseHead(`12:${hash}\n`)).toEqual({ seq: 12, hash });
+    const digest = 'cd'.repeat(32);
+    expect(parseHead(`12:${hash}:${digest}`)).toEqual({ seq: 12, hash, digest });
+    expect(parseHead(`12:${hash}:${digest}\n`)).toEqual({ seq: 12, hash, digest });
     for (const bad of [
       '',
       '12',
-      `:${hash}`,
-      `12:${hash.toUpperCase()}`,
-      `12:${hash}0`,
-      `-1:${hash}`,
-      '12:abc',
+      `12:${hash}`,
+      `:${hash}:${digest}`,
+      `12:${hash.toUpperCase()}:${digest}`,
+      `12:${hash}:${digest.toUpperCase()}`,
+      `12:${hash}:${digest}0`,
+      `-1:${hash}:${digest}`,
+      '12:abc:def',
     ])
       expect(parseHead(bad)).toBeNull();
   });
 
   it('SEC-15 a row for a table or column the format never writes is refused', async () => {
-    expect(await why(backup({}, [{ t: 'session', r: { id_hash: 'x' } }]))).toMatch(
+    expect(await why(await backup({}, [{ t: 'session', r: { id_hash: 'x' } }]))).toMatch(
       /^unknown table session; the file does not match this schema/,
     );
-    expect(await why(backup({}, [{ t: 'setting', r: { 'key) VALUES (1); --': 'x' } }]))).toMatch(
-      /^bad column in setting/,
-    );
-    const unknown = backup({}, [{ t: 'setting', r: { key: 'k', value_json: '1', evil: 'x' } }]);
+    expect(
+      await why(await backup({}, [{ t: 'setting', r: { 'key) VALUES (1); --': 'x' } }])),
+    ).toMatch(/^bad column in setting/);
+    const unknown = await backup({}, [
+      { t: 'setting', r: { key: 'k', value_json: '1', evil: 'x' } },
+    ]);
     expect(await why(unknown)).toBe('accepted');
     const plan = await planRestore(unknown, SCHEMA, recorded(unknown));
     if (!plan.ok) return expect.unreachable(plan.why);

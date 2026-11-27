@@ -70,7 +70,8 @@ CREATE TABLE backup_run (
   chain_head TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ok', 'failed')),
   error TEXT,
-  chars INTEGER NOT NULL DEFAULT 0
+  chars INTEGER NOT NULL DEFAULT 0,
+  rows_digest TEXT NOT NULL DEFAULT ''
 ) STRICT;
 
 -- table client

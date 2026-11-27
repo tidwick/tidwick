@@ -11,6 +11,8 @@ export interface BackupHeader {
   created_at: number;
   chain_seq: number;
   chain_head: string;
+  /** SHA-256 of every line that is not an audit event, in file order; see `rowsDigest`. */
+  rows_digest: string;
 }
 
 /** A stored value: text, integer, null, or a BLOB as hex under `x`. */
@@ -42,6 +44,16 @@ export function encodeLine(table: string, row: Record<string, unknown>): string 
   return JSON.stringify({ t: table, r } satisfies BackupLine);
 }
 
+/**
+ * SHA-256 (hex) over the raw text of every line that is not an audit event, each followed by a newline, in file
+ * order. The audit chain covers the audit events only; this covers every other row. Neither is keyed, so a
+ * value inside the file proves nothing: it protects only because the operator records it outside the file.
+ */
+export async function rowsDigest(rows: readonly string[]): Promise<string> {
+  const bytes = new TextEncoder().encode(rows.map((row) => `${row}\n`).join(''));
+  return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -54,7 +66,8 @@ function isHeader(value: unknown): value is BackupHeader {
     (value.schema_version === null || typeof value.schema_version === 'string') &&
     typeof value.created_at === 'number' &&
     typeof value.chain_seq === 'number' &&
-    typeof value.chain_head === 'string'
+    typeof value.chain_head === 'string' &&
+    typeof value.rows_digest === 'string'
   );
 }
 
@@ -73,7 +86,8 @@ function isLine(value: unknown): value is BackupLine {
 }
 
 export type Parsed =
-  { ok: true; header: BackupHeader; lines: BackupLine[] } | { ok: false; why: string };
+  | { ok: true; header: BackupHeader; lines: BackupLine[]; rows: string[] }
+  | { ok: false; why: string };
 
 /** Reads a decrypted, decompressed backup; names the first line that is not what the writer emits. */
 export function parseBackup(text: string): Parsed {
@@ -88,6 +102,7 @@ export function parseBackup(text: string): Parsed {
   if (!isHeader(header))
     return { ok: false, why: `line 1 is not a ${FORMAT} v${String(VERSION)} header` };
   const lines: BackupLine[] = [];
+  const rows: string[] = [];
   for (const [i, line] of rest.entries()) {
     let value: unknown;
     try {
@@ -97,6 +112,7 @@ export function parseBackup(text: string): Parsed {
     }
     if (!isLine(value)) return { ok: false, why: `line ${String(i + 2)} is not a table row` };
     lines.push(value);
+    if (value.t !== 'audit_event') rows.push(line);
   }
-  return { ok: true, header, lines };
+  return { ok: true, header, lines, rows };
 }

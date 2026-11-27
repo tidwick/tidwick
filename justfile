@@ -166,7 +166,7 @@ backup-fetch night out=".wrangler/restore-remote/backup.age":
     [[ "$night" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$ ]] || { echo "FAIL backup-fetch: pass YYYY-MM-DD (nightly) or YYYY-MM-DD-HHMMSS (UTC, on-demand), not {{ quote(night) }}"; exit 1; }
     mkdir -p -m 700 "$(dirname {{ quote(out) }})"
     npx --no-install wrangler r2 object get "tidwick-backups/backups/$(echo "$night" | sed 's#-#/#; s#-#/#').ndjson.gz.age" --remote --file {{ quote(out) }} || { echo "FAIL backup-fetch: no such object; nightly keys end -030000, an on-demand time needs the full HHMMSS; ARCHITECTURE, Operate, Restore, shows the off-account fetch"; exit 1; }
-    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit> <the seq:hash head you recorded for this backup>"
+    echo "PASS backup-fetch: {{ out }}; next: just restore-remote {{ out }} <the age identity file from the offline kit> <the seq:hash:digest value you recorded for this backup>"
 
 # Loads a backup into the deployed database of the same name: migrate, then the rows. For a lost database: create
 # it first (`wrangler d1 create tidwick`), run this BEFORE `just deploy`, then follow ARCHITECTURE, Operate, Restore.

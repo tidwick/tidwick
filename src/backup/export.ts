@@ -17,7 +17,13 @@ import { recordRun, type BackupRun } from '../db/backup-runs.ts';
 import { errorText } from '../lib/error-text.ts';
 import { isAgeRecipient } from '../lib/secrets.ts';
 import { withRetry } from './retry.ts';
-import { encodeLine, FORMAT, VERSION, type BackupHeader } from '../lib/backup-format.ts';
+import {
+  encodeLine,
+  FORMAT,
+  rowsDigest,
+  VERSION,
+  type BackupHeader,
+} from '../lib/backup-format.ts';
 import { BACKUP_DUMP_CHARS, D1_QUERIES_PER_INVOCATION } from '../lib/limits.ts';
 
 /** Where the backup goes: the `BACKUPS` R2 binding, or anything with the same `put`. */
@@ -51,8 +57,7 @@ export function objectKey(now: number): string {
 
 /**
  * Statements a run needs for these row counts: the schema version (two), the head and one count per table (one
- * batch),
- * one keyset page per started 2,000 rows plus the empty page that ends each table, and the run record.
+ * batch), one keyset page per started 2,000 rows plus the empty page that ends each table, and the run record.
  */
 export function plannedQueries(counts: readonly number[]): number {
   const pages = counts.reduce((sum, n) => sum + Math.floor(n / PAGE_ROWS) + 1, 0);
@@ -64,15 +69,19 @@ async function gzip(text: string): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-/** The dump as one string, or the table it was reading when it passed `cap` characters. */
+/**
+ * The dump as one string and the digest of its non-audit lines (the header records it, so it is written last), or
+ * the table it was reading when it passed `cap` characters.
+ */
 async function ndjson(
   db: D1Database,
-  header: BackupHeader,
+  header: Omit<BackupHeader, 'rows_digest'>,
   taken: Snapshot,
   cap: number,
-): Promise<{ text: string } | { over: string }> {
-  const lines = [JSON.stringify(header)];
-  let chars = (lines[0]?.length ?? 0) + 1;
+): Promise<{ text: string; digest: string } | { over: string }> {
+  const lines: string[] = [];
+  const rows: string[] = [];
+  let chars = JSON.stringify({ ...header, rows_digest: '0'.repeat(64) }).length + 1;
   for (const [i, table] of BACKUP_TABLES.entries()) {
     const last = taken.tables[i]?.last ?? 0;
     let after = 0;
@@ -83,12 +92,17 @@ async function ndjson(
         chars += line.length + 1;
         if (chars > cap) return { over: table };
         lines.push(line);
+        if (table !== 'audit_event') rows.push(line);
       }
       if (page.rows.length < PAGE_ROWS) break;
       after = page.next;
     }
   }
-  return { text: `${lines.join('\n')}\n` };
+  const digest = await rowsDigest(rows);
+  return {
+    text: `${[JSON.stringify({ ...header, rows_digest: digest }), ...lines].join('\n')}\n`,
+    digest,
+  };
 }
 
 /** The limits one run is held to: D1 statements, and characters of NDJSON built in memory. */
@@ -106,14 +120,20 @@ async function dumpOnce(
   startedAt: number,
   limits: BackupLimits,
 ): Promise<
-  string | { dump: { text: string }; head: Snapshot['head']; planned: number; steady: boolean }
+  | string
+  | {
+      dump: { text: string; digest: string };
+      head: Snapshot['head'];
+      planned: number;
+      steady: boolean;
+    }
 > {
   const taken = await snapshot(db);
   const planned = plannedQueries(taken.tables.map((t) => t.count));
   if (planned > limits.queries) {
     return `query budget: ${String(planned)} statements needed, ${String(limits.queries)} allowed`;
   }
-  const header: BackupHeader = {
+  const header: Omit<BackupHeader, 'rows_digest'> = {
     format: FORMAT,
     version: VERSION,
     schema_version: schema,
@@ -155,6 +175,7 @@ async function attempt(
     const dump = dumped.dump;
     run.chain_seq = dumped.head.seq;
     run.chain_head = dumped.head.hash;
+    run.rows_digest = dump.digest;
     run.chars = dump.text.length;
     step = 'encrypting';
     const encrypter = new Encrypter();
@@ -218,6 +239,7 @@ export async function runBackup(
     chars: 0,
     chain_seq: 0,
     chain_head: '0'.repeat(64),
+    rows_digest: '0'.repeat(64),
     status: 'failed',
     error: null,
   };

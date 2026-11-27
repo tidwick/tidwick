@@ -1,6 +1,7 @@
 // Decrypts a backup, has src/db/restore.ts check its header, schema version and audit chain, and writes the SQL
-// that loads it into a freshly migrated, empty D1. The chain head the operator recorded outside the backup must match
-// the file's. Usage: node scripts/restore.ts <backup file> <identity file> <out sql> <expected head, seq:hash>
+// that loads it into a freshly migrated, empty D1. The value the operator recorded outside the backup (audit
+// head and the digest of every other row) must match the file's.
+// Usage: node scripts/restore.ts <backup file> <identity file> <out sql> <recorded value, seq:hash:digest>
 import { chmodSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Decrypter } from 'age-encryption';
 import { parseHead, planRestore } from '../src/db/restore.ts';
@@ -17,12 +18,14 @@ if (
   out === undefined ||
   headText === undefined
 ) {
-  stop('usage: restore.ts <backup file> <identity file> <out sql> <expected head, seq:hash>');
+  stop(
+    'usage: restore.ts <backup file> <identity file> <out sql> <recorded value, seq:hash:digest>',
+  );
 }
 const expected = parseHead(headText);
 if (expected === null)
   stop(
-    `the expected head must be seq:hash, 64 lowercase hex characters after the colon, as /admin/settings showed it for the backup (ARCHITECTURE, Operate, Restore), not ${headText}`,
+    `the recorded value must be seq:hash:digest, 64 lowercase hex characters after each colon, as /admin/settings showed it for the backup (ARCHITECTURE, Operate, Restore), not ${headText}`,
   );
 
 /** A file's bytes, or a FAIL line naming the path and what to pass instead. */
@@ -70,7 +73,7 @@ writeFileSync(out, `${plan.sql.join('\n')}\n`, { mode: 0o600 });
 chmodSync(out, 0o600);
 const taken = new Date(plan.header.created_at).toISOString();
 console.log(
-  `PASS restore: ${String(plan.sql.length - 1)} rows in ${String(plan.counts.size)} tables, chain head seq ${String(plan.header.chain_seq)} ${plan.header.chain_head}, from ${taken}`,
+  `PASS restore: ${String(plan.sql.length - 1)} rows in ${String(plan.counts.size)} tables, chain head seq ${String(plan.header.chain_seq)} ${plan.header.chain_head}, rows digest ${plan.header.rows_digest}, from ${taken}`,
 );
 console.log(
   `before announcing the instance, offboard or re-enrol everyone who left or was re-enrolled since ${taken}: the restore brings back their passkeys and open links; delete ${out} once it is loaded`,

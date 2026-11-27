@@ -1,6 +1,11 @@
 // The restore's checks and the SQL text that loads a backup's rows into a freshly migrated database, one statement
 // per line, for `wrangler d1 execute --file`. Only the restore script and its tests use it; nothing is prepared.
-import { parseBackup, type BackupHeader, type BackupLine } from '../lib/backup-format.ts';
+import {
+  parseBackup,
+  rowsDigest,
+  type BackupHeader,
+  type BackupLine,
+} from '../lib/backup-format.ts';
 import { GENESIS, verifyLinks, type ChainLink, type Head } from '../lib/chain.ts';
 import { BACKUP_TABLES } from './backup-rows.ts';
 import { literal } from './sql-text.ts';
@@ -48,28 +53,33 @@ export type RestorePlan =
   | { ok: true; header: BackupHeader; sql: string[]; counts: Map<string, number> }
   | { ok: false; why: string };
 
-/** The head an operator recorded, written `<seq>:<hash>` as the settings page shows it; null when it is not that. */
-export function parseHead(value: string): Head | null {
-  const found = /^(\d{1,15}):([0-9a-f]{64})$/.exec(value.trim());
-  return found === null ? null : { seq: Number(found[1]), hash: found[2] ?? '' };
+/** What an operator records off the file for one backup: its audit head and the digest of every other row. */
+export type Recorded = Head & { digest: string };
+
+/** The value an operator recorded, written `<seq>:<hash>:<digest>` as the settings page shows it; null when it is not that. */
+export function parseHead(value: string): Recorded | null {
+  const found = /^(\d{1,15}):([0-9a-f]{64}):([0-9a-f]{64})$/.exec(value.trim());
+  return found === null
+    ? null
+    : { seq: Number(found[1]), hash: found[2] ?? '', digest: found[3] ?? '' };
 }
 
 /**
  * Checks a decrypted backup, its header, its schema version against `latestMigration` (this checkout's last
- * migration file) and its audit chain against the header's head and against `expected`, the head the operator
- * recorded outside the backup, then builds the SQL that loads it, guard first. The chain is hashed without a
- * key, so anyone able to write a backup object can forge a self-consistent file; only a head held elsewhere
- * tells a forged file from the one tidwick wrote.
+ * migration file), its audit chain against the header's head and against `expected`, and every other row against
+ * the digest in `expected`, all recorded by the operator outside the backup, then builds the SQL that loads it,
+ * guard first. Chain and digest are unkeyed, so anyone able to write a backup object can forge a self-consistent
+ * file; only the recorded value, covering the whole file, tells a forged file from the one tidwick wrote.
  */
 export async function planRestore(
   text: string,
   latestMigration: string | null,
-  expected: Head,
+  expected: Recorded,
 ): Promise<RestorePlan> {
   const parsed = parseBackup(text);
   if (!parsed.ok)
     return { ok: false, why: `${parsed.why}; the file is damaged or not a tidwick backup` };
-  const { header, lines } = parsed;
+  const { header, lines, rows } = parsed;
   if (header.schema_version !== null && header.schema_version !== latestMigration) {
     return {
       ok: false,
@@ -94,6 +104,12 @@ export async function planRestore(
     return {
       ok: false,
       why: `the backup's audit chain ends at seq ${String(verdict.head.seq)}, which is not the head you recorded (seq ${String(expected.seq)}); do not load it, keep the file for review, and restore the backup whose head you recorded`,
+    };
+  }
+  if ((await rowsDigest(rows)) !== expected.digest) {
+    return {
+      ok: false,
+      why: 'the rows other than the audit events are not the ones you recorded the digest for; do not load it, keep the file for review, and restore the backup whose value you recorded',
     };
   }
   const sql = [EMPTY_TARGET];
