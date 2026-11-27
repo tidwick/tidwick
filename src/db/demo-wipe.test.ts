@@ -16,7 +16,6 @@ const OPEN = {
   ...currentEnv(),
   DEMO_LOGIN: true,
   DEMO_BANNER: true,
-  DEMO_PASSWORD: 'a-long-demo-password',
 };
 const TABLES = ['person', 'person_role', 'project', 'week_row', 'entry', 'client_key', 'setting'];
 
@@ -46,7 +45,7 @@ describe('the nightly demo wipe', () => {
     const kept = await triggers();
     expect(kept.length).toBeGreaterThan(0);
 
-    await demoSignIn(OPEN, 'a-long-demo-password', 'manager', NOW);
+    await demoSignIn(OPEN, 'manager', NOW);
     await env.DB.exec(
       "DELETE FROM entry; INSERT INTO client (id, name, created_at) VALUES ('junk', 'Junk', 1);",
     );
@@ -56,13 +55,13 @@ describe('the nightly demo wipe', () => {
     await scheduled(cron, env);
     expect(await counts()).not.toEqual(seeded);
 
-    const open = { ...env, DEMO_LOGIN: 'on', DEMO_BANNER: 'on', DEMO_PASSWORD: OPEN.DEMO_PASSWORD };
+    const open = { ...env, DEMO_LOGIN: 'on', DEMO_BANNER: 'on' };
     // Signals alone are not enough: a database the seed never marked is left alone.
     await env.DB.exec("DELETE FROM setting WHERE key = 'demo'");
     await scheduled(cron, { ...env, DEMO_LOGIN: 'on', DEMO_BANNER: 'on' });
     expect(await counts()).not.toEqual(seeded);
     await env.DB.exec("INSERT INTO setting (key, value_json) VALUES ('demo', '1')");
-    // A closed sign-in gate (no password) still wipes while the banner says it is the demo.
+    // A closed sign-in gate (no DEMO_LOGIN) still wipes while the banner says it is the demo.
     await scheduled(cron, { ...env, DEMO_BANNER: 'on' });
     expect(await counts()).toEqual(seeded);
     await env.DB.exec('DELETE FROM entry');
@@ -78,7 +77,7 @@ describe('the nightly demo wipe', () => {
     const first = await env.DB.prepare('SELECT seq, action, actor_id FROM audit_event').first();
     expect(first).toEqual({ seq: 1, action: 'demo.reset', actor_id: null });
     expect((await checkChain(env.DB)).ok).toBe(true);
-    await demoSignIn(OPEN, 'a-long-demo-password', DEMO_PERSONAS[0].key, NOW);
+    await demoSignIn(OPEN, DEMO_PERSONAS[0].key, NOW);
     await expect(env.DB.exec('DELETE FROM audit_event')).rejects.toThrow();
   });
 
@@ -123,7 +122,6 @@ describe('the nightly demo wipe', () => {
       DB: spy,
       DEMO_LOGIN: 'on',
       DEMO_BANNER: 'on',
-      DEMO_PASSWORD: OPEN.DEMO_PASSWORD,
     });
     expect(batches, 'the reset must run as one batch').toHaveLength(1);
     expect(

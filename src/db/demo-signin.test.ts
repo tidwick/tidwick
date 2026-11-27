@@ -7,19 +7,12 @@ import { grantsOf } from './roles';
 import { DEMO_PERSONAS } from '../lib/demo-personas';
 import { currentEnv, type Env } from '../lib/env';
 import { AppError } from '../lib/errors';
-import {
-  demoOpen,
-  demoPasswordShown,
-  demoSignIn,
-  guardPersona,
-  passwordMatches,
-} from '../auth/demo';
+import { demoOpen, demoSignIn, guardPersona } from '../auth/demo';
 import { DEMO_SESSION_MS, newSession, readSession } from '../auth/session';
 import { requireStepUp } from '../auth/step-up';
 import { DEFAULT_POLICY } from '../lib/policy';
 
-const PASSWORD = 'a-long-demo-password';
-const OPEN: Env = { ...currentEnv(), DEMO_LOGIN: true, DEMO_BANNER: true, DEMO_PASSWORD: PASSWORD };
+const OPEN: Env = { ...currentEnv(), DEMO_LOGIN: true, DEMO_BANNER: true };
 const NOW = Date.UTC(2026, 10, 18, 10, 0, 0);
 
 beforeAll(async () => {
@@ -35,17 +28,15 @@ async function count(sql: string, ...binds: string[]): Promise<number> {
 
 const sessions = (id: string) =>
   count('SELECT count(*) AS n FROM session WHERE person_id = ?1', id);
-const events = () => count("SELECT count(*) AS n FROM audit_event WHERE action LIKE 'demo.%'");
 
 describe('the demo sign-in gate', () => {
-  it('opens only when the var, the password, the banner and the seed marker all hold', async () => {
+  it('opens only when the var, the banner and the seed marker all hold', async () => {
     expect(await demoOpen(OPEN)).toBe(true);
   });
 
   it('each signal missing alone closes it', async () => {
     expect(await demoOpen({ ...OPEN, DEMO_LOGIN: false })).toBe(false);
     expect(await demoOpen({ ...OPEN, DEMO_BANNER: false })).toBe(false);
-    expect(await demoOpen({ ...OPEN, DEMO_PASSWORD: null })).toBe(false);
     await env.DB.exec("DELETE FROM setting WHERE key = 'demo'");
     expect(await demoOpen(OPEN)).toBe(false);
     await env.DB.exec("INSERT INTO setting (key, value_json) VALUES ('demo', '1')");
@@ -56,10 +47,10 @@ describe('the demo sign-in gate', () => {
     const who = DEMO_PERSONAS[0];
     for (const closed of [
       { ...OPEN, DEMO_LOGIN: false },
-      { ...OPEN, DEMO_PASSWORD: null },
+      { ...OPEN, DEMO_BANNER: false },
     ]) {
       const before = await sessions(who.id);
-      const error = await demoSignIn(closed, PASSWORD, who.key, NOW).catch((e: unknown) => e);
+      const error = await demoSignIn(closed, who.key, NOW).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(AppError);
       expect((error as AppError).code).toBe('not_found');
       expect(await sessions(who.id)).toBe(before);
@@ -76,36 +67,14 @@ describe('the demo sign-in gate', () => {
   });
 });
 
-describe('the printed demo password', () => {
-  it('is shown when the gate holds and absent when any part is missing', async () => {
-    expect(await demoPasswordShown(OPEN)).toBe(PASSWORD);
-    expect(await demoPasswordShown({ ...OPEN, DEMO_LOGIN: false })).toBeNull();
-    expect(await demoPasswordShown({ ...OPEN, DEMO_BANNER: false })).toBeNull();
-    expect(await demoPasswordShown({ ...OPEN, DEMO_PASSWORD: null })).toBeNull();
-    await env.DB.exec("DELETE FROM setting WHERE key = 'demo'");
-    expect(await demoPasswordShown(OPEN)).toBeNull();
-    await env.DB.exec("INSERT INTO setting (key, value_json) VALUES ('demo', '1')");
-    expect(await demoPasswordShown(OPEN)).toBe(PASSWORD);
-  });
-});
-
 describe('auth.demoSignin', () => {
-  it('a wrong password opens no session and writes no audit row', async () => {
-    const who = DEMO_PERSONAS[1];
-    const before = [await sessions(who.id), await events()];
-    expect(await demoSignIn(OPEN, 'not-the-password-at-all', who.key, NOW)).toBeNull();
-    expect(await demoSignIn(OPEN, '', who.key, NOW)).toBeNull();
-    expect([await sessions(who.id), await events()]).toEqual(before);
-  });
-
-  it('the right password opens a 2 hour session as the persona, audited in the same batch', async () => {
+  it('a pick opens a 2 hour session as the persona, audited in the same batch', async () => {
     const who = DEMO_PERSONAS[2];
-    const raw = await demoSignIn(OPEN, PASSWORD, who.key, NOW);
-    expect(raw).not.toBeNull();
+    const raw = await demoSignIn(OPEN, who.key, NOW);
     const session = await readSession(
       env.DB,
       OPEN.SESSION_SECRET,
-      raw ?? '',
+      raw,
       NOW,
       DEFAULT_POLICY.sessionIdleMs,
     );
@@ -126,7 +95,7 @@ describe('auth.demoSignin', () => {
       await readSession(
         env.DB,
         OPEN.SESSION_SECRET,
-        raw ?? '',
+        raw,
         NOW + DEMO_SESSION_MS,
         DEFAULT_POLICY.sessionIdleMs,
       ),
@@ -135,11 +104,11 @@ describe('auth.demoSignin', () => {
 
   it('the session passes the step-up gate for its whole life, which a passkey session does not', async () => {
     const who = DEMO_PERSONAS[3];
-    const raw = await demoSignIn(OPEN, PASSWORD, who.key, NOW);
+    const raw = await demoSignIn(OPEN, who.key, NOW);
     const demo = await readSession(
       env.DB,
       OPEN.SESSION_SECRET,
-      raw ?? '',
+      raw,
       NOW,
       DEFAULT_POLICY.sessionIdleMs,
     );
@@ -170,12 +139,6 @@ describe('auth.demoSignin', () => {
         DEFAULT_POLICY.stepUpMs,
       );
     }).toThrow();
-  });
-
-  it('compares digests: equal passwords match, a prefix or a longer one does not', async () => {
-    expect(await passwordMatches(PASSWORD, PASSWORD)).toBe(true);
-    expect(await passwordMatches(PASSWORD.slice(0, -1), PASSWORD)).toBe(false);
-    expect(await passwordMatches(`${PASSWORD}x`, PASSWORD)).toBe(false);
   });
 });
 

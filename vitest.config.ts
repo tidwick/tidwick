@@ -127,7 +127,6 @@ export default defineConfig({
                 ...(await secrets()),
                 DEMO_LOGIN: 'on',
                 DEMO_BANNER: 'on',
-                DEMO_PASSWORD: 'a-long-demo-<&"pass',
                 // Off, whatever a local .dev.vars says: the demo project proves the default (src/mcp/off.demo.test.ts).
                 MCP: '',
                 TEST_MIGRATIONS: await readD1Migrations('./migrations'),

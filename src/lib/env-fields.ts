@@ -3,8 +3,6 @@
 import { fail } from './errors';
 import { isAgeRecipient, isSetupToken } from './secrets';
 
-export const DEMO_PASSWORD_MIN = 16;
-
 export type Source = Record<string, unknown>;
 
 export function hasMethods(value: unknown, methods: readonly string[]): boolean {
@@ -100,12 +98,6 @@ export function mailOf(source: Source): { EMAIL: SendEmail; MAIL_FROM: string } 
 export function setupToken(source: Source): string | null {
   const value = source['SETUP_TOKEN'];
   return typeof value === 'string' && isSetupToken(value) ? value.trim() : null;
-}
-
-/** The demo password when it is a string of at least 16 characters; anything else is null, never an error. */
-export function demoPassword(source: Source): string | null {
-  const value = source['DEMO_PASSWORD'];
-  return typeof value === 'string' && value.length >= DEMO_PASSWORD_MIN ? value : null;
 }
 
 /**

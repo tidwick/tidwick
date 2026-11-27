@@ -107,9 +107,9 @@ demo-reset target="local":
     echo "PASS demo-reset ({{ target }}): 2 invented firms, 26 people, 12 projects and thirteen weeks of time in the {{ target }} D1; wrangler output in $log"
 
 # One command for a human to see the demo: reset and load the demo seed into the local D1, give the generated dummy
-# .dev.vars the demo sign-in's signals (DEMO_LOGIN, DEMO_BANNER, a dummy DEMO_PASSWORD), then serve the production
-# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Pick a persona there: member, a second-firm
-# member, approver (accounting admin) or admin (key manager). The seed itself carries the fourth signal, and no real secret is involved.
+# .dev.vars the demo picker's signals (DEMO_LOGIN, DEMO_BANNER), then serve the production
+# build with `astro preview` on http://localhost:4321/demo. Ctrl-C stops it. Click a persona there: member, a second-firm
+# member, approver (accounting admin) or admin (key manager). The seed itself carries the third signal, and no secret is involved.
 demo-local:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -118,8 +118,8 @@ demo-local:
     saved=.wrangler/dev.vars.saved
     trap 'if [ -e "$saved" ]; then install -m 600 "$saved" .dev.vars; rm -f "$saved"; fi' EXIT
     cp -p .dev.vars "$saved"
-    { grep -vE '^DEMO_(LOGIN|BANNER|PASSWORD)=' "$saved"; printf 'DEMO_LOGIN=on\nDEMO_BANNER=on\nDEMO_PASSWORD=local-demo-password\n'; } > .dev.vars
-    echo "demo: http://localhost:4321/demo  password: local-demo-password"
+    { grep -vE '^DEMO_(LOGIN|BANNER)=' "$saved"; printf 'DEMO_LOGIN=on\nDEMO_BANNER=on\n'; } > .dev.vars
+    echo "demo: http://localhost:4321/demo"
     just build
     npx --no-install astro preview
 
@@ -338,7 +338,7 @@ e2e *args:
     if [ -e "$aside" ]; then rm -rf "$state"; mv "$aside" "$state"; fi
     if [ -e "$state" ]; then mv "$state" "$aside"; fi
     trap 'rm -f .dev.vars; rm -rf "$state"; if [ -e "$aside" ]; then mv "$aside" "$state"; fi' EXIT
-    # Three fresh-instance phases first, each on an empty D1: no secrets (`/setup` makes them), a setup token (`/setup` claims), and MCP off.
+    # Four fresh-instance phases first, each on an empty D1: no secrets (`/setup` makes them), a setup token (`/setup` claims), MCP off, and the demo.
     fresh() { rm -rf "$state"; just db-migrate; FRESH=$1 npx --no-install playwright test --project=phone; }
     fresh setup
     node test/e2e/prepare.ts
@@ -351,6 +351,14 @@ e2e *args:
     cat .dev.vars.off > .dev.vars
     rm .dev.vars.off
     fresh off
+    # Then the demo: its seed loaded and its two flags on (MCP stays off); the next prepare rewrites .dev.vars without them.
+    rm -rf "$state"
+    just db-migrate
+    node scripts/seed-demo.ts --dev > .wrangler/demo.sql
+    npx --no-install wrangler d1 execute tidwick --local --file .wrangler/demo.sql > .wrangler/demo.log 2>&1 || { tail -n 40 .wrangler/demo.log; echo "FAIL e2e: the demo seed did not load; see scripts/seed-demo.ts"; exit 1; }
+    rm -f .wrangler/demo.sql
+    printf 'DEMO_LOGIN=on\nDEMO_BANNER=on\n' >> .dev.vars
+    FRESH=demo npx --no-install playwright test --project=phone
     rm -rf "$state"
     node test/e2e/prepare.ts
     just db-migrate
@@ -361,8 +369,9 @@ e2e *args:
 playwright-version:
     echo "version=$(npx --no-install playwright --version | awk '{print $2}')" >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
-# The deployed sites answer as the code says they do, GET only: the demo's sign-in is open, /login carries its CSP and a
-# hashed script that loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
+# The deployed sites answer as the code says they do, GET only: the demo's entry is a picker of four people with no password
+# field and the demo banner, / and /login send a signed-out visitor to it, /demo carries its CSP and a hashed stylesheet that
+# loads, /week sends a signed-out visitor to sign in, /mcp, /oauth and the well-known routes and /setup do not exist there (MCP is off), and the project site is up.
 # The demo binds no BACKUPS and its nightly wipe clears backup_run, so no good backup ever exists there: /healthz answers 503 by design.
 live:
     #!/usr/bin/env bash
@@ -373,13 +382,18 @@ live:
     want() { [ "$2" = "$3" ] || { echo "FAIL live: $1 answered $2, expected $3"; exit 1; }; }
     want /demo "$(get "$t/demo" $demo/demo)" 200
     grep -q 'Sign in as' "$t/demo" || { echo "FAIL live: /demo lacks the persona picker (\"Sign in as\"); check src/pages/demo.astro and DEMO_LOGIN"; exit 1; }
-    grep -q 'name="password"' "$t/demo" || { echo "FAIL live: /demo lacks the password field; check src/pages/demo.astro"; exit 1; }
+    [ "$(grep -o 'name="persona"' "$t/demo" | wc -l)" -eq 4 ] || { echo "FAIL live: /demo does not offer four people; check DEMO_PERSONAS in src/lib/demo-personas.ts"; exit 1; }
+    ! grep -q 'type="password"' "$t/demo" || { echo "FAIL live: /demo asks for a password; the picker takes none, check src/pages/demo.astro"; exit 1; }
+    grep -q 'resets daily at 04:00' "$t/demo" || { echo "FAIL live: /demo lacks the demo banner; check src/layouts/base.astro and DEMO_BANNER"; exit 1; }
+    grep -qi '^content-security-policy:' "$t/demo.h" || { echo "FAIL live: /demo sends no content-security-policy"; exit 1; }
+    sheet="$(grep -o 'href="/_astro/[^"]*\.css"' "$t/demo" | head -1 | cut -d'"' -f2)"
+    [ -n "$sheet" ] || { echo "FAIL live: /demo names no hashed stylesheet"; exit 1; }
+    want "$sheet" "$(get "$t/css" "$demo$sheet")" 200
+    for path in / /login; do
+      want "$path" "$(get "$t/entry" "$demo$path")" 303
+      grep -qi '^location: /demo' "$t/entry.h" || { echo "FAIL live: $path does not send a signed-out visitor to /demo; check src/pages/index.astro and src/pages/login.astro"; exit 1; }
+    done
     want /healthz "$(get "$t/hz" $demo/healthz)" 503
-    want /login "$(get "$t/login" $demo/login)" 200
-    grep -qi '^content-security-policy:' "$t/login.h" || { echo "FAIL live: /login sends no content-security-policy"; exit 1; }
-    script="$(grep -o 'src="/_astro/[^"]*\.js"' "$t/login" | head -1 | cut -d'"' -f2)"
-    [ -n "$script" ] || { echo "FAIL live: /login names no hashed script"; exit 1; }
-    want "$script" "$(get "$t/js" "$demo$script")" 200
     want /week "$(get "$t/week" $demo/week)" 303
     grep -qi '^location: /login?return=%2Fweek' "$t/week.h" || { echo "FAIL live: /week does not send a signed-out visitor to /login?return=%2Fweek"; exit 1; }
     want /mcp "$(get "$t/mcp" $demo/mcp)" 404

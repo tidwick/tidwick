@@ -2,9 +2,12 @@
 import Heading from '../components/auth/heading.astro';
 import { LINK, PRIMARY } from '../components/auth/classes';
 import Auth from '../layouts/auth.astro';
+import { demoOpen } from '../auth/demo';
+import { currentEnv } from '../lib/env';
 
 const session = Astro.locals.session;
 if (session) return Astro.redirect(session.mustEnrol ? '/account' : '/week');
+if (await demoOpen(currentEnv())) return Astro.redirect('/demo', 303);
 ---
 
 <Auth title="Home">

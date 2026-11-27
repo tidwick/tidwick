@@ -216,7 +216,7 @@ export function demoReferenceStatements(): string[] {
       [
         ['export_mapping', JSON.stringify(SAMPLE_EXPORT_MAPPING)],
         ['import_mapping', JSON.stringify(SAMPLE_IMPORT_MAPPING)],
-        // The fourth signal of the demo sign-in's gate (`src/auth/demo.ts`): only a seeded database carries it.
+        // The third signal of the demo picker's gate (`src/auth/demo.ts`): only a seeded database carries it.
         ['demo', '1'],
       ],
     ),

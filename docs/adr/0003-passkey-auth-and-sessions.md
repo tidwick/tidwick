@@ -1,6 +1,6 @@
 # 0003 Passkey and SSO login and opaque sessions
 
-Date: 2026-11-22, revised 2026-11-25
+Date: 2026-11-22, revised 2026-11-26
 Status: Accepted
 
 ## Context
@@ -14,7 +14,7 @@ Staff sign in from phones and shared desktops, and the firm holds client data. P
 - An SSO identity is keyed on issuer and subject, never on email. It is linked by completing an enrolment link, which proves the person; the provider proves the account, and no email is compared. An unlinked identity cannot sign in.
 - SSO sessions are the same opaque sessions as passkey ones. Step-up accepts a fresh passkey assertion or a fresh SSO sign-in, the latter proven by `auth_time`. A provider that sends none (Google) cannot step up; its confirm button is hidden and its start route refuses. An SSO sign-in or enrolment opens a session that counts as stepped up only when its `auth_time` is no older than the flow; a provider that answered from its own session, or sends none, opens one that meets the confirm prompt first.
 - tidwick keeps no access or refresh token from an identity provider. The ID token comes from the token endpoint over TLS, so its signature is not checked again (OpenID Connect Core 3.1.3.7).
-- A demo environment only may add a shared-password persona sign-in: four signals gate it (var, secret of 16 or more characters, demo banner, a seeded database marker), it is never enabled elsewhere, its sessions last two hours with no step-up prompt, and passkey login is unchanged. The password is not a secret: the sign-in page prints it, and only while all four signals hold.
+- A demo environment only may add a persona picker: three signals gate it (the demo var, the demo banner, a seeded database marker), it is never enabled elsewhere, a visitor picks one of four invented people with no credential, its sessions last two hours with no step-up prompt, and the entry routes send a signed-out visitor to it instead of the passkey page. Every pick is throttled per address and audited.
 - Enrolment and recovery codes are hashed (a new batch also waits sealed, ten minutes, for its session) and single-use.
 - Lockout applies to recovery only, never to a passkey or SSO login.
 - Sessions are opaque random tokens, stored HMAC-hashed, carried in a `__Host-` cookie.
